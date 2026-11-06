@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head><body>
+<script src="sounds.js"></script>
+<script>
+/* Surge synth — every sound is generated with WebAudio. No samples, no licensing, tiny app. */
+const AC = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+const master = AC.createGain(); master.gain.value = 1; master.connect(AC.destination);
+const comp = AC.createDynamicsCompressor(); comp.threshold.value = -6; comp.ratio.value = 2; comp.knee.value = 10; comp.connect(master);
+const noiseBuf = (() => { const b = AC.createBuffer(1, AC.sampleRate * 0.5, AC.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return b; })();
+const rnd = (a, b) => a + Math.random() * (b - a);
+
+function chain(node, t, dur, hp) { if (!hp) return node.connect(comp); const h = AC.createBiquadFilter(); h.type = 'highpass'; h.frequency.value = hp; node.connect(h).connect(comp); return h; }
+function noise({ dur = .04, f = 3000, q = 1, type = 'bandpass', vol = .5, t = AC.currentTime, attack = .001, sweep = 0, hp = 0 }) {
+  const src = AC.createBufferSource(); src.buffer = noiseBuf; src.playbackRate.value = rnd(.92, 1.08); src.loop = true; src.loopStart = Math.random() * .3;
+  const flt = AC.createBiquadFilter(); flt.type = type; flt.frequency.setValueAtTime(f, t); if (sweep) flt.frequency.exponentialRampToValueAtTime(Math.max(80, f * (1 - sweep)), t + dur); flt.Q.value = q;
+  const g = AC.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(flt).connect(g); chain(g, t, dur, hp); src.start(t); src.stop(t + dur + .02);
+}
+function tone({ f = 200, f2 = null, dur = .05, vol = .4, type = 'sine', t = AC.currentTime, attack = .001, hp = 0 }) {
+  const o = AC.createOscillator(); o.type = type; o.frequency.setValueAtTime(Math.max(20, f), t); if (f2) o.frequency.exponentialRampToValueAtTime(Math.max(20, f2), t + dur);
+  const g = AC.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); chain(g, t, dur, hp); o.start(t); o.stop(t + dur + .02);
+}
+
+const NOTES=[523.25,587.33,659.25,698.46,783.99,880,987.77,1046.5];
+function playPreset(p, v, kind, variance){
+  v *= p.gain ?? 1;
+  const pv = p.pv ?? variance ?? .2, m = 1 + rnd(-pv, pv), t0 = AC.currentTime;
+  const deep = kind === 'space' ? (p.space || 1.5) : 1;
+  const hits = [{ t: t0, g: 1 }]; if (p.rattle) hits.push({ t: t0 + p.rattle.delay, g: p.rattle.vol });
+  for (const h of hits) {
+    const t = h.t, g = v * h.g;
+    if (p.click) noise({ dur: p.click.dur, f: p.click.f * m / Math.sqrt(deep), q: p.click.q ?? 1, vol: g * p.click.vol, type: p.click.type || 'bandpass', t, hp: p.thin });
+    if (p.click2) noise({ dur: p.click2.dur, f: p.click2.f * m, q: p.click2.q ?? 1, vol: g * p.click2.vol, t: t + (p.click2.delay || .04), hp: p.thin });
+    if (p.tail) noise({ dur: p.tail.dur, f: p.tail.f * m, q: p.tail.q ?? .8, vol: g * p.tail.vol, type: p.tail.q > 3 ? 'bandpass' : 'lowpass', t, sweep: p.tail.sweep, hp: p.thin });
+    if (p.body) {
+      let f = p.body.f, drop = p.body.drop ?? (p.body.f2 ? p.body.f2 / p.body.f : .5);
+      if (p.body.notes) f = NOTES[Math.floor(Math.random() * NOTES.length)]; else f *= m;
+      const dur = p.body.dur * (kind === 'space' ? 1.4 : 1), vol = g * p.body.vol * (kind === 'space' ? 1.2 : 1);
+      const parts = p.body.partials || [{ ratio: 1, vol: 1, decay: 1 }];
+      for (const q of parts) tone({ f: f * q.ratio / deep, f2: p.body.rise ? (p.body.f2 || f * 2) * q.ratio / deep : (p.body.notes ? f * q.ratio : f * q.ratio * drop / deep), dur: dur * q.decay, vol: vol * q.vol, type: p.body.type || 'sine', t, attack: p.body.attack ?? (p.body.rise ? .004 : .001), hp: p.thin });
+    }
+    if (p.ping) tone({ f: p.ping.f * m, dur: p.ping.dur, vol: g * p.ping.vol, type: p.ping.type || 'sine', t: t + .004, attack: .002 });
+  }
+  if (p.enterBell && kind === 'enter') { tone({ f: 2093, dur: .9, vol: v * .35, t: t0 + .05 }); tone({ f: 2637, dur: .7, vol: v * .2, t: t0 + .05 }); }
+}
+function playUp(p, v){ const u = p.up; if (!u) return; v *= p.gain ?? 1; if (u.tone) tone({ f: u.f, f2: u.f2 || u.f, dur: u.dur, vol: v * u.vol, type: 'sine' }); else noise({ dur: u.dur, f: u.f, q: u.q ?? 1, vol: v * u.vol }); if (u.ping && p.ping) tone({ f: p.ping.f * 1.1, dur: p.ping.dur * .6, vol: v * p.ping.vol * .5, type: 'sine' }); }
+
+function play(p) {
+  if (AC.state !== 'running') AC.resume();
+  const v = Math.max(0, Math.min(1, (p.volume ?? .5) * (p.master ?? 1)));
+  if (v <= 0) return;
+  switch (p.sound) {
+    case 'key': { const pr = SurgeSounds.findKey(p.preset); if (p.kind === 'up') playUp(pr, v); else playPreset(pr, v, p.kind, p.variance); break; }
+    case 'click': { const pr = SurgeSounds.findMouse(p.preset); if (p.up) playUp(pr, v); else playPreset(pr, v, 'key', .05); break; }
+    case 'scroll': playPreset(SurgeSounds.findScroll(p.preset), v, 'key', .08); break;
+    case 'capsOn': tone({ f: 660, f2: 990, dur: .12, vol: v * .5 }); break;
+    case 'capsOff': tone({ f: 990, f2: 660, dur: .12, vol: v * .5 }); break;
+    case 'bell': { const t = AC.currentTime; [1, 2.4, 3.9].forEach((m, i) => tone({ f: 523 * m, dur: 1.6 - i * .3, vol: v * (.4 / (i + 1)), t, attack: .004 })); break; }
+    default: tone({ f: 440, dur: .1, vol: v * .3 });
+  }
+}
+window.surge?.on('audio:play', play);
+</script>
+</body></html>

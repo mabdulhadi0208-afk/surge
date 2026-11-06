@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  html, body { margin:0; height:100%; background:transparent; overflow:hidden; pointer-events:none; -webkit-user-select:none; }
+  canvas, #tint { position:fixed; inset:0; width:100vw; height:100vh; }
+  #tint { opacity:0; transition:opacity 1.2s ease, background .6s; mix-blend-mode:multiply; }
+</style>
+</head>
+<body>
+<div id="tint"></div>
+<canvas id="fx"></canvas>
+<canvas id="c"></canvas>
+<script src="engine.js"></script>
+<script>
+  const api = window.surge;
+  let bounds = { x: 0, y: 0, width: innerWidth, height: innerHeight };
+  const engine = SurgeEngine.create(document.getElementById('c'), { loop:false, refWidth: 1440, onDone: () => api?.done() });
+
+  /* ---------- fx layer: ripples + spotlight ---------- */
+  const fx = document.getElementById('fx'), fc = fx.getContext('2d');
+  let ripples = [], spot = { on:false, x:-9999, y:-9999, radius:180, dim:.75, softness:.5, cur:{x:-9999,y:-9999} }, fxRaf = 0;
+  function fxSize(){ const d = Math.min(devicePixelRatio||1, 1.5); if (fx.width !== Math.round(innerWidth*d)) { fx.width = innerWidth*d; fx.height = innerHeight*d; } fc.setTransform(d,0,0,d,0,0); }
+  function hex(h){ const n=parseInt(h.slice(1),16); return [n>>16&255,n>>8&255,n&255]; }
+  function fxFrame(){
+    fxSize(); fc.clearRect(0,0,innerWidth,innerHeight);
+    const now = performance.now();
+    // spotlight
+    if (spot.on) {
+      spot.cur.x += (spot.x - spot.cur.x) * .25; spot.cur.y += (spot.y - spot.cur.y) * .25;
+      const r = spot.radius, soft = Math.max(0.02, spot.softness) * r;
+      const g = fc.createRadialGradient(spot.cur.x, spot.cur.y, Math.max(0, r - soft), spot.cur.x, spot.cur.y, r + soft);
+      g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, `rgba(0,0,0,${spot.dim})`);
+      fc.fillStyle = `rgba(0,0,0,${spot.dim})`; fc.fillRect(0,0,innerWidth,innerHeight);
+      fc.globalCompositeOperation = 'destination-out';
+      const h = fc.createRadialGradient(spot.cur.x, spot.cur.y, Math.max(0, r - soft), spot.cur.x, spot.cur.y, r + soft);
+      h.addColorStop(0, 'rgba(0,0,0,1)'); h.addColorStop(1, 'rgba(0,0,0,0)');
+      fc.fillStyle = h; fc.beginPath(); fc.arc(spot.cur.x, spot.cur.y, r + soft, 0, Math.PI*2); fc.fill();
+      fc.globalCompositeOperation = 'source-over';
+    }
+    // ripples
+    ripples = ripples.filter(rp => now - rp.t0 < 700);
+    for (const rp of ripples) {
+      const p = (now - rp.t0) / 700, e = 1 - Math.pow(1 - p, 3), c = hex(rp.color);
+      const rad = rp.size * (0.2 + e * 1.0), a = (1 - p) * 0.9;
+      fc.lineWidth = Math.max(1.5, rp.size * 0.08 * (1 - p)); fc.strokeStyle = `rgba(${c},${a})`; fc.beginPath(); fc.arc(rp.x, rp.y, rad, 0, Math.PI*2); fc.stroke();
+      const g = fc.createRadialGradient(rp.x, rp.y, 0, rp.x, rp.y, rad); g.addColorStop(0, `rgba(${c},${a*.35})`); g.addColorStop(1, `rgba(${c},0)`); fc.fillStyle = g; fc.fill();
+    }
+    if (spot.on || ripples.length) fxRaf = requestAnimationFrame(fxFrame); else fxRaf = 0;
+  }
+  const kick = () => { if (!fxRaf) fxRaf = requestAnimationFrame(fxFrame); };
+
+  /* ---------- tint ---------- */
+  const tintEl = document.getElementById('tint');
+  const HUES = { amber:'255,179,0', candle:'255,122,0', rose:'255,110,154', sepia:'201,168,106' };
+  function setTint(p){ if (!p.on) { tintEl.style.opacity = 0; return; } tintEl.style.background = `rgb(${HUES[p.hue]||HUES.amber})`; tintEl.style.opacity = p.strength; }
+
+  if (api) {
+    api.on('overlay:bounds', b => bounds = b);
+    api.on('settings:update', s => engine.assign(s.modules?.glow || {}));
+    api.on('glow:fire', p => { if (p.settings) engine.assign(p.settings); engine.fire(p.kind, p.level ?? 100, p); });
+    api.on('ripple', p => { const x = p.x - bounds.x, y = p.y - bounds.y; if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) return; ripples.push({ ...p, x, y, t0: performance.now() }); kick(); });
+    api.on('spotlight', p => { spot = { ...spot, ...p }; if (p.on) kick(); else { fxSize(); fc.clearRect(0,0,innerWidth,innerHeight); } });
+    api.on('cursor', p => { spot.x = p.x - bounds.x; spot.y = p.y - bounds.y; });
+    api.on('tint', setTint);
+  } else { setTimeout(() => engine.fire('plug', 67), 300); }
+</script>
+</body>
+</html>

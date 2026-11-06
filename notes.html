@@ -1,0 +1,18 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+  html,body{margin:0;height:100%;background:transparent;font:14px/1.5 -apple-system,system-ui,sans-serif;color:#f2f2f6;-webkit-font-smoothing:antialiased}
+  .win{height:100%;display:flex;flex-direction:column;background:rgba(14,14,20,.78);border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.1)}
+  header{-webkit-app-region:drag;height:38px;display:flex;align-items:center;padding:0 12px;gap:8px;font-size:12px;color:#9a9aa6;font-weight:600;letter-spacing:.4px;text-transform:uppercase}
+  header i{width:8px;height:8px;border-radius:50%;background:#00FF85;box-shadow:0 0 10px #00FF85}
+  header .x{-webkit-app-region:no-drag;margin-left:auto;cursor:pointer;opacity:.6;padding:4px 8px;border-radius:6px} header .x:hover{opacity:1;background:rgba(255,255,255,.08)}
+  textarea{flex:1;resize:none;border:0;outline:0;background:transparent;color:#f2f2f6;padding:4px 14px 14px;font:14px/1.55 -apple-system,system-ui,sans-serif;caret-color:#00FF85}
+  footer{padding:6px 12px;font-size:11px;color:#6b6b78;display:flex;justify-content:space-between}
+</style></head><body><div class="win">
+<header><i></i>Quick Notes<span class="x" id="x">✕</span></header>
+<textarea id="t" placeholder="Jot anything… it autosaves. ⌘⇧N to toggle."></textarea>
+<footer><span id="count"></span><span>Saved</span></footer></div>
+<script>
+const t=document.getElementById('t'), c=document.getElementById('count'); let timer;
+window.surge?.notesLoad().then(v=>{ t.value=v||''; c.textContent=(t.value.trim().split(/\s+/).filter(Boolean).length)+' words'; });
+t.oninput=()=>{ c.textContent=(t.value.trim().split(/\s+/).filter(Boolean).length)+' words'; clearTimeout(timer); timer=setTimeout(()=>window.surge?.notesSave(t.value),300); };
+document.getElementById('x').onclick=()=>window.surge?.hide();
+</script></body></html>
