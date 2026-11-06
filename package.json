@@ -8,12 +8,10 @@
   "license": "MIT",
   "scripts": {
     "start": "electron .",
-    "postinstall": "electron-rebuild -f -w uiohook-napi || true",
     "build": "electron-builder --mac dmg zip",
     "dmg": "./build-dmg.sh"
   },
   "devDependencies": {
-    "@electron/rebuild": "^3.6.0",
     "electron": "^33.4.11",
     "electron-builder": "^25.0.0"
   },
@@ -66,7 +64,7 @@
       ],
       "icon": "build/icon.png"
     },
-    "npmRebuild": true,
+    "npmRebuild": false,
     "artifactName": "${productName}-mac-${arch}.${ext}"
   },
   "dependencies": {
