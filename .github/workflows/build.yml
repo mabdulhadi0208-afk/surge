@@ -17,11 +17,11 @@ jobs:
       - run: npm install --no-audit --no-fund
       - name: Package + ad-hoc sign + DMG
         run: |
-          npx electron-builder --mac dir --arm64
+          npx electron-builder --mac dir --arm64 --publish never
           APP=$(ls -d dist/mac*/Surge.app | head -1)
           find "$APP" \( -name "*.node" -o -name "*.dylib" \) -exec codesign --force --sign - {} \;
           codesign --force --deep --sign - "$APP"
-          npx electron-builder --mac dmg --arm64 --prepackaged "$APP"
+          npx electron-builder --mac dmg --arm64 --publish never --prepackaged "$APP"
           ls -la dist/*.dmg
         env: { CSC_IDENTITY_AUTO_DISCOVERY: "false" }
       - id: v
