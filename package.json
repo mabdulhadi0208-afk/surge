@@ -1,8 +1,8 @@
 {
   "name": "surge",
   "productName": "Surge",
-  "version": "2.2.0",
-  "description": "Surge — a 17-in-1 Mac toolbox: charge glow, keyboard & mouse sounds, click ripple, spotlight, night tint, caffeine, clipboard, focus timer and more.",
+  "version": "2.3.0",
+  "description": "Surge \u2014 a 17-in-1 Mac toolbox: charge glow, keyboard & mouse sounds, click ripple, spotlight, night tint, caffeine, clipboard, focus timer and more.",
   "main": "main.js",
   "author": "Surge",
   "license": "MIT",
@@ -42,6 +42,7 @@
       "audio.html",
       "notes.html",
       "popover.html",
+      "dock.html",
       "modules/**",
       "package.json"
     ],

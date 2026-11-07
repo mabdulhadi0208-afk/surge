@@ -32,6 +32,7 @@
   .vol{padding:10px 11px 6px;border-radius:12px;background:var(--panel);border:1px solid var(--line);margin-top:8px}
   .vol .vt{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:6px} .vol .vt span:last-child{cursor:pointer;font-size:13px} .vol.muted .vt span:last-child{opacity:.5}
   .vol input{width:100%}
+  .wl{display:flex;flex-wrap:wrap;gap:8px} .wi{cursor:pointer;padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:rgba(255,255,255,.04);font-size:13px;display:flex;align-items:center;gap:8px;color:var(--muted);transition:all .25s} .wi i{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.2)} .wi.on{color:var(--text);background:rgba(0,255,133,.1);border-color:rgba(0,255,133,.4)} .wi.on i{background:var(--accent);box-shadow:0 0 8px var(--accent)} .wi:hover{transform:translateY(-1px)}
   /* sound picker */
   .sp{width:100%} .sp .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
   .sp .tab{all:unset;cursor:pointer;padding:6px 11px;border-radius:999px;border:1px solid var(--line);font-size:12.5px;color:var(--muted);display:flex;gap:7px;align-items:center;transition:all .25s} .sp .tab i{width:8px;height:8px;border-radius:50%;background:var(--c)} .sp .tab.on{color:var(--text);background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.25)}
@@ -125,7 +126,7 @@ const ICONS = {
   clip:'<rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V2h6v2"/>', timer:'<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/>',
   eye:'<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>', bell:'<path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 21h4"/>',
   chip:'<rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/>', wifi:'<path d="M2 9a16 16 0 0 1 20 0M5 13a11 11 0 0 1 14 0M8.5 16.5a6 6 0 0 1 7 0"/><circle cx="12" cy="20" r="1"/>',
-  contrast:'<circle cx="12" cy="12" r="9"/><path d="M12 3v18a9 9 0 0 0 0-18z" fill="currentColor"/>', wpm:'<path d="M3 17l4-8 4 8 4-8 4 8"/>', keys:'<path d="M15 7a4 4 0 1 1-2.8 6.8L7 19H4v-3l5.2-5.2A4 4 0 0 1 15 7z"/>',refresh:'<path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/>',
+  contrast:'<circle cx="12" cy="12" r="9"/><path d="M12 3v18a9 9 0 0 0 0-18z" fill="currentColor"/>', wpm:'<path d="M3 17l4-8 4 8 4-8 4 8"/>', keys:'<path d="M15 7a4 4 0 1 1-2.8 6.8L7 19H4v-3l5.2-5.2A4 4 0 0 1 15 7z"/>',refresh:'<path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/>',dock:'<rect x="2" y="15" width="20" height="6" rx="3"/><path d="M6 18h.01M10 18h.01M14 18h.01M18 18h.01"/>',
   grid:'<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>', info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
 };
 const ic = n => `<svg viewBox="0 0 24 24">${ICONS[n]||ICONS.bolt}</svg>`;
@@ -170,6 +171,7 @@ function field(m, f){
   if (f.t==='color') return `<div class="row"><div class="l">${f.label}</div><div class="sw" data-f="${id}" data-t="color">${f.opts.map(c=>`<b style="--c:${c}" data-v="${c}"></b>`).join('')}<b class="custom"><input type="color"></b></div></div>`;
   if (f.t==='seg') return `<div class="row"><div class="l">${f.label}</div><div class="seg" data-f="${id}" data-t="seg">${f.opts.map(o=>`<button data-v="${o[0]}">${o[1]}</button>`).join('')}</div></div>`;
   if (f.t==='soundpicker') return `<div class="row" style="flex-direction:column;align-items:stretch"><div class="l" style="margin-bottom:8px">${f.label}<small>Click any sound to hear it and select it. ★ to favourite.</small></div><div class="sp" data-f="${id}" data-t="soundpicker" data-lib="${f.lib}"></div></div>`;
+  if (f.t==='widgets') return `<div class="row" style="flex-direction:column;align-items:stretch"><div class="l" style="margin-bottom:8px">${f.label}<small>Click to toggle · drag to reorder</small></div><div class="wl" data-f="${id}" data-t="widgets" data-opts="${f.opts.join(',')}"></div></div>`;
   if (f.t==='actions') return `<div class="row"><div class="l">${f.label}</div><div class="chips">${f.opts.map(o=>`<button class="btn" data-a="${m.id}:${o[0]}">${o[1]}</button>`).join('')}</div></div>`;
   return '';
 }
@@ -180,6 +182,7 @@ function wire(el){
   if (t==='chips') el.querySelectorAll('.chip').forEach(c => c.onclick = () => { set(mid, { [k]: c.dataset.v }); if (mid==='glow') replay(); });
   if (t==='color') { el.querySelectorAll('b[data-v]').forEach(b => b.onclick = () => { set(mid, { [k]: b.dataset.v }); if (mid==='glow') replay(); }); el.querySelector('input[type=color]').oninput = e => set(mid, { [k]: e.target.value.toUpperCase() }); }
   if (t==='soundpicker') buildPicker(el, mid, k);
+  if (t==='widgets') buildWidgets(el, mid, k);
   if (t==='seg') el.querySelectorAll('button').forEach(b => b.onclick = () => set(mid, { [k]: isNaN(+b.dataset.v) ? b.dataset.v : +b.dataset.v }));
 }
 document.addEventListener('click', async e => { const a = e.target.closest('[data-a]'); if (!a) return; const [mid, act] = a.dataset.a.split(':');
@@ -209,6 +212,15 @@ function buildPicker(el, mid, k){
 }
 function audition(lib, id){ const s = S.modules; if (lib==='keyboard') { api?.testSound('key', { preset: id, volume: s.keys.volume, variance: s.keys.pitchVariance, kind: 'key' }); setTimeout(()=>api?.testSound('key', { preset: id, volume: s.keys.volume*.5, kind: 'up' }), 90); setTimeout(()=>api?.testSound('key', { preset: id, volume: s.keys.volume, variance: s.keys.pitchVariance, kind: 'key' }), 220); }
   else { api?.testSound('click', { preset: id, volume: s.mouse.volume }); setTimeout(()=>api?.testSound('click', { preset: id, volume: s.mouse.volume, up: true }), 80); } }
+const WNAMES={clock:'Clock',battery:'Battery',stats:'CPU / Mem',media:'Now Playing',volume:'Volume',focus:'Focus',caffeine:'Caffeine',glow:'Glow',notes:'Notes',spotlight:'Spotlight'};
+function buildWidgets(el, mid, k){
+  const all = el.dataset.opts.split(',');
+  const render = () => { const cur = S.modules[mid]?.[k] || []; const items = [...cur, ...all.filter(x=>!cur.includes(x))];
+    el.innerHTML = items.map(w=>`<div class="wi ${cur.includes(w)?'on':''}" draggable="true" data-w="${w}"><i></i>${WNAMES[w]||w}</div>`).join('');
+    let drag=null; el.querySelectorAll('.wi').forEach(d=>{ d.onclick=()=>{ const c=S.modules[mid][k]||[]; set(mid,{[k]: c.includes(d.dataset.w)?c.filter(x=>x!==d.dataset.w):[...c,d.dataset.w]}); render(); };
+      d.ondragstart=()=>{ drag=d.dataset.w; }; d.ondragover=e=>e.preventDefault(); d.ondrop=e=>{ e.preventDefault(); if(!drag||drag===d.dataset.w) return; const c=(S.modules[mid][k]||[]).filter(x=>x!==drag); const i=c.indexOf(d.dataset.w); c.splice(i<0?c.length:i,0,drag); set(mid,{[k]:c}); render(); }; }); };
+  el._render = render; render();
+}
 function syncRange(r){ r.style.setProperty('--p', (r.value-r.min)/(r.max-r.min)*100+'%'); r.nextElementSibling.value = fmt(r.dataset.fmt, +r.value); }
 function go(p){ cur = p; document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on', b.dataset.p===p)); document.querySelectorAll('.pane').forEach(x=>x.classList.toggle('on', x.id===`pane-${p}`));
   $('#title').textContent = p==='all' ? 'Modules' : p==='about' ? 'About' : MODS.find(m=>m.id===p)?.name || ''; if (p==='glow') replay(); }
@@ -225,6 +237,7 @@ function paint(){
       if (f.t==='color') el.querySelectorAll('b[data-v]').forEach(b=>b.classList.toggle('on', (b.dataset.v||'').toLowerCase()===(v||'').toLowerCase()));
       if (f.t==='seg') el.querySelectorAll('button').forEach(b=>b.classList.toggle('on', b.dataset.v==String(v)));
       if (f.t==='soundpicker' && el._render && !el.contains(document.activeElement)) el._render();
+      if (f.t==='widgets' && el._render) el._render();
     }
     const h = document.getElementById('hook-'+m.id); if (h) h.textContent = hook==='running' ? 'Input monitoring: active' : hook==='ready' ? 'Turns on when enabled — macOS will ask for Input Monitoring permission once.' : hook==='error' ? 'Input Monitoring blocked. System Settings → Privacy & Security → Input Monitoring → enable Surge, then relaunch.' : 'Global input hook not installed in this build (uiohook-napi). Run npm install on a Mac.';
   }
