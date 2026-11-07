@@ -1,6 +1,8 @@
 // Auto Update — polls GitHub Releases, downloads the DMG, swaps the .app bundle, relaunches.
 // Works with ad-hoc signed builds (Electron's Squirrel updater refuses those on macOS).
 const { execFile, spawn } = require('child_process');
+const { BrowserWindow, screen } = require('electron');
+let popup = null, snoozedUntil = 0;
 const fs = require('fs'); const path = require('path');
 const REPO = 'mabdulhadi0208-afk/surge', ASSET = 'Surge-mac-arm64.dmg';
 let timer = null, state = { status: 'idle', latest: null, url: null, progress: 0, error: null, staged: null };
@@ -13,17 +15,30 @@ function sh(cmd, args, opts = {}) { return new Promise((res, rej) => execFile(cm
 module.exports = {
   id: 'updater', name: 'Auto Update', icon: 'refresh', group: 'System', defaultEnabled: true,
   desc: 'Checks GitHub for new versions, downloads them in the background and installs on restart (or instantly).',
-  defaults: { auto: true, every: 1 },
+  defaults: { auto: true, every: 1, popup: true, pollMinutes: 5 },
   schema: [
-    { k: 'auto', t: 'toggle', label: 'Install automatically', hint: 'Downloads in the background and relaunches when ready' },
-    { k: 'every', t: 'seg', label: 'Check every', opts: [[1,'1h'],[3,'3h'],[6,'6h'],[24,'24h']] },
+    { k: 'auto', t: 'toggle', label: 'Download automatically', hint: 'New versions download in the background' },
+    { k: 'popup', t: 'toggle', label: 'Pop up when an update is out', hint: 'A floating card appears on top of whatever you\'re doing' },
+    { k: 'pollMinutes', t: 'seg', label: 'Check every', opts: [[2,'2 min'],[5,'5 min'],[15,'15 min'],[60,'1 h']] },
     { t: 'actions', label: 'Update', opts: [['check','Check now'],['install','Install update']] },
   ],
   actions: {
     check: (ctx) => module.exports._check(ctx, true),
     install: (ctx) => module.exports._install(ctx),
+    download: (ctx) => module.exports._download(ctx),
+    later: () => { snoozedUntil = Date.now() + 2 * 3600000; module.exports._hide(); },
     state: () => ({ ...state, current: require('electron').app.getVersion() }),
   },
+  _show(ctx) {
+    if (popup && !popup.isDestroyed()) { popup.showInactive(); popup.webContents.send('updater:state', state); return; }
+    const d = screen.getPrimaryDisplay().workArea; const w = 640, h = 104;
+    popup = new BrowserWindow({ width: w, height: h, x: Math.round(d.x + d.width / 2 - w / 2), y: d.y + 14, frame: false, transparent: true, hasShadow: false, resizable: false, alwaysOnTop: true, skipTaskbar: true, focusable: true, fullscreenable: false, backgroundColor: '#00000000',
+      webPreferences: { preload: path.join(__dirname, '..', 'preload.js'), contextIsolation: true } });
+    popup.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true }); popup.setAlwaysOnTop(true, 'screen-saver');
+    popup.loadFile(path.join(__dirname, '..', 'update.html')); popup.once('ready-to-show', () => popup.showInactive()); popup.on('closed', () => (popup = null));
+    try { ctx.sysSound('Glass'); } catch {}
+  },
+  _hide() { if (popup && !popup.isDestroyed()) popup.hide(); },
   async _check(ctx, manual) {
     if (state.status === 'downloading' || state.status === 'installing') return state;
     try {
@@ -35,10 +50,11 @@ module.exports = {
       if (asset && newer(latest, cur)) {
         state.latest = latest; state.url = asset.browser_download_url; state.status = 'available';
         ctx.setTray('updater', { title: '↑', menu: [{ label: `Update ${latest} available`, click: () => module.exports._install(ctx) }] });
+        if (ctx.mod('updater').popup && (manual || Date.now() > snoozedUntil)) module.exports._show(ctx);
         if (ctx.mod('updater').auto) module.exports._download(ctx); else if (manual) ctx.fireGlow('hud', { hud: { text: `Surge ${latest} available`, color: '#7DF9FF' } });
       } else { state.status = 'uptodate'; state.latest = latest; ctx.setTray('updater', { title: '' }); if (manual) ctx.fireGlow('hud', { hud: { text: `Surge ${cur} is up to date`, color: '#00FF85' } }); }
     } catch (e) { state.status = 'error'; state.error = e.message; if (manual) ctx.fireGlow('hud', { hud: { text: 'Update check failed', color: '#FFB300' } }); }
-    ctx.broadcast('updater:state', state); return state;
+    ctx.broadcast('updater:state', state); if (popup && !popup.isDestroyed()) popup.webContents.send('updater:state', { ...state, current: ctx.app.getVersion() }); return state;
   },
   async _download(ctx) {
     if (!state.url || state.status === 'downloading' || state.staged) return;
@@ -53,12 +69,12 @@ module.exports = {
       await sh('cp', ['-R', path.join(mnt, app), path.join(dir, 'Surge.app')]);
       await sh('hdiutil', ['detach', '-quiet', mnt]).catch(() => {}); fs.rmSync(dmg, { force: true });
       await sh('xattr', ['-cr', path.join(dir, 'Surge.app')]).catch(() => {});
-      state.staged = path.join(dir, 'Surge.app'); state.status = 'ready';
+      state.staged = path.join(dir, 'Surge.app'); state.status = 'ready'; if (ctx.mod('updater').popup && Date.now() > snoozedUntil) module.exports._show(ctx);
       ctx.setTray('updater', { title: '↑', menu: [{ label: `Restart to update to ${state.latest}`, click: () => module.exports._install(ctx) }] });
       ctx.fireGlow('hud', { hud: { text: `Surge ${state.latest} ready — restart to update`, color: '#00FF85' } });
       ctx.notify('Surge update ready', `${state.latest} is downloaded. Open the menu-bar panel to restart.`);
     } catch (e) { state.status = 'error'; state.error = e.message; try { await sh('hdiutil', ['detach', '-quiet', mnt]); } catch {} }
-    ctx.broadcast('updater:state', state);
+    ctx.broadcast('updater:state', state); if (popup && !popup.isDestroyed()) popup.webContents.send('updater:state', { ...state, current: ctx.app.getVersion() });
   },
   async _install(ctx) {
     if (!state.staged) { if (state.status === 'available') await module.exports._download(ctx); if (!state.staged) return state; }
@@ -83,8 +99,8 @@ open "$APP"
     if (fs.existsSync(staged)) { state.staged = staged; state.status = 'ready'; state.latest = 'staged'; if (ctx.mod('updater').auto) return module.exports._install(ctx); }
     setTimeout(() => module.exports._check(ctx, false), process.env.SURGE_FAST_CHECK ? 1500 : 8000);
     const { powerMonitor } = require('electron'); powerMonitor.on('resume', () => setTimeout(() => module.exports._check(ctx, false), 10000));
-    timer = setInterval(() => module.exports._check(ctx, false), Math.max(1, ctx.mod('updater').every) * 3600000);
+    timer = setInterval(() => module.exports._check(ctx, false), Math.max(1, ctx.mod('updater').pollMinutes || 5) * 60000);
   },
-  onSettings(ctx) { clearInterval(timer); timer = setInterval(() => module.exports._check(ctx, false), Math.max(1, ctx.mod('updater').every) * 3600000); },
-  stop(ctx) { clearInterval(timer); ctx.setTray('updater', { title: '' }); },
+  onSettings(ctx) { clearInterval(timer); timer = setInterval(() => module.exports._check(ctx, false), Math.max(1, ctx.mod('updater').pollMinutes || 5) * 60000); },
+  stop(ctx) { clearInterval(timer); ctx.setTray('updater', { title: '' }); if (popup && !popup.isDestroyed()) popup.destroy(); popup = null; },
 };
