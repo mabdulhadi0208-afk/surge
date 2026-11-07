@@ -98,7 +98,7 @@ NEW="${state.staged}"; APP="${target}"
 for i in $(seq 1 150); do pgrep -x Surge >/dev/null || break; sleep 0.2; done
 pkill -x Surge 2>/dev/null; sleep 0.5
 rm -rf "$APP.old"; mv "$APP" "$APP.old" || { echo "mv failed"; exit 1; }
-if ditto "$NEW" "$APP"; then xattr -cr "$APP" 2>/dev/null; codesign --force --deep --sign - "$APP" 2>/dev/null; echo "copied"; else echo "copy failed, rolling back"; rm -rf "$APP"; mv "$APP.old" "$APP"; fi
+if ditto "$NEW" "$APP"; then xattr -cr "$APP" 2>/dev/null; echo "copied"; else echo "copy failed, rolling back"; rm -rf "$APP"; mv "$APP.old" "$APP"; fi
 open -n "$APP"; sleep 4
 if pgrep -x Surge >/dev/null; then echo "launched OK"; rm -rf "$APP.old" "$NEW"; else echo "launch failed, restoring old"; rm -rf "$APP"; mv "$APP.old" "$APP" 2>/dev/null; open -n "$APP"; fi
 echo "=== done"
