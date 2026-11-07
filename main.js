@@ -242,10 +242,31 @@ function togglePopover() {
 
 /* ------------------------------------------------------------------ tray */
 let tray = null, trayMenu = null, trayExtras = {};           // module id → { title?: string, menu?: MenuItem[] }
-function trayIcon() {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24"><path fill="black" d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>`;
-  const img = nativeImage.createFromDataURL('data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64')).resize({ width: 18, height: 18 });
+function trayIcon(b) {
+  // Menu-bar battery: live fill level, bolt while charging, hollow + warning tick when low. Template image → follows light/dark menu bar.
+  if (!b || b.level == null) {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24"><path fill="black" d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>`;
+    const img = nativeImage.createFromDataURL('data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64')).resize({ width: 18, height: 18 }); img.setTemplateImage(true); return img;
+  }
+  const lvl = Math.max(0, Math.min(100, b.level)), low = !b.charging && lvl <= 20, full = lvl >= 100;
+  const W = 25, H = 12, R = 3.2, inner = 2, fillW = Math.max(1.2, (W - inner * 2 - 2) * lvl / 100);
+  const body = `<rect x="1" y="1" width="${W - 2}" height="${H - 2}" rx="${R}" fill="none" stroke="black" stroke-width="1.4" opacity="${low ? 1 : .55}"/>`;
+  const nub = `<rect x="${W - .2}" y="${H / 2 - 2}" width="2" height="4" rx="1" fill="black" opacity=".55"/>`;
+  const boltT = `translate(${W / 2 - 3.2},${H / 2 - 4.2}) scale(.36)`, boltD = 'M13 2 4 14h7l-1 8 9-12h-7z';
+  // template images only use alpha → a "white" bolt would still render solid, so the bolt is cut out of the fill with a mask (transparent halo), then drawn in black on top
+  const mask = b.charging ? `<mask id="m"><rect width="100%" height="100%" fill="white"/><path transform="${boltT}" d="${boltD}" fill="black" stroke="black" stroke-width="3.5" stroke-linejoin="round"/></mask>` : '';
+  const fill = `<rect x="${inner + 1}" y="${inner + 1}" width="${fillW}" height="${H - inner * 2 - 2}" rx="${R - 1.6}" fill="black" ${b.charging ? 'mask="url(#m)"' : ''}/>`;
+  const bolt = b.charging ? `<path transform="${boltT}" d="${boltD}" fill="black"/>` : '';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${(W + 2) * 2}" height="${H * 2}" viewBox="0 0 ${W + 2} ${H}">${mask}${body}${nub}${fill}${bolt}</svg>`;
+  const img = nativeImage.createFromDataURL('data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64')).resize({ width: W + 2, height: H });
   img.setTemplateImage(true); return img;
+}
+let trayIconKey = '';
+function setTrayBattery(b) {
+  if (!tray) return;
+  const k = b ? `${Math.round(b.level)}|${b.charging ? 1 : 0}` : 'bolt';
+  if (k === trayIconKey) return; trayIconKey = k;
+  try { tray.setImage(trayIcon(b)); } catch (e) { console.error('tray icon', e); }
 }
 function setTray(id, extra) { const k = JSON.stringify(extra, (kk, v) => typeof v === 'function' ? undefined : v); if (trayKeys[id] === k) return; trayKeys[id] = k; trayExtras[id] = extra; updateTray(); }
 const trayKeys = {};
@@ -270,7 +291,7 @@ function updateTray() {
 const ctx = {
   app, screen, clipboard, Notification, nativeTheme, powerSaveBlocker, globalShortcut, execFile, os,
   get settings() { return settings; }, mod, fireGlow, overlaySend, setOverlayPersistent, play, sysSound, onInput, hookState: () => hookState,
-  setTray, openSettings, toggleNotes, readBattery, applyPatch: (p) => applyPatch(p), get battery() { return battery; }, set battery(v) { battery = v; },
+  setTray, setTrayBattery, openSettings, toggleNotes, readBattery, applyPatch: (p) => applyPatch(p), get battery() { return battery; }, set battery(v) { battery = v; },
   notify: (title, body) => { try { new Notification({ title, body, silent: true }).show(); } catch {} },
   broadcast: (ch, p) => { [settingsWin, notesWin, audioWin, popWin, ...overlays].forEach(w => { try { if (w && !w.isDestroyed()) w.webContents.send(ch, p); } catch {} }); },
 };
@@ -320,6 +341,7 @@ if (!gotLock) app.quit();
 app.on('second-instance', () => openSettings());
 app.whenReady().then(async () => {
   log('boot', app.getVersion(), process.platform, process.arch, 'electron', process.versions.electron, process.execPath);
+  try { require('child_process').execFile('codesign', ['-d', '-r-', app.getAppPath().replace(/\/Contents\/Resources\/app(\.asar)?$/, '')], (e, o, er) => log('codesign', ((o || '') + (er || '')).replace(/\s+/g, ' '))); } catch {}
   if (process.platform === 'darwin' && app.isPackaged) {
     const translocated = process.execPath.includes('/AppTranslocation/');
     if (translocated || !app.isInApplicationsFolder()) {

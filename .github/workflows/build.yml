@@ -47,8 +47,16 @@ jobs:
         run: |
           npx electron-builder --mac dir --arm64 --publish never
           APP=$(ls -d dist/mac*/Surge.app | head -1)
-          find "$APP" \( -name "*.node" -o -name "*.dylib" \) -exec codesign --force --sign "$SIGN_ID" {} \;
-          codesign --force --deep --sign "$SIGN_ID" "$APP"
+          # explicit designated requirement pinned to the cert, so macOS TCC (Accessibility / Input Monitoring) treats every build as the same app
+          REQ='designated => identifier "app.surge.glow" and certificate leaf = H"CBDD9960F4309101C52C2F71998F8EBAC8D5B200"'
+          if [ "$SIGN_ID" = "-" ]; then
+            find "$APP" \( -name "*.node" -o -name "*.dylib" \) -exec codesign --force --sign - {} \;
+            codesign --force --deep --sign - "$APP"
+          else
+            find "$APP" \( -name "*.node" -o -name "*.dylib" \) -exec codesign --force --sign "$SIGN_ID" {} \;
+            codesign --force --deep --sign "$SIGN_ID" --requirements "=$REQ" "$APP"
+          fi
+          codesign -d -r- "$APP" 2>&1 | tail -2
           codesign -dv "$APP" 2>&1 | grep -E "Authority|Identifier|Signature" || true
           npx electron-builder --mac dmg zip --arm64 --publish never --prepackaged "$APP"
           ls -la dist/*.dmg dist/*.zip
