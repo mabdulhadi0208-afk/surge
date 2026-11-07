@@ -173,25 +173,39 @@ function appIcon(appPath) {
     }
   });
 }
+function parseLsappinfo(o) {
+  const out = []; let cur = null;
+  for (const line of o.split('\n')) {
+    const h = /^\s*\d+\)\s+"([^"]+)"/.exec(line);
+    if (h) { if (cur) out.push(cur); cur = { name: h[1], bundleId: null, path: null, pid: null, front: /\(in front\)/.test(line), bg: false }; continue; }
+    if (!cur) continue;
+    let mm;
+    if ((mm = /bundleID="([^"]+)"/.exec(line))) cur.bundleId = mm[1];
+    if ((mm = /bundle path="([^"]+)"/.exec(line))) cur.path = mm[1];
+    if ((mm = /\bpid\s*=\s*(\d+)/.exec(line))) cur.pid = +mm[1];
+    if (/type="BackgroundOnly"|type="UIElement"/.test(line)) cur.bg = true;
+    if (/\(in front\)/.test(line)) cur.front = true;
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+let appsWarned = false;
 function runningApps() {
-  return new Promise((resolve) => execFile('lsappinfo', ['list'], { timeout: 4000 }, (e, o) => {
-    if (e || !o) return resolve([]);
-    const out = []; let cur = null;
-    for (const line of o.split('\n')) {
-      const h = /^\s*\d+\)\s+"([^"]+)"/.exec(line); if (h) { if (cur) out.push(cur); cur = { name: h[1], bundleId: null, path: null, pid: null, front: /\(in front\)/.test(line), bg: false }; continue; }
-      if (!cur) continue;
-      let mm;
-      if ((mm = /bundleID="([^"]+)"/.exec(line))) cur.bundleId = mm[1];
-      else if ((mm = /bundle path="([^"]+)"/.exec(line))) cur.path = mm[1];
-      else if ((mm = /^\s*pid\s*=\s*(\d+)/.exec(line))) cur.pid = +mm[1];
-      else if (/type="BackgroundOnly"|type="UIElement"/.test(line)) cur.bg = true;
-      else if (/\(in front\)/.test(line)) cur.front = true;
-    }
-    if (cur) out.push(cur);
-    resolve(out.filter(a => a.path && a.path.endsWith('.app') && !a.bg && a.name !== 'Surge'));
+  return new Promise((resolve) => execFile('lsappinfo', ['list'], { timeout: 4000, maxBuffer: 8 * 1024 * 1024 }, (e, o) => {
+    let list = (!e && o) ? parseLsappinfo(o) : [];
+    list = list.filter(a => a.path && /\.app\/?$/.test(a.path) && !a.bg && a.name !== 'Surge');
+    for (const a of list) a.path = a.path.replace(/\/$/, '');
+    if (list.length) return resolve(list);
+    // fallback: System Events (needs Automation permission, which the Dock takeover already asked for)
+    execFile('osascript', ['-e', 'tell application "System Events" to set L to {} \n repeat with p in (every application process whose background only is false) \n try \n set end of L to (name of p) & "\t" & (bundle identifier of p) & "\t" & (POSIX path of (application file of p)) & "\t" & (unix id of p) & "\t" & (frontmost of p) \n end try \n end repeat \n set AppleScript\'s text item delimiters to linefeed \n return L as text'], { timeout: 6000 }, (e2, o2) => {
+      const alt = [];
+      if (!e2 && o2) for (const l of o2.split('\n')) { const [name, bundleId, p, pid, front] = l.split('\t'); if (p && p.endsWith('.app') && name !== 'Surge') alt.push({ name, bundleId, path: p.replace(/\/$/, ''), pid: +pid || null, front: front === 'true', bg: false }); }
+      if (!appsWarned) { appsWarned = true; log(`apps: lsappinfo gave 0 apps (err=${e ? e.message : 'none'}, ${(o || '').length} bytes, head=${JSON.stringify((o || '').slice(0, 200))}); System Events fallback gave ${alt.length}${e2 ? ' err=' + e2.message : ''}`); }
+      resolve(alt);
+    });
   }));
 }
-ipcMain.handle('apps:running', async () => { const list = await runningApps(); for (const a of list) a.icon = await appIcon(a.path); return list; });
+ipcMain.handle('apps:running', () => runningApps());   // icons are fetched separately by the dock, never block the list
 ipcMain.handle('apps:installed', async () => { const dirs = ['/Applications', '/System/Applications', path.join(os.homedir(), 'Applications')]; const out = [];
   for (const d of dirs) { try { for (const f of fs.readdirSync(d)) if (f.endsWith('.app')) out.push({ name: f.replace(/\.app$/, ''), path: path.join(d, f) }); } catch {} }
   out.sort((a, b) => a.name.localeCompare(b.name)); return out; });

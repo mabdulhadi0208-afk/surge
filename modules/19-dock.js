@@ -86,7 +86,7 @@ module.exports = {
         ['osascript', ['-e', 'tell application "System Events" to set autohide of dock preferences to false']],
       ];
     const run = (i) => { if (i >= cmds.length) return execFile('killall', ['Dock'], () => setTimeout(() => execFile('defaults', ['read', 'com.apple.dock', 'autohide-delay'], (e, o) => log(`macOS Dock ${hide ? 'hidden' : 'restored'} (delay=${(o || '').trim() || 'default'})`)), 1500)); execFile(cmds[i][0], cmds[i][1], () => run(i + 1)); }; run(0);
-    macDockHidden = hide;
+    macDockHidden = hide; module.exports._dockEdge = edge;
   },
   _toggle(ctx) { if (!win || win.isDestroyed()) return; win.isVisible() ? win.hide() : win.showInactive(); },
   async _tick(ctx) {
@@ -116,6 +116,6 @@ module.exports = {
     if (ctx.mod('dock').hideMacDock && !macDockHidden) module.exports._confirmMacDock(ctx).then(ok => ok && module.exports._macDock(true, ctx));
     edgePoll = setInterval(() => module.exports._edgeTick(ctx), 60);
   },
-  onSettings(ctx) { module.exports._place(ctx); const h = !!ctx.mod('dock').hideMacDock; if (h && !macDockHidden) module.exports._confirmMacDock(ctx).then(ok => ok && module.exports._macDock(true, ctx)); else if (!h && macDockHidden) module.exports._macDock(false, ctx); else if (h && macDockHidden) module.exports._macDock(true, ctx); if (win && !win.isDestroyed()) win.webContents.send('settings:update', ctx.settings); },
+  onSettings(ctx) { module.exports._place(ctx); const h = !!ctx.mod('dock').hideMacDock; if (h && !macDockHidden) module.exports._confirmMacDock(ctx).then(ok => ok && module.exports._macDock(true, ctx)); else if (!h && macDockHidden) module.exports._macDock(false, ctx); else if (h && macDockHidden && module.exports._dockEdge !== (ctx.mod('dock').edge || 'bottom')) module.exports._macDock(true, ctx); if (win && !win.isDestroyed()) win.webContents.send('settings:update', ctx.settings); },
   stop(ctx) { clearInterval(poll); clearInterval(edgePoll); clearInterval(animT); clearTimeout(hideT); if (macDockHidden) module.exports._macDock(false, ctx); try { ctx.globalShortcut.unregister('CommandOrControl+Shift+D'); } catch {} if (win && !win.isDestroyed()) win.destroy(); win = null; },
 };
