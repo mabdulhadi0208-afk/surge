@@ -12,7 +12,7 @@ Started as a charging glow. Now a menu-bar toolbox where every feature is an ind
 | Screen | **Click Ripple** | Glowing ring under every click (left/right colours) |
 | Screen | **Cursor Spotlight** | Dim everything except a circle around the cursor — ⌘⇧S |
 | Screen | **Night Tint** | Warm screen wash on a schedule |
-| Screen | **Surge Dock** | Floating glass widget bar (clock, battery ring, CPU graph, now playing w/ controls, volume, focus, caffeine, quick actions), bottom or top, magnify on hover, auto-hide — ⌘⇧D |
+| Screen | **Surge Dock** | Full Dock replacement: pinned + running apps with magnification, launch/switch (right-click quits), hides the macOS Dock; plus a glass widget bar (clock, battery ring, CPU graph, now playing w/ controls, volume, focus, caffeine, quick actions), bottom or top, magnify on hover, auto-hide — ⌘⇧D |
 | Screen | **Caps Lock HUD** | Pill + sound when Caps Lock flips |
 | Productivity | **Caffeine** | Keep the Mac awake (∞ / 30m / 1h / 2h / 4h) — ☕ in the menu bar |
 | Productivity | **Clipboard History** | Last 10/25/50 copies in the menu bar |

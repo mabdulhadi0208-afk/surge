@@ -29,7 +29,7 @@ function mod(id) { return settings.modules[id]; }
 let hook = null, hookState = 'unavailable';
 try {
   const { uIOhook } = require('uiohook-napi');
-  hook = uIOhook; hookState = 'ready';
+  hook = uIOhook; hookState = 'ready'; try { hook.setMaxListeners(64); } catch {}
 } catch (e) { setTimeout(() => log('uiohook-napi not available:', e.message), 0); }
 const hookListeners = { keydown: new Set(), keyup: new Set(), mousedown: new Set(), mouseup: new Set(), wheel: new Set(), mousemove: new Set() };
 let hookStarted = false;
@@ -39,7 +39,7 @@ function ensureHook() {
   if (!hook || hookStarted) return hookStarted;
   if (!accessibilityOK(!axPrompted)) {
     // macOS shows its own "Surge would like to control this computer" prompt the first time. Keep polling until the user grants it.
-    axPrompted = true; hookState = 'needs-accessibility';
+    axPrompted = true; hookState = 'needs-accessibility'; log('hook waiting for Accessibility permission');
     if (!hookRetry) hookRetry = setInterval(() => { if (accessibilityOK(false)) { clearInterval(hookRetry); hookRetry = null; ensureHook(); ctx.broadcast('settings:update', settings); } }, 3000);
     return false;
   }
@@ -141,6 +141,50 @@ function toggleNotes() {
   notesWin.setVisibleOnAllWorkspaces(true);
   notesWin.on('closed', () => (notesWin = null));
 }
+
+/* ------------------------------------------------------------------ apps (for Surge Dock) */
+const iconCache = new Map();
+function appIcon(appPath) {
+  if (iconCache.has(appPath)) return Promise.resolve(iconCache.get(appPath));
+  return new Promise((resolve) => {
+    const done = (v) => { iconCache.set(appPath, v); resolve(v); };
+    try {
+      const plist = fs.readFileSync(path.join(appPath, 'Contents', 'Info.plist'), 'utf8');
+      let icns = /CFBundleIconFile<\/key>\s*<string>([^<]+)/.exec(plist)?.[1]; if (icns && !icns.endsWith('.icns')) icns += '.icns';
+      const src = icns && path.join(appPath, 'Contents', 'Resources', icns);
+      if (src && fs.existsSync(src)) {
+        const dir = path.join(app.getPath('userData'), 'icons'); fs.mkdirSync(dir, { recursive: true });
+        const out = path.join(dir, Buffer.from(appPath).toString('base64url').slice(-40) + '.png');
+        if (fs.existsSync(out)) return done('data:image/png;base64,' + fs.readFileSync(out).toString('base64'));
+        return execFile('sips', ['-s', 'format', 'png', '--resampleWidth', '128', src, '--out', out], { timeout: 8000 }, (e) => { if (!e && fs.existsSync(out)) done('data:image/png;base64,' + fs.readFileSync(out).toString('base64')); else fallback(); });
+      }
+    } catch {}
+    fallback();
+    function fallback() { app.getFileIcon(appPath, { size: 'large' }).then(img => done(img.toDataURL())).catch(() => done(null)); }
+  });
+}
+function runningApps() {
+  return new Promise((resolve) => execFile('osascript', ['-e', `tell application "System Events"
+set out to ""
+repeat with p in (every application process whose background only is false)
+try
+set out to out & (name of p) & "|" & (bundle identifier of p) & "|" & (POSIX path of (file of p)) & "|" & (frontmost of p) & linefeed
+end try
+end repeat
+end tell
+return out`], { timeout: 4000 }, (e, o) => {
+    if (e || !o) return resolve([]);
+    resolve(o.trim().split('\n').filter(Boolean).map(l => { const [name, bundleId, p, front] = l.split('|'); const appPath = p.replace(/\/$/, ''); return { name, bundleId, path: appPath, front: front === 'true' }; }).filter(a => a.path && a.path.endsWith('.app')));
+  }));
+}
+ipcMain.handle('apps:running', async () => { const list = await runningApps(); for (const a of list) a.icon = await appIcon(a.path); return list; });
+ipcMain.handle('apps:installed', async () => { const dirs = ['/Applications', '/System/Applications', path.join(os.homedir(), 'Applications')]; const out = [];
+  for (const d of dirs) { try { for (const f of fs.readdirSync(d)) if (f.endsWith('.app')) out.push({ name: f.replace(/\.app$/, ''), path: path.join(d, f) }); } catch {} }
+  out.sort((a, b) => a.name.localeCompare(b.name)); return out; });
+ipcMain.handle('apps:icon', (_e, p) => appIcon(p));
+ipcMain.on('apps:open', (_e, p) => { execFile('open', [p], () => {}); });
+ipcMain.on('apps:activate', (_e, bundleId) => execFile('osascript', ['-e', `tell application id "${bundleId}" to activate`], () => {}));
+ipcMain.on('apps:quit', (_e, bundleId) => execFile('osascript', ['-e', `tell application id "${bundleId}" to quit`], () => {}));
 
 /* ------------------------------------------------------------------ popover (click the menu-bar bolt) */
 let popWin = null;
@@ -282,4 +326,4 @@ app.whenReady().then(async () => {
   if (firstRun) setTimeout(() => { fireGlow('preview'); openSettings(); }, 900);
 });
 app.on('window-all-closed', () => {});
-app.on('will-quit', () => { try { globalShortcut.unregisterAll(); hook?.stop(); } catch {} });
+app.on('will-quit', () => { try { globalShortcut.unregisterAll(); hook?.stop(); const dk = MODULES.dock; if (dk && running.has('dock')) dk.stop(ctx); } catch {} });
