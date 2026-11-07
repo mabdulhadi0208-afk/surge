@@ -44,11 +44,35 @@ function ensureHook() {
     return false;
   }
   try {
-    if (!hookWired) { for (const ev of Object.keys(hookListeners)) hook.on(ev, (e) => hookListeners[ev].forEach(fn => { try { fn(e); } catch (err) { console.error(err); } })); hookWired = true; }
+    if (!hookWired) { for (const ev of Object.keys(hookListeners)) hook.on(ev, (e) => { hookEvents++; hookListeners[ev].forEach(fn => { try { fn(e); } catch (err) { console.error(err); } }); }); hookWired = true; }
     hook.start(); hookStarted = true; hookState = 'running'; log('hook started');
     fireGlow('hud', { hud: { text: 'Keyboard & mouse hook active', color: '#00FF85' } });
+    watchHookAlive();
   } catch (e) { hookState = 'error'; console.error('hook start failed', e.message); }
   return hookStarted;
+}
+// macOS can leave the hook "running" but silently deliver nothing (stale Accessibility / Input Monitoring entry after an update).
+// Detect it the honest way: the cursor moves (Electron sees that without any permission) but the hook reports no events → the grant is dead.
+let hookEvents = 0, deadFixes = 0, aliveT = null;
+function watchHookAlive() {
+  if (process.platform !== 'darwin' || aliveT) return;
+  hookEvents = 0; let moves = 0, last = null, ticks = 0;
+  aliveT = setInterval(() => {
+    ticks++; const c = screen.getCursorScreenPoint(); if (last && (c.x !== last.x || c.y !== last.y)) moves++; last = c;
+    if (hookEvents > 0) { clearInterval(aliveT); aliveT = null; return; }                         // alive
+    if (moves >= 10 || ticks > 150) { clearInterval(aliveT); aliveT = null; if (moves >= 10) onHookDead(); }
+  }, 400);
+}
+function onHookDead() {
+  log(`hook dead: cursor moved but no events (AX trusted=${accessibilityOK(false)})`);
+  try { hook.stop(); } catch {} hookStarted = false; hookState = 'needs-accessibility'; ctx.broadcast('settings:update', settings);
+  if (deadFixes++ > 0) return;                                                                      // only auto-fix once per launch
+  const { execFile } = require('child_process');
+  // clear the stale entries so the toggle in System Settings is real again, then raise the single macOS Allow prompt
+  execFile('tccutil', ['reset', 'Accessibility', 'app.surge.glow'], () => execFile('tccutil', ['reset', 'ListenEvent', 'app.surge.glow'], () => {
+    setTimeout(() => { axPrompted = false; try { systemPreferences.isTrustedAccessibilityClient(true); } catch {} ensureHook();
+      fireGlow('warn', { hud: { text: 'macOS reset Surge\'s permission — click Allow to keep keyboard & mouse sounds', color: '#FFD60A' } }); }, 400);
+  }));
 }
 ipcMain.on('open:accessibility', () => { try { systemPreferences.isTrustedAccessibilityClient(true); } catch {} shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility'); });
 ipcMain.on('open:inputmonitoring', () => shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent'));
