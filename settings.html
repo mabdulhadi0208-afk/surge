@@ -149,7 +149,7 @@ function build(){
     <div class="note" id="hookNote"></div>
     <div class="grid">${MODS.map((m,i)=>`<div class="mod ${m.needsHook?'needs':''}" data-m="${m.id}" style="animation-delay:${i*40}ms"><div class="top"><div class="ic">${ic(m.icon)}</div><h4>${m.name}</h4></div><p>${m.desc}</p><div class="need">Needs Input Monitoring permission</div><div class="tg" data-m="${m.id}"></div></div>`).join('')}</div></section>`;
   for (const m of MODS) panes += `<section class="pane" id="pane-${m.id}"><div class="card"><h3>${m.name}</h3><div class="row"><div class="l">Enabled<small>${m.desc}</small></div><div class="tg" data-m="${m.id}"></div></div>${m.needsHook?'<div class="row"><div class="l"><small id="hook-'+m.id+'"></small></div></div>':''}</div>${m.id==='glow'?'<div class="card"><h3>Live preview</h3><div class="preview" id="preview"><canvas id="pc"></canvas></div></div>':''}${m.schema.length?'<div class="card"><h3>Options</h3>'+m.schema.map(f=>field(m,f)).join('')+'</div>':''}</section>`;
-  panes += `<section class="pane" id="pane-about"><div class="about"><div class="logo"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></div><h2>Surge</h2><p>${MODS.length} modules and counting. Every sound is synthesised, every glow is drawn live, nothing phones home.</p><p style="font-size:12px">v2.0.0 · <span id="reset" style="cursor:pointer;text-decoration:underline">reset all settings</span></p></div></section>`;
+  panes += `<section class="pane" id="pane-about"><div class="about"><div class="logo"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></div><h2>Surge</h2><p>${MODS.length} modules and counting. Every sound is synthesised, every glow is drawn live, nothing phones home.</p><p style="font-size:12px"><span id="aboutVer">v…</span> · <span id="reset" style="cursor:pointer;text-decoration:underline">reset all settings</span></p></div></section>`;
   $('#panes').innerHTML = panes;
   // wire
   document.querySelectorAll('#nav button').forEach(b => b.onclick = () => go(b.dataset.p));
@@ -264,6 +264,7 @@ function replay(kind){ if (kind) pkind = kind; if (!mini) return; mini.assign(S.
 (async()=>{
   MODS = await api?.listModules() || []; S = await api?.getSettings() || { modules:{} }; hook = await api?.hookState() || 'unavailable';
   build(); paint(); replay();
+  api?.action('updater','state').then(u=>{ const v=document.getElementById('aboutVer'); if(v&&u?.current) v.textContent='v'+u.current; });
   api?.on('settings:update', s => { S = s; paint(); }); api?.on('nav', go);
   async function batt(){ const b = await api?.getBattery(); if (b) { $('#batt').innerHTML = `<b>${b.level}%</b> ${b.charged?'full':b.charging?'charging':'on battery'}${b.remaining?' · '+b.remaining:''}`; $('#led').style.background = b.charging ? '' : '#FFB648'; } hook = await api?.hookState() || hook; }
   batt(); setInterval(batt, 3000);
