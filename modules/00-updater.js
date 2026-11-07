@@ -8,6 +8,9 @@ const REPO = 'mabdulhadi0208-afk/surge', ASSET = 'Surge-mac-arm64.dmg';
 let timer = null, state = { status: 'idle', latest: null, url: null, progress: 0, error: null, staged: null };
 const semver = v => String(v).replace(/^v/, '').split('.').map(n => parseInt(n, 10) || 0);
 const newer = (a, b) => { const A = semver(a), B = semver(b); for (let i = 0; i < 3; i++) { if ((A[i] || 0) > (B[i] || 0)) return true; if ((A[i] || 0) < (B[i] || 0)) return false; } return false; };
+let lastTag = null;
+// cheap: HEAD https://github.com/<repo>/releases/latest → Location: .../tag/vX.Y.Z (no API rate limit)
+function latestTagFast() { return sh('curl', ['-sI', '-o', '/dev/null', '-w', '%{redirect_url}', `https://github.com/${REPO}/releases/latest`], { timeout: 8000 }).then(u => (/\/tag\/([^\/\s]+)/.exec(u) || [])[1] || null).catch(() => null); }
 function get(url) { return sh('curl', ['-sL', '--fail', '-A', 'Surge-updater', '-H', 'Accept: application/vnd.github+json', url], { timeout: 20000 }).then(body => ({ status: 200, body })); }
 function bundlePath(ctx) { const p = process.execPath; const i = p.indexOf('.app/Contents/MacOS/'); return i > 0 ? p.slice(0, i + 4) : null; }
 function sh(cmd, args, opts = {}) { return new Promise((res, rej) => execFile(cmd, args, { timeout: 600000, ...opts }, (e, out, err) => e ? rej(new Error(err || e.message)) : res(out))); }
@@ -15,11 +18,11 @@ function sh(cmd, args, opts = {}) { return new Promise((res, rej) => execFile(cm
 module.exports = {
   id: 'updater', name: 'Auto Update', icon: 'refresh', group: 'System', defaultEnabled: true,
   desc: 'Checks GitHub for new versions, downloads them in the background and installs on restart (or instantly).',
-  defaults: { auto: true, every: 1, popup: true, pollMinutes: 5 },
+  defaults: { auto: true, every: 1, popup: true, pollSeconds: 10 },
   schema: [
     { k: 'auto', t: 'toggle', label: 'Download automatically', hint: 'New versions download in the background' },
     { k: 'popup', t: 'toggle', label: 'Pop up when an update is out', hint: 'A floating card appears on top of whatever you\'re doing' },
-    { k: 'pollMinutes', t: 'seg', label: 'Check every', opts: [[2,'2 min'],[5,'5 min'],[15,'15 min'],[60,'1 h']] },
+    { k: 'pollSeconds', t: 'seg', label: 'Check every', opts: [[10,'10 s'],[30,'30 s'],[60,'1 min'],[300,'5 min']] },
     { t: 'actions', label: 'Update', opts: [['check','Check now'],['install','Install update']] },
   ],
   actions: {
@@ -39,6 +42,11 @@ module.exports = {
     try { ctx.sysSound('Glass'); } catch {}
   },
   _hide() { if (popup && !popup.isDestroyed()) popup.hide(); },
+  async _poll(ctx) {
+    if (state.status === 'downloading' || state.status === 'installing') return;
+    const tag = await latestTagFast(); if (!tag || tag === lastTag) return; lastTag = tag;
+    if (newer(tag, ctx.app.getVersion())) module.exports._check(ctx, false);
+  },
   async _check(ctx, manual) {
     if (state.status === 'downloading' || state.status === 'installing') return state;
     try {
@@ -99,8 +107,8 @@ open "$APP"
     if (fs.existsSync(staged)) { state.staged = staged; state.status = 'ready'; state.latest = 'staged'; if (ctx.mod('updater').auto) return module.exports._install(ctx); }
     setTimeout(() => module.exports._check(ctx, false), process.env.SURGE_FAST_CHECK ? 1500 : 8000);
     const { powerMonitor } = require('electron'); powerMonitor.on('resume', () => setTimeout(() => module.exports._check(ctx, false), 10000));
-    timer = setInterval(() => module.exports._check(ctx, false), Math.max(1, ctx.mod('updater').pollMinutes || 5) * 60000);
+    timer = setInterval(() => module.exports._poll(ctx), Math.max(5, ctx.mod('updater').pollSeconds || 10) * 1000);
   },
-  onSettings(ctx) { clearInterval(timer); timer = setInterval(() => module.exports._check(ctx, false), Math.max(1, ctx.mod('updater').pollMinutes || 5) * 60000); },
+  onSettings(ctx) { clearInterval(timer); timer = setInterval(() => module.exports._poll(ctx), Math.max(5, ctx.mod('updater').pollSeconds || 10) * 1000); },
   stop(ctx) { clearInterval(timer); ctx.setTray('updater', { title: '' }); if (popup && !popup.isDestroyed()) popup.destroy(); popup = null; },
 };
