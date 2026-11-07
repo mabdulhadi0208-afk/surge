@@ -22,6 +22,11 @@ jobs:
         run: |
           if [ -n "$P12_BASE64" ]; then
             echo "$P12_BASE64" | base64 --decode > cert.p12
+          else
+            cp build/cert/surge-dev.p12 cert.p12
+            P12_PASSWORD=$(cat build/cert/password.txt | tr -d '\n')
+          fi
+          if [ -s cert.p12 ]; then
             security create-keychain -p temp build.keychain
             security default-keychain -s build.keychain
             security unlock-keychain -p temp build.keychain
@@ -31,7 +36,7 @@ jobs:
             echo "✓ certificate imported"
           else
             echo "SIGN_ID=-" >> $GITHUB_ENV
-            echo "no MAC_CERT_P12 secret — falling back to ad-hoc signing"
+            echo "no certificate found — falling back to ad-hoc signing"
           fi
       - name: Package + sign + DMG
         run: |
