@@ -37,12 +37,9 @@ let hookWired = false, hookRetry = null, axPrompted = false;
 function accessibilityOK(prompt) { if (process.platform !== 'darwin') return true; try { return systemPreferences.isTrustedAccessibilityClient(!!prompt); } catch { return true; } }
 function ensureHook() {
   if (!hook || hookStarted) return hookStarted;
-  if (!accessibilityOK(!axPrompted)) {
-    // macOS shows its own "Surge would like to control this computer" prompt the first time. Keep polling until the user grants it.
-    axPrompted = true; hookState = 'needs-accessibility'; log('hook waiting for Accessibility permission');
-    setTimeout(async () => { if (accessibilityOK(false)) return; const r = await dialog.showMessageBox({ type: 'info', buttons: ['Open Accessibility settings', 'Later'], defaultId: 0, cancelId: 1, message: 'Surge needs Accessibility access for keyboard & mouse sounds',
-      detail: 'System Settings → Privacy & Security → Accessibility → turn on Surge. Sounds start automatically a few seconds after you flip it on — no relaunch needed.' });
-      if (r.response === 0) shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility'); }, 1200);
+  if (!accessibilityOK(false)) {
+    // silent: no macOS prompt, no dialog. The popover/settings show a single Allow button that triggers the prompt.
+    hookState = 'needs-accessibility'; if (!axPrompted) { axPrompted = true; log('hook waiting for Accessibility permission'); }
     if (!hookRetry) hookRetry = setInterval(() => { if (accessibilityOK(false)) { clearInterval(hookRetry); hookRetry = null; ensureHook(); ctx.broadcast('settings:update', settings); } }, 3000);
     return false;
   }
@@ -53,7 +50,7 @@ function ensureHook() {
   } catch (e) { hookState = 'error'; console.error('hook start failed', e.message); }
   return hookStarted;
 }
-ipcMain.on('open:accessibility', () => shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility'));
+ipcMain.on('open:accessibility', () => { try { systemPreferences.isTrustedAccessibilityClient(true); } catch {} shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility'); });
 ipcMain.on('open:inputmonitoring', () => shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent'));
 function onInput(ev, fn) { hookListeners[ev].add(fn); ensureHook(); return () => hookListeners[ev].delete(fn); }
 
@@ -167,17 +164,20 @@ function appIcon(appPath) {
   });
 }
 function runningApps() {
-  return new Promise((resolve) => execFile('osascript', ['-e', `tell application "System Events"
-set out to ""
-repeat with p in (every application process whose background only is false)
-try
-set out to out & (name of p) & "|" & (bundle identifier of p) & "|" & (POSIX path of (file of p)) & "|" & (frontmost of p) & linefeed
-end try
-end repeat
-end tell
-return out`], { timeout: 4000 }, (e, o) => {
+  return new Promise((resolve) => execFile('lsappinfo', ['list'], { timeout: 4000 }, (e, o) => {
     if (e || !o) return resolve([]);
-    resolve(o.trim().split('\n').filter(Boolean).map(l => { const [name, bundleId, p, front] = l.split('|'); const appPath = p.replace(/\/$/, ''); return { name, bundleId, path: appPath, front: front === 'true' }; }).filter(a => a.path && a.path.endsWith('.app')));
+    const out = []; let cur = null;
+    for (const line of o.split('\n')) {
+      const h = /^\s*\d+\)\s+"([^"]+)"/.exec(line); if (h) { if (cur) out.push(cur); cur = { name: h[1], bundleId: null, path: null, front: false, bg: false }; continue; }
+      if (!cur) continue;
+      let mm;
+      if ((mm = /bundleID="([^"]+)"/.exec(line))) cur.bundleId = mm[1];
+      else if ((mm = /bundle path="([^"]+)"/.exec(line))) cur.path = mm[1];
+      else if (/type="BackgroundOnly"|type="UIElement"/.test(line)) cur.bg = true;
+      else if (/\(in front\)/.test(line)) cur.front = true;
+    }
+    if (cur) out.push(cur);
+    resolve(out.filter(a => a.path && a.path.endsWith('.app') && !a.bg && a.name !== 'Surge'));
   }));
 }
 ipcMain.handle('apps:running', async () => { const list = await runningApps(); for (const a of list) a.icon = await appIcon(a.path); return list; });

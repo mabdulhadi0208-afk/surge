@@ -10,7 +10,7 @@ function cpu(os) { const c = os.cpus(); let idle = 0, total = 0; for (const k of
 module.exports = {
   id: 'dock', name: 'Surge Dock', icon: 'dock', group: 'Screen',
   desc: 'A full Dock replacement: your apps (pinned + running, macOS-style magnification) plus widgets — clock, battery, CPU, now playing, volume, focus, caffeine. Can hide the macOS Dock for good.',
-  defaults: { edge: 'bottom', offset: 10, size: 1, autohide: false, hideMacDock: true, magnify: true, pinned: DEFAULT_PINS, widgets: ['apps', 'clock', 'battery', 'media', 'volume', 'focus', 'caffeine'] },
+  defaults: { edge: 'bottom', offset: 10, size: 1, autohide: false, hideMacDock: true, magnify: true, pinned: DEFAULT_PINS, widgets: ['apps', 'clock', 'battery', 'volume', 'focus', 'caffeine'] },
   schema: [
     { k: 'edge', t: 'seg', label: 'Edge', opts: [['bottom', 'Bottom'], ['top', 'Top']] },
     { k: 'offset', t: 'range', label: 'Distance from edge', min: 0, max: 120, step: 2, fmt: 'px' },

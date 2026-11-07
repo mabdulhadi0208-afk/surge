@@ -18,7 +18,7 @@ function sh(cmd, args, opts = {}) { return new Promise((res, rej) => execFile(cm
 module.exports = {
   id: 'updater', name: 'Auto Update', icon: 'refresh', group: 'System', defaultEnabled: true,
   desc: 'Checks GitHub for new versions, downloads them in the background and installs on restart (or instantly).',
-  defaults: { auto: true, every: 1, popup: true, pollSeconds: 1 },
+  defaults: { auto: true, every: 1, popup: true, pollSeconds: 5 },
   schema: [
     { k: 'auto', t: 'toggle', label: 'Download automatically', hint: 'New versions download in the background' },
     { k: 'popup', t: 'toggle', label: 'Pop up when an update is out', hint: 'A floating card appears on top of whatever you\'re doing' },
@@ -99,8 +99,8 @@ for i in $(seq 1 150); do pgrep -x Surge >/dev/null || break; sleep 0.2; done
 pkill -x Surge 2>/dev/null; sleep 0.5
 rm -rf "$APP.old"; mv "$APP" "$APP.old" || { echo "mv failed"; exit 1; }
 if ditto "$NEW" "$APP"; then xattr -cr "$APP" 2>/dev/null; echo "copied"; else echo "copy failed, rolling back"; rm -rf "$APP"; mv "$APP.old" "$APP"; fi
-open -n "$APP"; sleep 4
-if pgrep -x Surge >/dev/null; then echo "launched OK"; rm -rf "$APP.old" "$NEW"; else echo "launch failed, restoring old"; rm -rf "$APP"; mv "$APP.old" "$APP" 2>/dev/null; open -n "$APP"; fi
+"$APP/Contents/MacOS/Surge" >/dev/null 2>&1 & disown; sleep 4
+if pgrep -x Surge >/dev/null; then echo "launched OK"; rm -rf "$APP.old" "$NEW"; else echo "launch failed, restoring old"; rm -rf "$APP"; mv "$APP.old" "$APP" 2>/dev/null; "$APP/Contents/MacOS/Surge" >/dev/null 2>&1 & disown; fi
 echo "=== done"
 `); fs.chmodSync(script, 0o755);
     state.status = 'installing'; ctx.broadcast('updater:state', state);
@@ -113,7 +113,7 @@ echo "=== done"
     // a staged update from last session? finish it now, at launch, when nothing is lost
     const staged = path.join(ctx.app.getPath('userData'), 'update', 'Surge.app');
     if (fs.existsSync(staged)) { try { const pl = fs.readFileSync(path.join(staged, 'Contents', 'Info.plist'), 'utf8'); const v = /CFBundleShortVersionString<\/key>\s*<string>([^<]+)/.exec(pl)?.[1]; if (!v || !newer(v, ctx.app.getVersion())) fs.rmSync(path.dirname(staged), { recursive: true, force: true }); } catch {} }
-    if (fs.existsSync(staged)) { state.staged = staged; state.status = 'ready'; state.latest = 'staged'; if (ctx.mod('updater').auto) return module.exports._install(ctx); }
+    if (fs.existsSync(staged)) { state.staged = staged; state.status = 'ready'; state.latest = 'staged'; if (ctx.mod('updater').popup) setTimeout(() => module.exports._show(ctx), 4000); }
     setTimeout(() => module.exports._check(ctx, false), process.env.SURGE_FAST_CHECK ? 1500 : 8000);
     const { powerMonitor } = require('electron'); powerMonitor.on('resume', () => setTimeout(() => module.exports._check(ctx, false), 10000));
     timer = setInterval(() => module.exports._poll(ctx), Math.max(1, ctx.mod('updater').pollSeconds || 1) * 1000);
