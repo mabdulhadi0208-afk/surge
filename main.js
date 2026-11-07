@@ -131,8 +131,32 @@ function toggleNotes() {
   notesWin.on('closed', () => (notesWin = null));
 }
 
+/* ------------------------------------------------------------------ popover (click the menu-bar bolt) */
+let popWin = null;
+function ensurePopover() {
+  if (popWin && !popWin.isDestroyed()) return popWin;
+  popWin = new BrowserWindow({ width: 380, height: 500, show: false, frame: false, transparent: true, hasShadow: false, resizable: false, movable: false,
+    alwaysOnTop: true, skipTaskbar: true, fullscreenable: false, backgroundColor: '#00000000',
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true } });
+  popWin.loadFile(path.join(__dirname, 'popover.html'));
+  popWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  popWin.setAlwaysOnTop(true, 'pop-up-menu');
+  popWin.on('blur', () => { if (popWin && !popWin.isDestroyed() && !popWin.webContents.isDevToolsOpened()) popWin.hide(); });
+  popWin.webContents.on('console-message', (_e, lvl, msg) => lvl >= 2 && log('popover', msg));
+  return popWin;
+}
+function togglePopover() {
+  const w = ensurePopover();
+  if (w.isVisible()) { w.hide(); return; }
+  const b = tray.getBounds(); const d = screen.getDisplayNearestPoint({ x: b.x, y: b.y });
+  const [pw, ph] = w.getSize();
+  let x = Math.round(b.x + b.width / 2 - pw / 2); const y = Math.round(b.y + b.height + 4);
+  x = Math.max(d.workArea.x + 6, Math.min(x, d.workArea.x + d.workArea.width - pw - 6));
+  w.setPosition(x, y, false); w.show(); w.focus(); w.webContents.send('popover:show');
+}
+
 /* ------------------------------------------------------------------ tray */
-let tray = null, trayExtras = {};           // module id → { title?: string, menu?: MenuItem[] }
+let tray = null, trayMenu = null, trayExtras = {};           // module id → { title?: string, menu?: MenuItem[] }
 function trayIcon() {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24"><path fill="black" d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>`;
   const img = nativeImage.createFromDataURL('data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64')).resize({ width: 18, height: 18 });
@@ -145,7 +169,7 @@ function updateTray() {
   tray.setTitle(titles.length ? ' ' + titles.join('  ') : '');
   const items = [];
   for (const [id, e] of Object.entries(trayExtras)) if (e?.menu?.length) { items.push(...e.menu); items.push({ type: 'separator' }); }
-  tray.setContextMenu(Menu.buildFromTemplate([
+  trayMenu = Menu.buildFromTemplate([
     ...items,
     { label: 'Settings…', accelerator: 'Cmd+,', click: () => openSettings() },
     { label: 'Quick Notes', accelerator: 'Cmd+Shift+N', click: toggleNotes },
@@ -153,7 +177,7 @@ function updateTray() {
     { label: 'Mute all sounds', type: 'checkbox', checked: !!settings.muted, accelerator: 'Cmd+Shift+M', click: (m) => applyPatch({ muted: m.checked }) },
     { label: 'Launch at login', type: 'checkbox', checked: !!settings.launchAtLogin, click: (m) => applyPatch({ launchAtLogin: m.checked }) },
     { label: 'Quit Surge', accelerator: 'Cmd+Q', click: () => app.quit() },
-  ]));
+  ]);
 }
 
 /* ------------------------------------------------------------------ module context + lifecycle */
@@ -162,7 +186,7 @@ const ctx = {
   get settings() { return settings; }, mod, fireGlow, overlaySend, setOverlayPersistent, play, sysSound, onInput, hookState: () => hookState,
   setTray, openSettings, toggleNotes, readBattery, applyPatch: (p) => applyPatch(p), get battery() { return battery; }, set battery(v) { battery = v; },
   notify: (title, body) => { try { new Notification({ title, body, silent: true }).show(); } catch {} },
-  broadcast: (ch, p) => { [settingsWin, notesWin, audioWin, ...overlays].forEach(w => w && !w.isDestroyed() && w.webContents.send(ch, p)); },
+  broadcast: (ch, p) => { [settingsWin, notesWin, audioWin, popWin, ...overlays].forEach(w => w && !w.isDestroyed() && w.webContents.send(ch, p)); },
 };
 const running = new Set();
 function startModule(id) { const m = MODULES[id]; if (!m || running.has(id)) return; try { m.start?.(ctx); running.add(id); log('start', id); } catch (e) { console.error(`[${id}] start`, e); } }
@@ -198,6 +222,8 @@ ipcMain.on('win:hide', (e) => BrowserWindow.fromWebContents(e.sender)?.hide());
 ipcMain.on('win:minimize', (e) => BrowserWindow.fromWebContents(e.sender)?.minimize());
 ipcMain.on('open:external', (_e, url) => /^https?:\/\//.test(url) && shell.openExternal(url));
 ipcMain.on('app:quit', () => app.quit());
+ipcMain.on('open:settings', () => openSettings());
+ipcMain.on('notes:toggle', () => toggleNotes());
 const notesPath = () => path.join(app.getPath('userData'), 'notes.txt');
 ipcMain.handle('notes:load', () => { try { return fs.readFileSync(notesPath(), 'utf8'); } catch { return ''; } });
 ipcMain.on('notes:save', (_e, text) => { try { fs.writeFileSync(notesPath(), String(text ?? '')); } catch {} });
@@ -223,7 +249,10 @@ app.whenReady().then(() => {
     { type: 'separator' }, { role: 'close' }, { role: 'minimize' }, { role: 'quit' } ]}, { role: 'editMenu' }]));
   if (process.platform === 'darwin') app.dock?.hide();
   createOverlays(); ensureAudio();
-  tray = new Tray(trayIcon()); tray.on('click', () => fireGlow('preview')); updateTray();
+  tray = new Tray(trayIcon()); tray.setIgnoreDoubleClickEvents(true);
+  tray.on('click', togglePopover);
+  tray.on('right-click', () => trayMenu && tray.popUpContextMenu(trayMenu));
+  updateTray(); ensurePopover();
   let dispT; const rebuild = () => { clearTimeout(dispT); dispT = setTimeout(() => { createOverlays(); running.forEach(id => MODULES[id].onSettings?.(ctx)); }, 600); };
   screen.on('display-added', rebuild); screen.on('display-removed', rebuild); screen.on('display-metrics-changed', rebuild);
   try { globalShortcut.register('CommandOrControl+Shift+N', toggleNotes); } catch {}

@@ -10,7 +10,7 @@ module.exports = {
     { k: 'softness', t: 'range', label: 'Edge softness', min: 0, max: 1, step: .01, fmt: 'pct' },
     { t: 'actions', label: 'Toggle', opts: [['toggle','Toggle spotlight']] },
   ],
-  actions: { toggle: (ctx) => module.exports._toggle(ctx) },
+  actions: { toggle: (ctx) => module.exports._toggle(ctx), state: () => ({ on }) },
   _toggle(ctx) { on = !on; ctx.setOverlayPersistent('spotlight', on); ctx.overlaySend('spotlight', on ? { ...ctx.mod('spotlight'), on: true } : { on: false }); ctx.setTray('spotlight', { title: on ? '◎' : '' }); },
   start(ctx) {
     try { ctx.globalShortcut.register('CommandOrControl+Shift+S', () => module.exports._toggle(ctx)); } catch {}

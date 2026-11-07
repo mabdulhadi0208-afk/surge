@@ -11,7 +11,7 @@ module.exports = {
     { k: 'sound', t: 'toggle', label: 'Chime' },
     { t: 'actions', label: 'Timer', opts: [['start','Start focus'],['stop','Stop']] },
   ],
-  actions: { start: (ctx) => module.exports._start(ctx, 'work'), stop: (ctx) => module.exports._stop(ctx) },
+  actions: { start: (ctx) => module.exports._start(ctx, 'work'), stop: (ctx) => module.exports._stop(ctx), state: () => { const left = endsAt ? Math.max(0, endsAt - Date.now()) : 0; return { phase, mm: Math.floor(left / 60000), ss: String(Math.floor(left % 60000 / 1000)).padStart(2, '0') }; } },
   _start(ctx, p) { const s = ctx.mod('focus'); phase = p; endsAt = Date.now() + (p === 'work' ? s.work : (cycles % 4 === 3 ? s.longRest : s.rest)) * 60000; module.exports._tray(ctx); },
   _stop(ctx) { phase = 'idle'; endsAt = 0; module.exports._tray(ctx); },
   _tray(ctx) {

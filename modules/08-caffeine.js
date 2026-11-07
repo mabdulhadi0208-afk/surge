@@ -8,7 +8,7 @@ module.exports = {
     { k: 'minutes', t: 'seg', label: 'Default duration', opts: [[0,'∞'],[30,'30m'],[60,'1h'],[120,'2h'],[240,'4h']] },
     { t: 'actions', label: 'Control', opts: [['toggle','Toggle awake']] },
   ],
-  actions: { toggle: (ctx) => module.exports._toggle(ctx) },
+  actions: { toggle: (ctx) => module.exports._toggle(ctx), state: () => ({ on: id != null, left: until ? Math.max(0, Math.round((until - Date.now()) / 60000)) : null }) },
   _on(ctx, minutes) { if (id == null) id = ctx.powerSaveBlocker.start('prevent-display-sleep'); until = minutes ? Date.now() + minutes * 60000 : 0; module.exports._tray(ctx); },
   _off(ctx) { if (id != null) { ctx.powerSaveBlocker.stop(id); id = null; } until = 0; module.exports._tray(ctx); },
   _toggle(ctx) { id == null ? module.exports._on(ctx, ctx.mod('caffeine').minutes) : module.exports._off(ctx); },
