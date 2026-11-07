@@ -40,6 +40,9 @@ function ensureHook() {
   if (!accessibilityOK(!axPrompted)) {
     // macOS shows its own "Surge would like to control this computer" prompt the first time. Keep polling until the user grants it.
     axPrompted = true; hookState = 'needs-accessibility'; log('hook waiting for Accessibility permission');
+    setTimeout(async () => { if (accessibilityOK(false)) return; const r = await dialog.showMessageBox({ type: 'info', buttons: ['Open Accessibility settings', 'Later'], defaultId: 0, cancelId: 1, message: 'Surge needs Accessibility access for keyboard & mouse sounds',
+      detail: 'System Settings → Privacy & Security → Accessibility → turn on Surge. Sounds start automatically a few seconds after you flip it on — no relaunch needed.' });
+      if (r.response === 0) shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility'); }, 1200);
     if (!hookRetry) hookRetry = setInterval(() => { if (accessibilityOK(false)) { clearInterval(hookRetry); hookRetry = null; ensureHook(); ctx.broadcast('settings:update', settings); } }, 3000);
     return false;
   }
@@ -102,7 +105,7 @@ function ensureAudio() {
   audioWin.webContents.on('console-message', (_e, lvl, msg) => lvl >= 2 && log('audio', msg));
   return audioWin;
 }
-function play(sound, opts = {}) { if (settings.muted) return; const w = ensureAudio(); const send = () => w.webContents.send('audio:play', { sound, master: settings.masterVolume ?? 1, ...opts }); w.webContents.isLoading() ? w.webContents.once('did-finish-load', send) : send(); }
+function play(sound, opts = {}) { if (settings.muted) return; const w = ensureAudio(); if (!w || w.isDestroyed()) return; const send = () => { try { w.webContents.send('audio:play', { sound, master: settings.masterVolume ?? 1, ...opts }); } catch {} }; w.webContents.isLoading() ? w.webContents.once('did-finish-load', send) : send(); }
 function sysSound(name) { if (process.platform === 'darwin') execFile('afplay', [`/System/Library/Sounds/${name}.aiff`], () => {}); }
 
 /* ------------------------------------------------------------------ battery (shared by modules) */
@@ -208,6 +211,7 @@ function togglePopover() {
   let x = Math.round(b.x + b.width / 2 - pw / 2); const y = Math.round(b.y + b.height + 4);
   x = Math.max(d.workArea.x + 6, Math.min(x, d.workArea.x + d.workArea.width - pw - 6));
   w.setPosition(x, y, false); w.show(); w.focus(); w.webContents.send('popover:show');
+  try { if (running.has('updater')) MODULES.updater._check(ctx, false); } catch {}
 }
 
 /* ------------------------------------------------------------------ tray */
@@ -241,7 +245,7 @@ const ctx = {
   get settings() { return settings; }, mod, fireGlow, overlaySend, setOverlayPersistent, play, sysSound, onInput, hookState: () => hookState,
   setTray, openSettings, toggleNotes, readBattery, applyPatch: (p) => applyPatch(p), get battery() { return battery; }, set battery(v) { battery = v; },
   notify: (title, body) => { try { new Notification({ title, body, silent: true }).show(); } catch {} },
-  broadcast: (ch, p) => { [settingsWin, notesWin, audioWin, popWin, ...overlays].forEach(w => w && !w.isDestroyed() && w.webContents.send(ch, p)); },
+  broadcast: (ch, p) => { [settingsWin, notesWin, audioWin, popWin, ...overlays].forEach(w => { try { if (w && !w.isDestroyed()) w.webContents.send(ch, p); } catch {} }); },
 };
 const running = new Set();
 function startModule(id) { const m = MODULES[id]; if (!m || running.has(id)) return; try { m.start?.(ctx); running.add(id); log('start', id); } catch (e) { console.error(`[${id}] start`, e); } }

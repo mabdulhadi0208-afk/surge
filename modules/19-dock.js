@@ -53,7 +53,7 @@ module.exports = {
     if (s.widgets.includes('volume')) { const v = await osa('output volume of (get volume settings)'); data.volume = v == null ? null : +v; }
     if (s.widgets.includes('focus')) { try { data.focus = require('./10-focus.js').actions.state(); data.focusOn = !!ctx.mod('focus').enabled; } catch {} }
     if (s.widgets.includes('caffeine')) { try { data.caffeine = require('./08-caffeine.js').actions.state(); } catch {} }
-    win.webContents.send('dock:data', data);
+    try { if (win && !win.isDestroyed()) win.webContents.send('dock:data', data); } catch {}
   },
   start(ctx) {
     module.exports._ctx = ctx;

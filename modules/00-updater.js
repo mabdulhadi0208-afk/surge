@@ -13,10 +13,10 @@ function sh(cmd, args, opts = {}) { return new Promise((res, rej) => execFile(cm
 module.exports = {
   id: 'updater', name: 'Auto Update', icon: 'refresh', group: 'System', defaultEnabled: true,
   desc: 'Checks GitHub for new versions, downloads them in the background and installs on restart (or instantly).',
-  defaults: { auto: true, every: 6 },
+  defaults: { auto: true, every: 1 },
   schema: [
     { k: 'auto', t: 'toggle', label: 'Install automatically', hint: 'Downloads in the background and relaunches when ready' },
-    { k: 'every', t: 'seg', label: 'Check every', opts: [[1,'1h'],[6,'6h'],[24,'24h']] },
+    { k: 'every', t: 'seg', label: 'Check every', opts: [[1,'1h'],[3,'3h'],[6,'6h'],[24,'24h']] },
     { t: 'actions', label: 'Update', opts: [['check','Check now'],['install','Install update']] },
   ],
   actions: {
@@ -81,7 +81,8 @@ open "$APP"
     const staged = path.join(ctx.app.getPath('userData'), 'update', 'Surge.app');
     if (fs.existsSync(staged)) { try { const pl = fs.readFileSync(path.join(staged, 'Contents', 'Info.plist'), 'utf8'); const v = /CFBundleShortVersionString<\/key>\s*<string>([^<]+)/.exec(pl)?.[1]; if (!v || !newer(v, ctx.app.getVersion())) fs.rmSync(path.dirname(staged), { recursive: true, force: true }); } catch {} }
     if (fs.existsSync(staged)) { state.staged = staged; state.status = 'ready'; state.latest = 'staged'; if (ctx.mod('updater').auto) return module.exports._install(ctx); }
-    setTimeout(() => module.exports._check(ctx, false), process.env.SURGE_FAST_CHECK ? 1500 : 15000);
+    setTimeout(() => module.exports._check(ctx, false), process.env.SURGE_FAST_CHECK ? 1500 : 8000);
+    const { powerMonitor } = require('electron'); powerMonitor.on('resume', () => setTimeout(() => module.exports._check(ctx, false), 10000));
     timer = setInterval(() => module.exports._check(ctx, false), Math.max(1, ctx.mod('updater').every) * 3600000);
   },
   onSettings(ctx) { clearInterval(timer); timer = setInterval(() => module.exports._check(ctx, false), Math.max(1, ctx.mod('updater').every) * 3600000); },
