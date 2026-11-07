@@ -90,16 +90,23 @@ module.exports = {
     if (!state.staged) { if (state.status === 'available') await module.exports._download(ctx); if (!state.staged) return state; }
     const target = bundlePath(ctx); if (!target) { state.status = 'error'; state.error = 'Not running from an .app bundle'; return state; }
     const script = path.join(ctx.app.getPath('userData'), 'update', 'swap.sh');
+    const logf = path.join(ctx.app.getPath('logs'), 'update.log');
     fs.writeFileSync(script, `#!/bin/bash
+exec >> "${logf}" 2>&1
+echo "=== $(date) swap start"
 NEW="${state.staged}"; APP="${target}"
-for i in $(seq 1 100); do pgrep -x Surge >/dev/null || break; sleep 0.2; done
-rm -rf "$APP.old"; mv "$APP" "$APP.old" 2>/dev/null
-if cp -R "$NEW" "$APP"; then rm -rf "$APP.old" "$NEW"; xattr -cr "$APP" 2>/dev/null; else mv "$APP.old" "$APP"; fi
-open "$APP"
+for i in $(seq 1 150); do pgrep -x Surge >/dev/null || break; sleep 0.2; done
+pkill -x Surge 2>/dev/null; sleep 0.5
+rm -rf "$APP.old"; mv "$APP" "$APP.old" || { echo "mv failed"; exit 1; }
+if ditto "$NEW" "$APP"; then xattr -cr "$APP" 2>/dev/null; codesign --force --deep --sign - "$APP" 2>/dev/null; echo "copied"; else echo "copy failed, rolling back"; rm -rf "$APP"; mv "$APP.old" "$APP"; fi
+open -n "$APP"; sleep 4
+if pgrep -x Surge >/dev/null; then echo "launched OK"; rm -rf "$APP.old" "$NEW"; else echo "launch failed, restoring old"; rm -rf "$APP"; mv "$APP.old" "$APP" 2>/dev/null; open -n "$APP"; fi
+echo "=== done"
 `); fs.chmodSync(script, 0o755);
     state.status = 'installing'; ctx.broadcast('updater:state', state);
     const child = spawn('/bin/bash', [script], { detached: true, stdio: 'ignore' }); child.unref();
-    setTimeout(() => ctx.app.quit(), 300);
+    try { require('fs').appendFileSync(path.join(ctx.app.getPath('logs'), 'surge.log'), `[${new Date().toISOString()}] updater: installing ${state.latest} via ${script}\n`); } catch {}
+    setTimeout(() => ctx.app.exit(0), 400);
     return state;
   },
   start(ctx) {
