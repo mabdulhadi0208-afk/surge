@@ -35,7 +35,7 @@ module.exports = {
       ctx.setTray('glow', { title: `${b.level}%`, menu: [{ label: status, enabled: false }, { label: 'Preview glow', click: () => ctx.fireGlow('preview') }] });
     }); };
     tick(); timer = setInterval(tick, 1200);
-    try { const { powerMonitor } = require('electron'); powerMonitor.on('resume', () => setTimeout(tick, 1500)); powerMonitor.on('on-ac', () => setTimeout(tick, 200)); powerMonitor.on('on-battery', () => setTimeout(tick, 200)); } catch {}
+    if (!module.exports._pm) { module.exports._pm = true; try { const { powerMonitor } = require('electron'); powerMonitor.on('resume', () => setTimeout(() => timer && tick(), 1500)); powerMonitor.on('on-ac', () => setTimeout(() => timer && tick(), 200)); powerMonitor.on('on-battery', () => setTimeout(() => timer && tick(), 200)); } catch {} }
   },
   stop() { clearInterval(timer); timer = null; },
 };

@@ -149,8 +149,10 @@ function appIcon(appPath) {
   return new Promise((resolve) => {
     const done = (v) => { iconCache.set(appPath, v); resolve(v); };
     try {
-      const plist = fs.readFileSync(path.join(appPath, 'Contents', 'Info.plist'), 'utf8');
-      let icns = /CFBundleIconFile<\/key>\s*<string>([^<]+)/.exec(plist)?.[1]; if (icns && !icns.endsWith('.icns')) icns += '.icns';
+      let icns = null;
+      try { icns = require('child_process').execFileSync('plutil', ['-extract', 'CFBundleIconFile', 'raw', '-o', '-', path.join(appPath, 'Contents', 'Info.plist')], { timeout: 3000 }).toString().trim(); } catch {}
+      if (!icns) { try { const plist = fs.readFileSync(path.join(appPath, 'Contents', 'Info.plist'), 'utf8'); icns = /CFBundleIconFile<\/key>\s*<string>([^<]+)/.exec(plist)?.[1]; } catch {} }
+      if (icns && !icns.endsWith('.icns')) icns += '.icns';
       const src = icns && !icns.includes('..') && path.join(appPath, 'Contents', 'Resources', icns);
       if (src && fs.existsSync(src)) {
         const dir = path.join(app.getPath('userData'), 'icons'); fs.mkdirSync(dir, { recursive: true });
@@ -160,7 +162,15 @@ function appIcon(appPath) {
       }
     } catch {}
     fallback();
-    function fallback() { done(null); } // never use app.getFileIcon: Chromium's icon loader can hard-crash on some system app bundles
+    function fallback() {
+      // asset-catalog icons (Assets.car): let Quick Look render the bundle's icon — a separate process, cannot crash us
+      const dir = path.join(app.getPath('userData'), 'icons'); fs.mkdirSync(dir, { recursive: true });
+      const tmp = path.join(dir, 'ql-' + Buffer.from(appPath).toString('base64url').slice(-40)); fs.mkdirSync(tmp, { recursive: true });
+      execFile('qlmanage', ['-t', '-s', '128', '-o', tmp, appPath], { timeout: 8000 }, () => {
+        try { const f = fs.readdirSync(tmp).find(x => x.endsWith('.png')); if (f) { const out = path.join(dir, Buffer.from(appPath).toString('base64url').slice(-40) + '.png'); fs.renameSync(path.join(tmp, f), out); fs.rmSync(tmp, { recursive: true, force: true }); return done('data:image/png;base64,' + fs.readFileSync(out).toString('base64')); } } catch {}
+        fs.rmSync(tmp, { recursive: true, force: true }); done(null);
+      });
+    }
   });
 }
 function runningApps() {
@@ -168,11 +178,12 @@ function runningApps() {
     if (e || !o) return resolve([]);
     const out = []; let cur = null;
     for (const line of o.split('\n')) {
-      const h = /^\s*\d+\)\s+"([^"]+)"/.exec(line); if (h) { if (cur) out.push(cur); cur = { name: h[1], bundleId: null, path: null, front: false, bg: false }; continue; }
+      const h = /^\s*\d+\)\s+"([^"]+)"/.exec(line); if (h) { if (cur) out.push(cur); cur = { name: h[1], bundleId: null, path: null, pid: null, front: /\(in front\)/.test(line), bg: false }; continue; }
       if (!cur) continue;
       let mm;
       if ((mm = /bundleID="([^"]+)"/.exec(line))) cur.bundleId = mm[1];
       else if ((mm = /bundle path="([^"]+)"/.exec(line))) cur.path = mm[1];
+      else if ((mm = /^\s*pid\s*=\s*(\d+)/.exec(line))) cur.pid = +mm[1];
       else if (/type="BackgroundOnly"|type="UIElement"/.test(line)) cur.bg = true;
       else if (/\(in front\)/.test(line)) cur.front = true;
     }
@@ -187,7 +198,7 @@ ipcMain.handle('apps:installed', async () => { const dirs = ['/Applications', '/
 ipcMain.handle('apps:icon', (_e, p) => appIcon(p));
 ipcMain.on('apps:open', (_e, p) => { execFile('open', ['-a', p], (err) => err && execFile('open', [p], () => {})); });
 ipcMain.on('apps:activate', (_e, bundleId, p) => { if (p) execFile('open', ['-a', p], (err) => err && bundleId && execFile('open', ['-b', bundleId], () => {})); else if (bundleId) execFile('open', ['-b', bundleId], () => {}); });
-ipcMain.on('apps:quit', (_e, bundleId) => execFile('osascript', ['-e', `tell application id "${bundleId}" to quit`], () => {}));
+ipcMain.on('apps:quit', (_e, bundleId, pid) => { if (pid) { try { process.kill(pid, 'SIGTERM'); } catch {} } else if (bundleId) execFile('osascript', ['-e', `tell application id "${bundleId}" to quit`], () => {}); });
 
 /* ------------------------------------------------------------------ popover (click the menu-bar bolt) */
 let popWin = null, popHidAt = 0;
@@ -222,7 +233,8 @@ function trayIcon() {
   const img = nativeImage.createFromDataURL('data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64')).resize({ width: 18, height: 18 });
   img.setTemplateImage(true); return img;
 }
-function setTray(id, extra) { trayExtras[id] = extra; updateTray(); }
+function setTray(id, extra) { const k = JSON.stringify(extra, (kk, v) => typeof v === 'function' ? undefined : v); if (trayKeys[id] === k) return; trayKeys[id] = k; trayExtras[id] = extra; updateTray(); }
+const trayKeys = {};
 function updateTray() {
   if (!tray) return;
   const titles = Object.values(trayExtras).map(e => e?.title).filter(Boolean);
@@ -250,7 +262,7 @@ const ctx = {
 };
 const running = new Set();
 function startModule(id) { const m = MODULES[id]; if (!m || running.has(id)) return; try { m.start?.(ctx); running.add(id); log('start', id); } catch (e) { console.error(`[${id}] start`, e); } }
-function stopModule(id) { const m = MODULES[id]; if (!m || !running.has(id)) return; try { m.stop?.(ctx); } catch (e) { console.error(`[${id}] stop`, e); } running.delete(id); trayExtras[id] = null; updateTray(); }
+function stopModule(id) { const m = MODULES[id]; if (!m || !running.has(id)) return; try { m.stop?.(ctx); } catch (e) { console.error(`[${id}] stop`, e); } running.delete(id); trayExtras[id] = null; delete trayKeys[id]; updateTray(); }
 function reconcile() {
   for (const id in MODULES) {
     const want = !!mod(id).enabled;
