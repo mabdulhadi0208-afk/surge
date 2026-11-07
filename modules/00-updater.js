@@ -2,7 +2,7 @@
 // Works with ad-hoc signed builds (Electron's Squirrel updater refuses those on macOS).
 const { execFile, spawn } = require('child_process');
 const { BrowserWindow, screen } = require('electron');
-let popup = null, snoozedUntil = 0;
+let popup = null, snoozedUntil = 0, polling = false, misses = 0;
 const fs = require('fs'); const path = require('path');
 const REPO = 'mabdulhadi0208-afk/surge', ASSET = 'Surge-mac-arm64.dmg';
 let timer = null, state = { status: 'idle', latest: null, url: null, progress: 0, error: null, staged: null };
@@ -18,11 +18,11 @@ function sh(cmd, args, opts = {}) { return new Promise((res, rej) => execFile(cm
 module.exports = {
   id: 'updater', name: 'Auto Update', icon: 'refresh', group: 'System', defaultEnabled: true,
   desc: 'Checks GitHub for new versions, downloads them in the background and installs on restart (or instantly).',
-  defaults: { auto: true, every: 1, popup: true, pollSeconds: 10 },
+  defaults: { auto: true, every: 1, popup: true, pollSeconds: 1 },
   schema: [
     { k: 'auto', t: 'toggle', label: 'Download automatically', hint: 'New versions download in the background' },
     { k: 'popup', t: 'toggle', label: 'Pop up when an update is out', hint: 'A floating card appears on top of whatever you\'re doing' },
-    { k: 'pollSeconds', t: 'seg', label: 'Check every', opts: [[10,'10 s'],[30,'30 s'],[60,'1 min'],[300,'5 min']] },
+    { k: 'pollSeconds', t: 'seg', label: 'Check every', opts: [[1,'1 s'],[5,'5 s'],[10,'10 s'],[30,'30 s']] },
     { t: 'actions', label: 'Update', opts: [['check','Check now'],['install','Install update']] },
   ],
   actions: {
@@ -43,8 +43,10 @@ module.exports = {
   },
   _hide() { if (popup && !popup.isDestroyed()) popup.hide(); },
   async _poll(ctx) {
-    if (state.status === 'downloading' || state.status === 'installing') return;
-    const tag = await latestTagFast(); if (!tag || tag === lastTag) return; lastTag = tag;
+    if (polling || state.status === 'downloading' || state.status === 'installing') return; polling = true;
+    const tag = await latestTagFast().finally(() => (polling = false));
+    if (!tag) { misses++; if (misses === 20) { clearInterval(timer); timer = setInterval(() => module.exports._poll(ctx), 30000); } return; } misses = 0;
+    if (tag === lastTag) return; lastTag = tag;
     if (newer(tag, ctx.app.getVersion())) module.exports._check(ctx, false);
   },
   async _check(ctx, manual) {
@@ -107,8 +109,8 @@ open "$APP"
     if (fs.existsSync(staged)) { state.staged = staged; state.status = 'ready'; state.latest = 'staged'; if (ctx.mod('updater').auto) return module.exports._install(ctx); }
     setTimeout(() => module.exports._check(ctx, false), process.env.SURGE_FAST_CHECK ? 1500 : 8000);
     const { powerMonitor } = require('electron'); powerMonitor.on('resume', () => setTimeout(() => module.exports._check(ctx, false), 10000));
-    timer = setInterval(() => module.exports._poll(ctx), Math.max(5, ctx.mod('updater').pollSeconds || 10) * 1000);
+    timer = setInterval(() => module.exports._poll(ctx), Math.max(1, ctx.mod('updater').pollSeconds || 1) * 1000);
   },
-  onSettings(ctx) { clearInterval(timer); timer = setInterval(() => module.exports._poll(ctx), Math.max(5, ctx.mod('updater').pollSeconds || 10) * 1000); },
+  onSettings(ctx) { clearInterval(timer); timer = setInterval(() => module.exports._poll(ctx), Math.max(1, ctx.mod('updater').pollSeconds || 1) * 1000); },
   stop(ctx) { clearInterval(timer); ctx.setTray('updater', { title: '' }); if (popup && !popup.isDestroyed()) popup.destroy(); popup = null; },
 };
