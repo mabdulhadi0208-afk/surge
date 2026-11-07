@@ -141,7 +141,14 @@ module.exports = {
   },
   start(ctx) {
     C = ctx;
-    try { const f = path.join(ctx.app.getPath('userData'), 'just-updated'); if (fs.existsSync(f)) { fs.rmSync(f); setTimeout(() => ctx.fireGlow('full', { level: 100, hud: { text: `Updated to Surge ${ctx.app.getVersion()}`, color: '#00FF85' } }), 1500); log('updated to', ctx.app.getVersion()); } } catch {}
+    try { const f = path.join(ctx.app.getPath('userData'), 'just-updated'); if (fs.existsSync(f)) { fs.rmSync(f); setTimeout(() => ctx.fireGlow('full', { level: 100, hud: { text: `Updated to Surge ${ctx.app.getVersion()}`, color: '#00FF85' } }), 1500); log('updated to', ctx.app.getVersion());
+        // if macOS dropped our Accessibility grant across the update, don't make the user remove+re-add Surge by hand:
+        // clear the stale entry ourselves and re-ask once (one click on Allow instead of a trip through System Settings)
+        setTimeout(() => { try { const { systemPreferences } = require('electron'); if (process.platform === 'darwin' && !systemPreferences.isTrustedAccessibilityClient(false)) {
+          log('accessibility lost after update → resetting stale TCC entry and re-asking');
+          const { execFile } = require('child_process');
+          execFile('tccutil', ['reset', 'Accessibility', 'app.surge.glow'], () => execFile('tccutil', ['reset', 'ListenEvent', 'app.surge.glow'], () => { try { systemPreferences.isTrustedAccessibilityClient(true); } catch {} ctx.fireGlow('warn', { hud: { text: 'Click Allow so keyboard & mouse sounds keep working', color: '#FFD60A' } }); }));
+        } } catch (e) { log('tcc reset failed', e.message); } }, 2500); } } catch {}
     const staged = path.join(updDir(), 'Surge.app');
     if (fs.existsSync(staged)) { const sv = stagedVersion(staged); if (sv && newer(sv, ctx.app.getVersion())) { state.staged = staged; state.status = 'ready'; state.latest = 'v' + sv; } else clearStaged(); }
     setTimeout(() => check(false), 3000);
