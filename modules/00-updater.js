@@ -12,6 +12,8 @@ let lastTag = null;
 // cheap: HEAD https://github.com/<repo>/releases/latest → Location: .../tag/vX.Y.Z (no API rate limit)
 function latestTagFast() { return sh('curl', ['-sI', '-o', '/dev/null', '-w', '%{redirect_url}', `https://github.com/${REPO}/releases/latest`], { timeout: 8000 }).then(u => (/\/tag\/([^\/\s]+)/.exec(u) || [])[1] || null).catch(() => null); }
 function get(url) { return sh('curl', ['-sL', '--fail', '-A', 'Surge-updater', '-H', 'Accept: application/vnd.github+json', url], { timeout: 20000 }).then(body => ({ status: 200, body })); }
+function stagedVersion(appPath) { try { const pl = fs.readFileSync(path.join(appPath, 'Contents', 'Info.plist'), 'utf8'); const v = /CFBundleShortVersionString<\/key>\s*<string>([^<]+)/.exec(pl)?.[1]; if (v) return v; } catch {} try { return require('child_process').execFileSync('defaults', ['read', path.join(appPath, 'Contents', 'Info.plist'), 'CFBundleShortVersionString']).toString().trim(); } catch { return null; } }
+function clearStaged(ctx) { try { fs.rmSync(path.join(ctx.app.getPath('userData'), 'update'), { recursive: true, force: true }); } catch {} state.staged = null; }
 function bundlePath(ctx) { const p = process.execPath; const i = p.indexOf('.app/Contents/MacOS/'); return i > 0 ? p.slice(0, i + 4) : null; }
 function sh(cmd, args, opts = {}) { return new Promise((res, rej) => execFile(cmd, args, { timeout: 600000, ...opts }, (e, out, err) => e ? rej(new Error(err || e.message)) : res(out))); }
 
@@ -62,7 +64,8 @@ module.exports = {
         let url = `https://github.com/${REPO}/releases/download/${latest}/${ZIP}`, isZip = true, p = await probe(url);
         if (!p.ok) { url = `https://github.com/${REPO}/releases/download/${latest}/${ASSET}`; isZip = false; p = await probe(url); }
         if (!p.ok) throw new Error('asset not ready yet');
-        state.latest = latest; state.url = url; state.isZip = isZip; state.size = p.size; state.status = 'available';
+        if (state.staged) { const sv = stagedVersion(state.staged); if (!sv || 'v' + sv !== latest.replace(/^v?/, 'v')) { log('discarding stale staged', sv); clearStaged(ctx); } }
+        state.latest = latest; state.url = url; state.isZip = isZip; state.size = p.size; state.status = state.staged ? 'ready' : 'available';
         log('available', latest, isZip ? 'zip' : 'dmg', state.size);
         ctx.setTray('updater', { title: '↑', menu: [{ label: `Update ${latest} available`, click: () => module.exports._install(ctx) }] });
         if (ctx.mod('updater').popup && (manual || Date.now() > snoozedUntil)) module.exports._show(ctx);
@@ -72,7 +75,8 @@ module.exports = {
     ctx.broadcast('updater:state', state); if (popup && !popup.isDestroyed()) popup.webContents.send('updater:state', { ...state, current: ctx.app.getVersion() }); return state;
   },
   async _download(ctx) {
-    if (!state.url || state.status === 'downloading' || state.staged) return;
+    if (!state.url || state.status === 'downloading' || state.status === 'unpacking') return;
+    if (state.staged) { const sv = stagedVersion(state.staged); if (sv && 'v' + sv === state.latest.replace(/^v?/, 'v')) { state.status = 'ready'; return; } clearStaged(ctx); }
     const dir = path.join(ctx.app.getPath('userData'), 'update'); fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
     const file = path.join(dir, state.isZip ? ZIP : ASSET), mnt = path.join(dir, 'mnt');
     const push = () => { ctx.broadcast('updater:state', state); if (popup && !popup.isDestroyed()) popup.webContents.send('updater:state', { ...state, current: ctx.app.getVersion() }); };
@@ -105,6 +109,7 @@ module.exports = {
   },
   async _install(ctx) {
     if (!state.staged) { if (state.status === 'available') await module.exports._download(ctx); if (!state.staged) return state; }
+    { const sv = stagedVersion(state.staged); if (!sv || !newer(sv, ctx.app.getVersion())) { clearStaged(ctx); state.status = 'error'; state.error = 'staged copy is not newer — re-downloading'; module.exports._check(ctx, true); return state; } }
     const target = bundlePath(ctx); if (!target) { state.status = 'error'; state.error = 'Not running from an .app bundle'; return state; }
     const script = path.join(ctx.app.getPath('userData'), 'update', 'swap.sh');
     const logf = path.join(ctx.app.getPath('logs'), 'update.log');
@@ -129,8 +134,7 @@ echo "=== done"
   start(ctx) {
     // a staged update from last session? finish it now, at launch, when nothing is lost
     const staged = path.join(ctx.app.getPath('userData'), 'update', 'Surge.app');
-    if (fs.existsSync(staged)) { try { const pl = fs.readFileSync(path.join(staged, 'Contents', 'Info.plist'), 'utf8'); const v = /CFBundleShortVersionString<\/key>\s*<string>([^<]+)/.exec(pl)?.[1]; if (!v || !newer(v, ctx.app.getVersion())) fs.rmSync(path.dirname(staged), { recursive: true, force: true }); } catch {} }
-    if (fs.existsSync(staged)) { state.staged = staged; state.status = 'ready'; state.latest = 'staged'; if (ctx.mod('updater').popup) setTimeout(() => module.exports._show(ctx), 4000); }
+    if (fs.existsSync(staged)) { const sv = stagedVersion(staged); if (sv && newer(sv, ctx.app.getVersion())) { state.staged = staged; state.status = 'ready'; state.latest = 'v' + sv; } else clearStaged(ctx); }
     setTimeout(() => module.exports._check(ctx, false), process.env.SURGE_FAST_CHECK ? 1500 : 8000);
     const { powerMonitor } = require('electron'); powerMonitor.on('resume', () => setTimeout(() => module.exports._check(ctx, false), 10000));
     timer = setInterval(() => module.exports._poll(ctx), Math.max(1, ctx.mod('updater').pollSeconds || 1) * 1000);
