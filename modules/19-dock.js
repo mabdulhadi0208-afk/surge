@@ -27,6 +27,8 @@ module.exports = {
     media: async (_ctx, cmd) => { for (const app of ['Spotify', 'Music']) { const running = await osa(`application "${app}" is running`); if (running === 'true') { await osa(`tell application "${app}" to ${cmd === 'next' ? 'next track' : cmd === 'prev' ? 'previous track' : 'playpause'}`); return true; } } return false; },
     volume: async (_ctx, v) => { await osa(`set volume output volume ${Math.round(v)}`); return true; },
     pin: (ctx, p) => { const s = ctx.mod('dock'); const pins = s.pinned.includes(p) ? s.pinned.filter(x => x !== p) : [...s.pinned, p]; ctx.applyPatch({ modules: { dock: { pinned: pins } } }); return pins; },
+    // the window is bigger than the pill (room for magnification/tooltip) — only the pill itself should catch clicks, the rest passes through to whatever is behind
+    hover: (_ctx, over) => { if (win && !win.isDestroyed()) win.setIgnoreMouseEvents(!over, { forward: true }); },
     resize: (_ctx, w) => { if (win && !win.isDestroyed()) { const [, h] = win.getSize(); win.setSize(Math.round(w), h, false); module.exports._place(); } },
   },
   _geom(ctx) {
@@ -107,6 +109,7 @@ module.exports = {
       webPreferences: { preload: path.join(__dirname, '..', 'preload.js'), contextIsolation: true, backgroundThrottling: false } });
     win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
     win.setAlwaysOnTop(true, 'floating');
+    win.setIgnoreMouseEvents(true, { forward: true });
     win.loadFile(path.join(__dirname, '..', 'dock.html'));
     win.webContents.on('did-finish-load', () => { win.webContents.send('settings:update', ctx.settings); module.exports._place(ctx); win.showInactive(); module.exports._tick(ctx); });
     win.on('closed', () => (win = null));

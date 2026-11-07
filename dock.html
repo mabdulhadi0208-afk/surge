@@ -72,6 +72,10 @@ async function refreshApps(){ const box=$('#apps'); if(!box) return; running=awa
   requestAnimationFrame(fit); }
 addEventListener('mousemove',e=>{ const d=S.modules?.dock||{}; const els=document.querySelectorAll('.ap'); if(!els.length) return; if(!d.magnify){ els.forEach(x=>x.style.transform=''); return; } const box=$('#apps').getBoundingClientRect(); const inside=e.clientY>box.top-30&&e.clientY<box.bottom+10; els.forEach(x=>{ const r=x.getBoundingClientRect(); const dx=Math.abs(e.clientX-(r.left+r.width/2)); const s=inside?1+Math.max(0,1-dx/140)*.5:1; x.style.transform=`scale(${s})`; }); });
 addEventListener('mouseleave',()=>document.querySelectorAll('.ap').forEach(x=>x.style.transform=''));
+// click-through everywhere except on the pill: tell main when the cursor enters/leaves it
+let overDock=false; function setOver(v){ if(v===overDock) return; overDock=v; api?.action('dock','hover',v); }
+document.addEventListener('mousemove',e=>setOver(!!e.target.closest('#dock')));
+document.addEventListener('mouseleave',()=>setOver(false));
 function tpl(id){
   switch(id){
     case 'apps': return `<div class="w apps" data-w="apps" id="apps"></div>`;
