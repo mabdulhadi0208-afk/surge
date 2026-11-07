@@ -21,6 +21,7 @@ Started as a charging glow. Now a menu-bar toolbox where every feature is an ind
 | Productivity | **Quick Notes** | Floating always-on-top scratchpad — ⌘⇧N |
 | System | **System Stats** | CPU / memory in the menu bar, warn glow when pegged |
 | System | **Auto Dark Mode** | Dark at night, light in the morning |
+| System | **Auto Update** | Polls GitHub Releases, downloads the DMG in the background, swaps the app and relaunches — works despite ad-hoc signing |
 | System | **Hotkeys** | ⌘⇧G glow · ⌘⇧N notes · ⌘⇧S spotlight · ⌘⇧K keyboard sounds · ⌘⇧C caffeine |
 
 All sounds are generated with WebAudio at runtime (no sample packs → no licensing, tiny app). All glows are drawn live by `engine.js`.
