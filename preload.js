@@ -12,7 +12,7 @@ contextBridge.exposeInMainWorld('surge', {
   preview: (kind) => ipcRenderer.send('glow:preview', kind),
   testSound: (sound, opts) => ipcRenderer.send('audio:test', sound, opts),
   close: () => ipcRenderer.send('win:close'), hide: () => ipcRenderer.send('win:hide'), minimize: () => ipcRenderer.send('win:minimize'),
-  quit: () => ipcRenderer.send('app:quit'), openSettings: () => ipcRenderer.send('open:settings'), toggleNotes: () => ipcRenderer.send('notes:toggle'), openExternal: (u) => ipcRenderer.send('open:external', u),
+  quit: () => ipcRenderer.send('app:quit'), openAccessibility: () => ipcRenderer.send('open:accessibility'), openInputMonitoring: () => ipcRenderer.send('open:inputmonitoring'), openSettings: () => ipcRenderer.send('open:settings'), toggleNotes: () => ipcRenderer.send('notes:toggle'), openExternal: (u) => ipcRenderer.send('open:external', u),
   notesLoad: () => ipcRenderer.invoke('notes:load'), notesSave: (t) => ipcRenderer.send('notes:save', t),
   platform: process.platform,
 });

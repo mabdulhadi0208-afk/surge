@@ -1,5 +1,5 @@
 // Surge — core. Loads modules, owns windows (overlay / settings / audio / notes), tray, settings.
-const { app, BrowserWindow, Tray, Menu, screen, ipcMain, nativeImage, shell, globalShortcut, powerSaveBlocker, clipboard, Notification, nativeTheme } = require('electron');
+const { app, BrowserWindow, Tray, Menu, screen, ipcMain, nativeImage, shell, globalShortcut, powerSaveBlocker, clipboard, Notification, nativeTheme, dialog, systemPreferences } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -33,14 +33,25 @@ try {
 } catch (e) { setTimeout(() => log('uiohook-napi not available:', e.message), 0); }
 const hookListeners = { keydown: new Set(), keyup: new Set(), mousedown: new Set(), mouseup: new Set(), wheel: new Set(), mousemove: new Set() };
 let hookStarted = false;
+let hookWired = false, hookRetry = null, axPrompted = false;
+function accessibilityOK(prompt) { if (process.platform !== 'darwin') return true; try { return systemPreferences.isTrustedAccessibilityClient(!!prompt); } catch { return true; } }
 function ensureHook() {
   if (!hook || hookStarted) return hookStarted;
+  if (!accessibilityOK(!axPrompted)) {
+    // macOS shows its own "Surge would like to control this computer" prompt the first time. Keep polling until the user grants it.
+    axPrompted = true; hookState = 'needs-accessibility';
+    if (!hookRetry) hookRetry = setInterval(() => { if (accessibilityOK(false)) { clearInterval(hookRetry); hookRetry = null; ensureHook(); ctx.broadcast('settings:update', settings); } }, 3000);
+    return false;
+  }
   try {
-    for (const ev of Object.keys(hookListeners)) hook.on(ev, (e) => hookListeners[ev].forEach(fn => { try { fn(e); } catch (err) { console.error(err); } }));
+    if (!hookWired) { for (const ev of Object.keys(hookListeners)) hook.on(ev, (e) => hookListeners[ev].forEach(fn => { try { fn(e); } catch (err) { console.error(err); } })); hookWired = true; }
     hook.start(); hookStarted = true; hookState = 'running'; log('hook started');
-  } catch (e) { hookState = 'error'; console.error('hook start failed', e); }
+    fireGlow('hud', { hud: { text: 'Keyboard & mouse hook active', color: '#00FF85' } });
+  } catch (e) { hookState = 'error'; console.error('hook start failed', e.message); }
   return hookStarted;
 }
+ipcMain.on('open:accessibility', () => shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility'));
+ipcMain.on('open:inputmonitoring', () => shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent'));
 function onInput(ev, fn) { hookListeners[ev].add(fn); ensureHook(); return () => hookListeners[ev].delete(fn); }
 
 /* ------------------------------------------------------------------ overlay windows (one per display) */
@@ -232,8 +243,19 @@ ipcMain.on('notes:save', (_e, text) => { try { fs.writeFileSync(notesPath(), Str
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) app.quit();
 app.on('second-instance', () => openSettings());
-app.whenReady().then(() => {
-  log('boot', app.getVersion(), process.platform, process.arch, 'electron', process.versions.electron);
+app.whenReady().then(async () => {
+  log('boot', app.getVersion(), process.platform, process.arch, 'electron', process.versions.electron, process.execPath);
+  if (process.platform === 'darwin' && app.isPackaged) {
+    const translocated = process.execPath.includes('/AppTranslocation/');
+    if (translocated || !app.isInApplicationsFolder()) {
+      const r = await dialog.showMessageBox({ type: 'info', buttons: ['Move to Applications', 'Not now'], defaultId: 0, cancelId: 1, message: 'Move Surge to your Applications folder?',
+        detail: translocated ? 'macOS is running Surge from a temporary, read-only location (this happens when you open it from the DMG). Permissions and auto-updates only work from Applications.' : 'Surge works best — and can update itself — when it lives in Applications.' });
+      if (r.response === 0) { try { if (app.moveToApplicationsFolder({ conflictHandler: () => true })) return; } catch (e) { log('move failed', e.message); } }
+    } else {
+      // kill the quarantine flag so Gatekeeper never translocates us again
+      execFile('xattr', ['-cr', process.execPath.slice(0, process.execPath.indexOf('.app/') + 4)], () => {});
+    }
+  }
   for (const f of fs.readdirSync(path.join(__dirname, 'modules')).filter(f => f.endsWith('.js')).sort()) {
     try { const m = require(path.join(__dirname, 'modules', f)); MODULES[m.id] = m; } catch (e) { console.error('module load', f, e); }
   }

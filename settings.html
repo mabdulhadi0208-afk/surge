@@ -239,12 +239,13 @@ function paint(){
       if (f.t==='soundpicker' && el._render && !el.contains(document.activeElement)) el._render();
       if (f.t==='widgets' && el._render) el._render();
     }
-    const h = document.getElementById('hook-'+m.id); if (h) h.textContent = hook==='running' ? 'Input monitoring: active' : hook==='ready' ? 'Turns on when enabled — macOS will ask for Input Monitoring permission once.' : hook==='error' ? 'Input Monitoring blocked. System Settings → Privacy & Security → Input Monitoring → enable Surge, then relaunch.' : 'Global input hook not installed in this build (uiohook-napi). Run npm install on a Mac.';
+    const h = document.getElementById('hook-'+m.id); if (h) h.textContent = hook==='running' ? 'Input monitoring: active' : hook==='ready' ? 'Turns on when enabled — macOS will ask for Input Monitoring permission once.' : hook==='needs-accessibility' ? 'Waiting for permission: System Settings → Privacy & Security → Accessibility → turn on Surge. Starts automatically once granted.' : hook==='error' ? 'Hook failed to start. Check Accessibility and Input Monitoring for Surge, then relaunch.' : 'Global input hook not installed in this build (uiohook-napi). Run npm install on a Mac.';
   }
   $('#onCount').textContent = on;
   const mv = $('#master'); if (document.activeElement !== mv) { mv.value = S.masterVolume ?? 1; mv.style.setProperty('--p', (S.masterVolume ?? 1)*100+'%'); }
   $('#vol').classList.toggle('muted', !!S.muted); $('#mute').textContent = S.muted ? '🔇' : '🔊';
-  const note = $('#hookNote'); note.classList.toggle('show', hook==='error' || hook==='unavailable'); note.textContent = hook==='error' ? 'Keyboard/mouse modules need Input Monitoring: System Settings → Privacy & Security → Input Monitoring → Surge. Then relaunch.' : hook==='unavailable' ? 'Keyboard/mouse modules are unavailable in this build (native hook missing).' : '';
+  const note = $('#hookNote'); note.classList.toggle('show', hook==='error' || hook==='unavailable' || hook==='needs-accessibility'); note.innerHTML = hook==='needs-accessibility' ? 'Keyboard &amp; mouse modules need <b>Accessibility</b> permission. <a id="axBtn" style="color:#FFD37A;text-decoration:underline;cursor:pointer">Open Accessibility settings</a> → turn on Surge. They start automatically once granted.' : hook==='error' ? 'Hook failed to start. Enable Surge under Privacy &amp; Security → <a id="axBtn" style="color:#FFD37A;text-decoration:underline;cursor:pointer">Accessibility</a> and <a id="imBtn" style="color:#FFD37A;text-decoration:underline;cursor:pointer">Input Monitoring</a>, then relaunch.' : hook==='unavailable' ? 'Keyboard/mouse modules are unavailable in this build (native hook missing).' : '';
+  const ax=$('#axBtn'); if(ax) ax.onclick=()=>api?.openAccessibility(); const im=$('#imBtn'); if(im) im.onclick=()=>api?.openInputMonitoring();
   const g = S.modules.glow || {}; document.documentElement.style.setProperty('--accent', g.theme==='ember' ? '#FF9500' : g.theme==='ice' ? '#7DF9FF' : g.theme==='solid' ? g.color : '#00FF85');
   mini?.assign(g);
 }
