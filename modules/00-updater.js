@@ -126,7 +126,7 @@ async function poll() {
 module.exports = {
   id: 'updater', name: 'Auto Update', icon: 'refresh', group: 'System', defaultEnabled: true,
   desc: 'Watches GitHub for new versions, downloads them in the background, verifies them, and installs in one click.',
-  defaults: { auto: true, popup: true, pollSeconds: 5 },
+  defaults: { auto: true, popup: true, pollSeconds: 1 },
   schema: [
     { k: 'auto', t: 'toggle', label: 'Download automatically', hint: 'New versions download in the background; you choose when to restart' },
     { k: 'popup', t: 'toggle', label: 'Show the update card', hint: 'A floating card appears on top of whatever you\'re doing' },
@@ -145,10 +145,10 @@ module.exports = {
     const staged = path.join(updDir(), 'Surge.app');
     if (fs.existsSync(staged)) { const sv = stagedVersion(staged); if (sv && newer(sv, ctx.app.getVersion())) { state.staged = staged; state.status = 'ready'; state.latest = 'v' + sv; } else clearStaged(); }
     setTimeout(() => check(false), 3000);
-    timer = setInterval(poll, Math.max(1, ctx.mod('updater').pollSeconds || 5) * 1000);
+    timer = setInterval(poll, Math.max(1, ctx.mod('updater').pollSeconds || 1) * 1000);
     try { const { powerMonitor } = require('electron'); powerMonitor.on('resume', () => setTimeout(() => check(false), 8000)); } catch {}
   },
-  onSettings(ctx) { clearInterval(timer); timer = setInterval(poll, Math.max(1, ctx.mod('updater').pollSeconds || 5) * 1000); },
+  onSettings(ctx) { clearInterval(timer); timer = setInterval(poll, Math.max(1, ctx.mod('updater').pollSeconds || 1) * 1000); },
   stop(ctx) { clearInterval(timer); ctx.setTray('updater', { title: '' }); if (popup && !popup.isDestroyed()) popup.destroy(); popup = null; },
   _check: (ctx, manual) => check(!!manual),
 };

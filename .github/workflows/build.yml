@@ -12,9 +12,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 20 }
+        with: { node-version: 20, cache: npm }
       - run: pip3 install setuptools >/dev/null 2>&1 || true
-      - run: npm install --no-audit --no-fund
+      - run: npm ci --no-audit --no-fund --prefer-offline || npm install --no-audit --no-fund
       - name: Import signing certificate (stable identity so macOS permissions survive updates)
         env:
           P12_BASE64: ${{ secrets.MAC_CERT_P12 }}
