@@ -234,6 +234,9 @@ ipcMain.handle('apps:installed', async () => { const dirs = ['/Applications', '/
   for (const d of dirs) { try { for (const f of fs.readdirSync(d)) if (f.endsWith('.app')) out.push({ name: f.replace(/\.app$/, ''), path: path.join(d, f) }); } catch {} }
   out.sort((a, b) => a.name.localeCompare(b.name)); return out; });
 ipcMain.handle('apps:icon', (_e, p) => appIcon(p));
+ipcMain.on('apps:reveal', (_e, p) => { if (typeof p === 'string' && p.endsWith('.app')) execFile('open', ['-R', p], () => {}); });
+ipcMain.on('apps:forcequit', (_e, pid) => { if (Number.isInteger(pid) && pid > 1) { try { process.kill(pid, 'SIGKILL'); } catch {} } });
+ipcMain.on('apps:openwith', (_e, p, files) => { if (typeof p === 'string' && p.endsWith('.app') && Array.isArray(files)) execFile('open', ['-a', p, ...files.filter(f => typeof f === 'string').slice(0, 50)], () => {}); });
 ipcMain.on('apps:open', (_e, p) => { execFile('open', ['-a', p], (err) => err && execFile('open', [p], () => {})); });
 ipcMain.on('apps:activate', (_e, bundleId, p) => { if (p) execFile('open', ['-a', p], (err) => err && bundleId && execFile('open', ['-b', bundleId], () => {})); else if (bundleId) execFile('open', ['-b', bundleId], () => {}); });
 ipcMain.on('apps:quit', (_e, bundleId, pid) => { if (pid) { try { process.kill(pid, 'SIGTERM'); } catch {} } else if (bundleId) execFile('osascript', ['-e', `tell application id "${bundleId}" to quit`], () => {}); });

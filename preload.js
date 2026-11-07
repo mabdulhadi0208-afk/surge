@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 contextBridge.exposeInMainWorld('surge', {
   on: (ch, cb) => ipcRenderer.on(ch, (_e, p) => cb(p)),
   done: () => ipcRenderer.send('glow:done'),
@@ -15,6 +15,8 @@ contextBridge.exposeInMainWorld('surge', {
   quit: () => ipcRenderer.send('app:quit'), openAccessibility: () => ipcRenderer.send('open:accessibility'), openInputMonitoring: () => ipcRenderer.send('open:inputmonitoring'), openSettings: () => ipcRenderer.send('open:settings'), toggleNotes: () => ipcRenderer.send('notes:toggle'), openExternal: (u) => ipcRenderer.send('open:external', u),
   appsRunning: () => ipcRenderer.invoke('apps:running'), appsInstalled: () => ipcRenderer.invoke('apps:installed'), appIcon: (p) => ipcRenderer.invoke('apps:icon', p),
   appOpen: (p) => ipcRenderer.send('apps:open', p), appActivate: (b, p) => ipcRenderer.send('apps:activate', b, p), appQuit: (b, pid) => ipcRenderer.send('apps:quit', b, pid),
+  appReveal: (p) => ipcRenderer.send('apps:reveal', p), appForceQuit: (pid) => ipcRenderer.send('apps:forcequit', pid), appOpenWith: (p, files) => ipcRenderer.send('apps:openwith', p, files),
+  pathFor: (f) => { try { return webUtils.getPathForFile(f); } catch { return f?.path || null; } },
   notesLoad: () => ipcRenderer.invoke('notes:load'), notesSave: (t) => ipcRenderer.send('notes:save', t),
   platform: process.platform,
 });
