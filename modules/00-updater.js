@@ -4,7 +4,7 @@ const { execFile, spawn } = require('child_process');
 const { BrowserWindow, screen } = require('electron');
 let popup = null, snoozedUntil = 0, polling = false, misses = 0;
 const fs = require('fs'); const path = require('path');
-const REPO = 'mabdulhadi0208-afk/surge', ASSET = 'Surge-mac-arm64.dmg';
+const REPO = 'mabdulhadi0208-afk/surge', ASSET = 'Surge-mac-arm64.dmg', ZIP = 'Surge-mac-arm64.zip';
 let timer = null, state = { status: 'idle', latest: null, url: null, progress: 0, error: null, staged: null };
 const semver = v => String(v).replace(/^v/, '').split('.').map(n => parseInt(n, 10) || 0);
 const newer = (a, b) => { const A = semver(a), B = semver(b); for (let i = 0; i < 3; i++) { if ((A[i] || 0) > (B[i] || 0)) return true; if ((A[i] || 0) < (B[i] || 0)) return false; } return false; };
@@ -55,10 +55,10 @@ module.exports = {
       state.status = 'checking'; state.error = null;
       const r = await get(`https://api.github.com/repos/${REPO}/releases/latest`);
       if (r.status !== 200) throw new Error('GitHub ' + r.status);
-      const rel = JSON.parse(r.body); const asset = (rel.assets || []).find(a => a.name === ASSET);
+      const rel = JSON.parse(r.body); const asset = (rel.assets || []).find(a => a.name === ZIP) || (rel.assets || []).find(a => a.name === ASSET);
       const cur = ctx.app.getVersion(), latest = rel.tag_name;
       if (asset && newer(latest, cur)) {
-        state.latest = latest; state.url = asset.browser_download_url; state.status = 'available';
+        state.latest = latest; state.url = asset.browser_download_url; state.size = asset.size; state.isZip = asset.name.endsWith('.zip'); state.status = 'available';
         ctx.setTray('updater', { title: '↑', menu: [{ label: `Update ${latest} available`, click: () => module.exports._install(ctx) }] });
         if (ctx.mod('updater').popup && (manual || Date.now() > snoozedUntil)) module.exports._show(ctx);
         if (ctx.mod('updater').auto) module.exports._download(ctx); else if (manual) ctx.fireGlow('hud', { hud: { text: `Surge ${latest} available`, color: '#7DF9FF' } });
@@ -69,22 +69,33 @@ module.exports = {
   async _download(ctx) {
     if (!state.url || state.status === 'downloading' || state.staged) return;
     const dir = path.join(ctx.app.getPath('userData'), 'update'); fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
-    const dmg = path.join(dir, ASSET), mnt = path.join(dir, 'mnt');
+    const file = path.join(dir, state.isZip ? ZIP : ASSET), mnt = path.join(dir, 'mnt');
+    const push = () => { ctx.broadcast('updater:state', state); if (popup && !popup.isDestroyed()) popup.webContents.send('updater:state', { ...state, current: ctx.app.getVersion() }); };
+    let prog = null;
     try {
-      state.status = 'downloading'; ctx.broadcast('updater:state', state);
-      await sh('curl', ['-L', '--fail', '--silent', '--show-error', '-o', dmg, state.url]);
-      fs.mkdirSync(mnt, { recursive: true });
-      await sh('hdiutil', ['attach', '-nobrowse', '-quiet', '-mountpoint', mnt, dmg]);
-      const app = fs.readdirSync(mnt).find(f => f.endsWith('.app')); if (!app) throw new Error('No .app in DMG');
-      await sh('cp', ['-R', path.join(mnt, app), path.join(dir, 'Surge.app')]);
-      await sh('hdiutil', ['detach', '-quiet', mnt]).catch(() => {}); fs.rmSync(dmg, { force: true });
+      state.status = 'downloading'; state.progress = 0; push();
+      prog = setInterval(() => { try { const s = fs.statSync(file).size; if (state.size) state.progress = Math.min(99, Math.round(s / state.size * 100)); push(); } catch {} }, 250);
+      await sh('curl', ['-L', '--fail', '--silent', '--show-error', '-o', file, state.url]);
+      clearInterval(prog); prog = null; state.progress = 100; state.status = 'unpacking'; push();
+      if (state.isZip) {
+        await sh('ditto', ['-x', '-k', file, dir]);                       // fast native unzip, one copy
+        const app = fs.readdirSync(dir).find(f => f.endsWith('.app')); if (!app) throw new Error('No .app in zip');
+        if (app !== 'Surge.app') fs.renameSync(path.join(dir, app), path.join(dir, 'Surge.app'));
+      } else {
+        fs.mkdirSync(mnt, { recursive: true });
+        await sh('hdiutil', ['attach', '-nobrowse', '-quiet', '-mountpoint', mnt, file]);
+        const app = fs.readdirSync(mnt).find(f => f.endsWith('.app')); if (!app) throw new Error('No .app in DMG');
+        await sh('ditto', [path.join(mnt, app), path.join(dir, 'Surge.app')]);
+        await sh('hdiutil', ['detach', '-quiet', mnt]).catch(() => {});
+      }
+      fs.rmSync(file, { force: true });
       await sh('xattr', ['-cr', path.join(dir, 'Surge.app')]).catch(() => {});
-      state.staged = path.join(dir, 'Surge.app'); state.status = 'ready'; if (ctx.mod('updater').popup && Date.now() > snoozedUntil) module.exports._show(ctx);
+      state.staged = path.join(dir, 'Surge.app'); state.status = 'ready';
       ctx.setTray('updater', { title: '↑', menu: [{ label: `Restart to update to ${state.latest}`, click: () => module.exports._install(ctx) }] });
-      ctx.fireGlow('hud', { hud: { text: `Surge ${state.latest} ready — restart to update`, color: '#00FF85' } });
-      ctx.notify('Surge update ready', `${state.latest} is downloaded. Open the menu-bar panel to restart.`);
-    } catch (e) { state.status = 'error'; state.error = e.message; try { await sh('hdiutil', ['detach', '-quiet', mnt]); } catch {} }
-    ctx.broadcast('updater:state', state); if (popup && !popup.isDestroyed()) popup.webContents.send('updater:state', { ...state, current: ctx.app.getVersion() });
+      if (ctx.mod('updater').popup && Date.now() > snoozedUntil) module.exports._show(ctx);
+      ctx.notify('Surge update ready', `${state.latest} is downloaded. Click Restart on the card.`);
+    } catch (e) { clearInterval(prog); state.status = 'error'; state.error = e.message; try { await sh('hdiutil', ['detach', '-quiet', mnt]); } catch {} }
+    push();
   },
   async _install(ctx) {
     if (!state.staged) { if (state.status === 'available') await module.exports._download(ctx); if (!state.staged) return state; }
@@ -95,18 +106,18 @@ module.exports = {
 exec >> "${logf}" 2>&1
 echo "=== $(date) swap start"
 NEW="${state.staged}"; APP="${target}"
-for i in $(seq 1 150); do pgrep -x Surge >/dev/null || break; sleep 0.2; done
-pkill -x Surge 2>/dev/null; sleep 0.5
+for i in $(seq 1 50); do pgrep -x Surge >/dev/null || break; sleep 0.1; done
+pkill -x Surge 2>/dev/null; sleep 0.3
 rm -rf "$APP.old"; mv "$APP" "$APP.old" || { echo "mv failed"; exit 1; }
-if ditto "$NEW" "$APP"; then xattr -cr "$APP" 2>/dev/null; echo "copied"; else echo "copy failed, rolling back"; rm -rf "$APP"; mv "$APP.old" "$APP"; fi
-"$APP/Contents/MacOS/Surge" >/dev/null 2>&1 & disown; sleep 4
+if mv "$NEW" "$APP" 2>/dev/null || ditto "$NEW" "$APP"; then xattr -cr "$APP" 2>/dev/null; echo "swapped"; else echo "swap failed, rolling back"; rm -rf "$APP"; mv "$APP.old" "$APP"; fi
+"$APP/Contents/MacOS/Surge" >/dev/null 2>&1 & disown; sleep 2.5
 if pgrep -x Surge >/dev/null; then echo "launched OK"; rm -rf "$APP.old" "$NEW"; else echo "launch failed, restoring old"; rm -rf "$APP"; mv "$APP.old" "$APP" 2>/dev/null; "$APP/Contents/MacOS/Surge" >/dev/null 2>&1 & disown; fi
 echo "=== done"
 `); fs.chmodSync(script, 0o755);
     state.status = 'installing'; ctx.broadcast('updater:state', state);
     const child = spawn('/bin/bash', [script], { detached: true, stdio: 'ignore' }); child.unref();
     try { require('fs').appendFileSync(path.join(ctx.app.getPath('logs'), 'surge.log'), `[${new Date().toISOString()}] updater: installing ${state.latest} via ${script}\n`); } catch {}
-    setTimeout(() => ctx.app.exit(0), 400);
+    setTimeout(() => ctx.app.exit(0), 150);
     return state;
   },
   start(ctx) {

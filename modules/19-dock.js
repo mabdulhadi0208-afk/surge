@@ -37,6 +37,7 @@ module.exports = {
     win.setPosition(x, y, false);
   },
   _macDock(hide) {
+    try { const cur = require('child_process').execFileSync('defaults', ['read', 'com.apple.dock', 'autohide-delay']).toString().trim(); if ((hide && cur === '1000') || (!hide && cur !== '1000')) { macDockHidden = hide; return; } } catch { if (!hide) { macDockHidden = false; return; } }
     const cmds = hide
       ? [['defaults', ['write', 'com.apple.dock', 'autohide', '-bool', 'true']], ['defaults', ['write', 'com.apple.dock', 'autohide-delay', '-float', '1000']], ['defaults', ['write', 'com.apple.dock', 'autohide-time-modifier', '-float', '0']]]
       : [['defaults', ['write', 'com.apple.dock', 'autohide', '-bool', 'false']], ['defaults', ['delete', 'com.apple.dock', 'autohide-delay']], ['defaults', ['delete', 'com.apple.dock', 'autohide-time-modifier']]];

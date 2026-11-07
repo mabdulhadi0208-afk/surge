@@ -190,7 +190,7 @@ ipcMain.on('apps:activate', (_e, bundleId) => execFile('osascript', ['-e', `tell
 ipcMain.on('apps:quit', (_e, bundleId) => execFile('osascript', ['-e', `tell application id "${bundleId}" to quit`], () => {}));
 
 /* ------------------------------------------------------------------ popover (click the menu-bar bolt) */
-let popWin = null;
+let popWin = null, popHidAt = 0;
 function ensurePopover() {
   if (popWin && !popWin.isDestroyed()) return popWin;
   popWin = new BrowserWindow({ width: 380, height: 500, show: false, frame: false, transparent: true, hasShadow: false, resizable: false, movable: false,
@@ -199,13 +199,14 @@ function ensurePopover() {
   popWin.loadFile(path.join(__dirname, 'popover.html'));
   popWin.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   popWin.setAlwaysOnTop(true, 'pop-up-menu');
-  popWin.on('blur', () => { if (popWin && !popWin.isDestroyed() && !popWin.webContents.isDevToolsOpened()) popWin.hide(); });
+  popWin.on('blur', () => { if (popWin && !popWin.isDestroyed() && !popWin.webContents.isDevToolsOpened()) { popWin.hide(); popHidAt = Date.now(); } });
   popWin.webContents.on('console-message', (_e, lvl, msg) => lvl >= 2 && log('popover', msg));
   return popWin;
 }
 function togglePopover() {
   const w = ensurePopover();
   if (w.isVisible()) { w.hide(); return; }
+  if (Date.now() - popHidAt < 250) return;
   const b = tray.getBounds(); const d = screen.getDisplayNearestPoint({ x: b.x, y: b.y });
   const [pw, ph] = w.getSize();
   let x = Math.round(b.x + b.width / 2 - pw / 2); const y = Math.round(b.y + b.height + 4);

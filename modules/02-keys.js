@@ -15,15 +15,15 @@ module.exports = {
   ],
   actions: { stats: () => stats.today },
   start(ctx) {
-    const down = new Set();
+    const down = new Map();
     off.push(ctx.onInput('keydown', e => {
-      if (down.has(e.keycode)) return; down.add(e.keycode);
+      const n0 = Date.now(); if (n0 - (down.get(e.keycode) || 0) < 60) return; down.set(e.keycode, n0);
       const s = ctx.mod('keys'); const now = Date.now(); if (now - last < 10) return; last = now;
       if (stats.day !== dayKey()) { stats.day = dayKey(); stats.today = 0; } stats.today++;
       const kind = e.keycode === 57 && s.spaceThock ? 'space' : e.keycode === 28 ? 'enter' : 'key';
       ctx.play('key', { preset: s.preset, volume: s.volume, variance: s.pitchVariance, kind });
     }));
-    off.push(ctx.onInput('keyup', e => { down.delete(e.keycode); const s = ctx.mod('keys'); if (s.releaseSound) ctx.play('key', { preset: s.preset, volume: s.volume * .5, kind: 'up' }); }));
+    off.push(ctx.onInput('keyup', e => { down.set(e.keycode, 0); const s = ctx.mod('keys'); if (s.releaseSound) ctx.play('key', { preset: s.preset, volume: s.volume * .5, kind: 'up' }); }));
   },
   stop() { off.forEach(f => f()); off = []; },
 };

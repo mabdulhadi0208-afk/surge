@@ -6,7 +6,7 @@
   .ic{width:52px;height:52px;border-radius:16px;background:rgba(0,255,133,.14);display:grid;place-items:center;flex:none} .ic svg{width:26px;height:26px;stroke:var(--a);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;animation:spin 2.4s linear infinite} .ready .ic svg{animation:none}
   @keyframes spin{to{transform:rotate(1turn)}}
   .t{flex:1;min-width:0} .t b{font-size:16px;white-space:nowrap;display:block;letter-spacing:-.2px} .t small{color:#9a9aa6;display:block;margin-top:2px}
-  .bar{height:4px;border-radius:2px;background:rgba(255,255,255,.1);margin-top:8px;overflow:hidden} .bar i{display:block;height:100%;width:30%;border-radius:2px;background:var(--a);animation:slide 1.2s ease-in-out infinite} .ready .bar{display:none}
+  .bar{height:4px;border-radius:2px;background:rgba(255,255,255,.1);margin-top:8px;overflow:hidden} .bar i{display:block;height:100%;width:0;border-radius:2px;background:var(--a);transition:width .25s} .ready .bar{display:none}
   @keyframes slide{0%{transform:translateX(-100%)}100%{transform:translateX(400%)}}
   .btn{all:unset;cursor:pointer;padding:11px 18px;border-radius:999px;font-weight:700;font-size:13px;background:linear-gradient(135deg,var(--a),var(--b));color:#06110a;box-shadow:0 10px 30px -8px var(--a);transition:transform .3s var(--spring);white-space:nowrap} .btn:hover{transform:translateY(-1px) scale(1.03)} .btn:active{transform:scale(.95)} .btn[disabled]{opacity:.5;pointer-events:none}
   .later{all:unset;cursor:pointer;color:#9a9aa6;font-size:12px;padding:8px 10px;border-radius:9px} .later:hover{background:rgba(255,255,255,.08);color:#fff}
@@ -14,16 +14,17 @@
 </style></head><body>
 <div class="card" id="card">
   <div class="ic drag"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg></div>
-  <div class="t drag"><b id="title">Update Surge</b><small id="sub">A new version is available</small><div class="bar"><i></i></div></div>
+  <div class="t drag"><b id="title">Update Surge</b><small id="sub">A new version is available</small><div class="bar"><i id="bar"></i></div></div>
   <button class="later" id="later">Later</button>
   <button class="btn" id="go" disabled>Downloading…</button>
 </div>
 <script>
 const $=s=>document.querySelector(s), api=window.surge;
 function paint(u){ const c=$('#card'); c.classList.toggle('ready',u.status==='ready');
-  $('#title').textContent = u.status==='ready' ? `Surge ${u.latest} is ready` : u.status==='downloading' ? `Downloading Surge ${u.latest}…` : u.status==='error' ? 'Update failed' : `Update Surge to ${u.latest}`;
-  $('#sub').textContent = u.status==='ready' ? 'Restart now to install — takes 2 seconds.' : u.status==='downloading' ? 'In the background. Keep working.' : u.status==='error' ? (u.error||'Try again') : `You're on ${u.current}.`;
-  const b=$('#go'); if(u.status==='ready'){ b.textContent='Restart & update'; b.disabled=false; } else if(u.status==='downloading'){ b.textContent='Downloading…'; b.disabled=true; } else if(u.status==='error'){ b.textContent='Retry'; b.disabled=false; } else { b.textContent='Update now'; b.disabled=false; } }
+  $('#bar').style.width=(u.status==='downloading'?(u.progress||0):u.status==='unpacking'?100:0)+'%';
+  $('#title').textContent = u.status==='ready' ? `Surge ${u.latest} is ready` : u.status==='unpacking' ? `Unpacking Surge ${u.latest}…` : u.status==='downloading' ? `Downloading Surge ${u.latest}… ${u.progress||0}%` : u.status==='error' ? 'Update failed' : `Update Surge to ${u.latest}`;
+  $('#sub').textContent = u.status==='ready' ? 'Restart now — about 3 seconds.' : (u.status==='downloading'||u.status==='unpacking') ? 'In the background. Keep working.' : u.status==='error' ? (u.error||'Try again') : `You're on ${u.current}.`;
+  const b=$('#go'); if(u.status==='ready'){ b.textContent='Restart & update'; b.disabled=false; } else if(u.status==='downloading'||u.status==='unpacking'){ b.textContent=u.status==='unpacking'?'Unpacking…':`${u.progress||0}%`; b.disabled=true; } else if(u.status==='error'){ b.textContent='Retry'; b.disabled=false; } else { b.textContent='Update now'; b.disabled=false; } }
 $('#go').onclick=async()=>{ const u=await api?.action('updater','state'); if(u?.status==='ready') api?.action('updater','install'); else { $('#go').disabled=true; $('#go').textContent='Downloading…'; api?.action('updater','download'); } };
 $('#later').onclick=()=>api?.action('updater','later');
 (async()=>{ paint(await api?.action('updater','state')||{}); api?.on('updater:state',paint); })();
