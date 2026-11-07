@@ -67,12 +67,25 @@ module.exports = {
       ctx.applyPatch({ modules: { dock: { hideMacDock: false } } }); return false; }
     return true;
   },
-  _macDock(hide) {
-    try { const cur = require('child_process').execFileSync('defaults', ['read', 'com.apple.dock', 'autohide-delay']).toString().trim(); if ((hide && cur === '1000') || (!hide && cur !== '1000')) { macDockHidden = hide; return; } } catch { if (!hide) { macDockHidden = false; return; } }
-    const cmds = hide
-      ? [['osascript', ['-e', 'tell application "System Events" to set autohide of dock preferences to true']], ['defaults', ['write', 'com.apple.dock', 'autohide-delay', '-float', '1000']], ['defaults', ['write', 'com.apple.dock', 'autohide-time-modifier', '-float', '0']]]
-      : [['osascript', ['-e', 'tell application "System Events" to set autohide of dock preferences to false']], ['defaults', ['delete', 'com.apple.dock', 'autohide-delay']], ['defaults', ['delete', 'com.apple.dock', 'autohide-time-modifier']]];
-    const run = (i) => { if (i >= cmds.length) return execFile('killall', ['Dock'], () => {}); execFile(cmds[i][0], cmds[i][1], () => run(i + 1)); }; run(0);
+  _macDock(hide, ctx) {
+    const edge = ((ctx || module.exports._ctx)?.mod('dock')?.edge) || 'bottom';
+    const log = (m) => { try { require('fs').appendFileSync(path.join((ctx || module.exports._ctx).app.getPath('logs'), 'surge.log'), `[${new Date().toISOString()}] dock: ${m}\n`); } catch {} };
+    const cmds = hide ? [
+        ['defaults', ['write', 'com.apple.dock', 'autohide', '-bool', 'true']],
+        ['defaults', ['write', 'com.apple.dock', 'autohide-delay', '-float', '1000']],
+        ['defaults', ['write', 'com.apple.dock', 'autohide-time-modifier', '-float', '0']],
+        ['defaults', ['write', 'com.apple.dock', 'orientation', '-string', edge === 'top' ? 'bottom' : 'left']],   // park Apple's Dock on another edge
+        ['defaults', ['write', 'com.apple.dock', 'tilesize', '-int', '16']],
+        ['osascript', ['-e', 'tell application "System Events" to set autohide of dock preferences to true']],
+      ] : [
+        ['defaults', ['write', 'com.apple.dock', 'autohide', '-bool', 'false']],
+        ['defaults', ['delete', 'com.apple.dock', 'autohide-delay']],
+        ['defaults', ['delete', 'com.apple.dock', 'autohide-time-modifier']],
+        ['defaults', ['write', 'com.apple.dock', 'orientation', '-string', 'bottom']],
+        ['defaults', ['delete', 'com.apple.dock', 'tilesize']],
+        ['osascript', ['-e', 'tell application "System Events" to set autohide of dock preferences to false']],
+      ];
+    const run = (i) => { if (i >= cmds.length) return execFile('killall', ['Dock'], () => setTimeout(() => execFile('defaults', ['read', 'com.apple.dock', 'autohide-delay'], (e, o) => log(`macOS Dock ${hide ? 'hidden' : 'restored'} (delay=${(o || '').trim() || 'default'})`)), 1500)); execFile(cmds[i][0], cmds[i][1], () => run(i + 1)); }; run(0);
     macDockHidden = hide;
   },
   _toggle(ctx) { if (!win || win.isDestroyed()) return; win.isVisible() ? win.hide() : win.showInactive(); },
@@ -100,9 +113,9 @@ module.exports = {
     poll = setInterval(() => module.exports._tick(ctx), 2000);
     try { ctx.globalShortcut.register('CommandOrControl+Shift+D', () => module.exports._toggle(ctx)); } catch {}
     if (!module.exports._dispHooked) { module.exports._dispHooked = true; screen.on('display-metrics-changed', () => module.exports._place(ctx)); }
-    if (ctx.mod('dock').hideMacDock && !macDockHidden) module.exports._confirmMacDock(ctx).then(ok => ok && module.exports._macDock(true));
+    if (ctx.mod('dock').hideMacDock && !macDockHidden) module.exports._confirmMacDock(ctx).then(ok => ok && module.exports._macDock(true, ctx));
     edgePoll = setInterval(() => module.exports._edgeTick(ctx), 60);
   },
-  onSettings(ctx) { module.exports._place(ctx); const h = !!ctx.mod('dock').hideMacDock; if (h && !macDockHidden) module.exports._confirmMacDock(ctx).then(ok => ok && module.exports._macDock(true)); else if (!h && macDockHidden) module.exports._macDock(false); if (win && !win.isDestroyed()) win.webContents.send('settings:update', ctx.settings); },
-  stop(ctx) { clearInterval(poll); clearInterval(edgePoll); clearInterval(animT); clearTimeout(hideT); if (macDockHidden) module.exports._macDock(false); try { ctx.globalShortcut.unregister('CommandOrControl+Shift+D'); } catch {} if (win && !win.isDestroyed()) win.destroy(); win = null; },
+  onSettings(ctx) { module.exports._place(ctx); const h = !!ctx.mod('dock').hideMacDock; if (h && !macDockHidden) module.exports._confirmMacDock(ctx).then(ok => ok && module.exports._macDock(true, ctx)); else if (!h && macDockHidden) module.exports._macDock(false, ctx); else if (h && macDockHidden) module.exports._macDock(true, ctx); if (win && !win.isDestroyed()) win.webContents.send('settings:update', ctx.settings); },
+  stop(ctx) { clearInterval(poll); clearInterval(edgePoll); clearInterval(animT); clearTimeout(hideT); if (macDockHidden) module.exports._macDock(false, ctx); try { ctx.globalShortcut.unregister('CommandOrControl+Shift+D'); } catch {} if (win && !win.isDestroyed()) win.destroy(); win = null; },
 };
