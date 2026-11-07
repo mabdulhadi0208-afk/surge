@@ -57,8 +57,11 @@ jobs:
             codesign --force --deep --sign "$SIGN_ID" --requirements "=$REQ" "$APP"
           fi
           codesign -d -r- "$APP" 2>&1 | tail -2
-          codesign -dv "$APP" 2>&1 | grep -E "Authority|Identifier|Signature" || true
-          npx electron-builder --mac dmg zip --arm64 --publish never --prepackaged "$APP"
+          # fast packaging: ditto zip (what the in-app updater downloads) + plain hdiutil DMG, in parallel — no second electron-builder pass
+          ( cd "$(dirname "$APP")" && ditto -c -k --sequesterRsrc --keepParent Surge.app ../Surge-mac-arm64.zip ) &
+          ( STAGE=$(mktemp -d) && cp -R "$APP" "$STAGE/" && ln -s /Applications "$STAGE/Applications" \
+            && hdiutil create -volname Surge -srcfolder "$STAGE" -ov -format UDZO -imagekey zlib-level=1 -quiet dist/Surge-mac-arm64.dmg ) &
+          wait
           ls -la dist/*.dmg dist/*.zip
         env: { CSC_IDENTITY_AUTO_DISCOVERY: "false" }
       - id: v
