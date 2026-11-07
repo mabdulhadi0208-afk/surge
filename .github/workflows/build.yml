@@ -2,6 +2,7 @@ name: Build DMG & Release
 on:
   push:
     branches: [main]
+    paths-ignore: ['docs/**', 'README.md']
     tags: ['v*']
   workflow_dispatch:
 permissions:
