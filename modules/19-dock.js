@@ -102,7 +102,7 @@ module.exports = {
   },
   start(ctx) {
     module.exports._ctx = ctx;
-    win = new BrowserWindow({ width: 900, height: 150, show: false, frame: false, transparent: true, hasShadow: false, resizable: false, movable: false,
+    win = new BrowserWindow({ width: 900, height: 170, show: false, frame: false, transparent: true, hasShadow: false, resizable: false, movable: false,
       alwaysOnTop: true, skipTaskbar: true, focusable: true, fullscreenable: false, backgroundColor: '#00000000',
       webPreferences: { preload: path.join(__dirname, '..', 'preload.js'), contextIsolation: true, backgroundThrottling: false } });
     win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });

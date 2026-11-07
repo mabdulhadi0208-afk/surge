@@ -8,7 +8,7 @@
   .dock{display:flex;align-items:center;gap:8px;padding:8px;border-radius:26px;background:rgba(16,16,22,.72);border:1px solid var(--line);box-shadow:0 20px 60px -20px rgba(0,0,0,.8),inset 0 1px 0 rgba(255,255,255,.06);backdrop-filter:blur(30px) saturate(1.5);-webkit-backdrop-filter:blur(30px) saturate(1.5);transform-origin:50% 100%;transition:transform .55s var(--spring),opacity .4s;position:relative}
   body.top .dock{transform-origin:50% 0}
   .dock::before{content:"";position:absolute;inset:-1px;border-radius:inherit;padding:1px;background:linear-gradient(90deg,rgba(0,255,133,.35),rgba(0,212,255,.15),rgba(122,92,255,.3));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:.7}
-  .w{height:72px;min-width:72px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:8px 12px;position:relative;transition:transform .35s var(--spring),background .25s,border-color .25s;cursor:default;will-change:transform}
+  .w{height:72px;min-width:72px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:8px 12px;position:relative;transition:transform .35s var(--spring),background .25s,border-color .25s;cursor:default}
   .w:hover{transform:translateY(-6px) scale(1.08);background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);z-index:2}
   .w.btn{cursor:pointer} .w.btn:active{transform:translateY(-2px) scale(.96)}
   .w .l{font-size:10px;color:var(--muted);letter-spacing:.3px;text-transform:uppercase;font-weight:600}
@@ -36,21 +36,28 @@
   .sep{width:1px;height:44px;background:var(--line);margin:0 2px}
   /* apps */
   .apps{height:auto;min-width:0;padding:4px 6px;flex-direction:row;align-items:flex-end;gap:2px;background:transparent;border-color:transparent} .apps:hover{transform:none;background:transparent;border-color:transparent}
-  .ap{position:relative;width:56px;height:62px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;cursor:pointer;transform-origin:50% 100%;transition:transform .12s ease-out;will-change:transform}
+  .ap{position:relative;width:56px;height:62px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;cursor:pointer;transform-origin:50% 100%;transition:transform .12s ease-out}
   .ap .ph{width:48px;height:48px;border-radius:11px;background:linear-gradient(135deg,#3a3a46,#1e1e26);display:grid;place-items:center;font-weight:700;font-size:20px;color:#cfcfd8;box-shadow:0 6px 16px -6px rgba(0,0,0,.8)}
   .ap img{width:48px;height:48px;border-radius:11px;box-shadow:0 6px 16px -6px rgba(0,0,0,.8);pointer-events:none;transition:filter .2s} .ap:active img{filter:brightness(.7)}
   .ap .dot{width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,.75);margin-top:4px;opacity:0;box-shadow:0 0 6px #fff} .ap.run .dot{opacity:1} .ap.front .dot{background:var(--a);box-shadow:0 0 8px var(--a)}
-  .ap .tip{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%) translateY(4px);padding:5px 10px;border-radius:9px;background:rgba(20,20,26,.95);border:1px solid var(--line);font-size:11px;white-space:nowrap;opacity:0;pointer-events:none;transition:all .2s} .ap:hover .tip{opacity:1;transform:translateX(-50%)}
+  #tip{position:fixed;left:0;top:0;padding:6px 11px;border-radius:9px;background:rgba(20,20,26,.96);border:1px solid var(--line);font-size:12px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s;transform:translate(-50%,0);z-index:9}
   .ap.bounce img{animation:bounce .5s var(--spring)} @keyframes bounce{40%{transform:translateY(-14px)}}
   .apsep{width:1px;height:40px;background:var(--line);margin:0 6px 12px}
   .empty{padding:10px 18px;color:var(--muted)}
 </style></head>
 <body>
-<div class="dock" id="dock"></div>
+<div class="dock" id="dock"></div><div id="tip"></div>
 <script>
 const $=s=>document.querySelector(s), api=window.surge;
 let S={}, D={}, order=[]; let volT=0, volDrag=false;
 const ICON={glow:'<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',notes:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>',spotlight:'<circle cx="12" cy="12" r="5"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/>',caffeine:'<path d="M4 8h12v6a5 5 0 0 1-10 0z"/><path d="M16 9h2a2 2 0 1 1 0 4h-2M6 20h10"/>',focus:'<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/>',vol:'<path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/>',music:'<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>'};
+const tipEl=()=>document.getElementById('tip');
+let tipTarget=null;
+function showTip(el, text){ tipTarget=[el,text]; const t=tipEl(); const r=el.getBoundingClientRect(); t.textContent=text; t.style.opacity=1; const w=t.offsetWidth; let x=r.left+r.width/2; x=Math.max(w/2+6, Math.min(innerWidth-w/2-6, x)); const top=document.body.classList.contains('top'); t.style.left=x+'px'; t.style.top=(top? Math.min(innerHeight-34, r.bottom+10) : Math.max(2, r.top-38))+'px'; }
+function hideTip(){ tipTarget=null; tipEl().style.opacity=0; }
+setInterval(()=>{ if(tipTarget && tipTarget[0].isConnected) showTip(tipTarget[0],tipTarget[1]); },40);
+document.addEventListener('mouseover',e=>{ const a=e.target.closest('.ap'); if(a) return showTip(a,a.dataset.name); const w=e.target.closest('.w[data-tip]'); if(w) return showTip(w,w.dataset.tip); hideTip(); });
+document.addEventListener('mouseleave',hideTip);
 const hist=[]; let APPS=[], running=[], iconCache={}; let lastAppsKey='';
 async function icon(p){ if(iconCache[p]!==undefined) return iconCache[p]; iconCache[p]=null; const i=await api?.appIcon(p); iconCache[p]=i||null; return i; }
 async function refreshApps(){ const box=$('#apps'); if(!box) return; running=await api?.appsRunning()||[]; const pins=S.modules?.dock?.pinned||[];
@@ -58,7 +65,7 @@ async function refreshApps(){ const box=$('#apps'); if(!box) return; running=awa
   for(const r of running){ if(!pins.includes(r.path)) items.push({path:r.path,name:r.name,bundleId:r.bundleId,pid:r.pid,run:true,front:r.front,pinned:false}); }
   const key=items.map(i=>i.path+(i.run?1:0)+(i.front?1:0)+(i.pid||'')).join(); if(key===lastAppsKey) return; lastAppsKey=key; APPS=items;
   const sepAt=items.findIndex(i=>!i.pinned);
-  box.innerHTML=items.map((it,i)=>`${i===sepAt&&i>0?'<div class="apsep"></div>':''}<div class="ap ${it.run?'run':''} ${it.front?'front':''}" data-i="${i}"><div class="tip">${it.name}</div><img alt="" src="${iconCache[it.path]||''}"><div class="dot"></div></div>`).join('');
+  box.innerHTML=items.map((it,i)=>`${i===sepAt&&i>0?'<div class="apsep"></div>':''}<div class="ap ${it.run?'run':''} ${it.front?'front':''}" data-i="${i}" data-name="${it.name.replace(/"/g,'&quot;')}"><img alt="" src="${iconCache[it.path]||''}"><div class="dot"></div></div>`).join('');
   box.querySelectorAll('.ap').forEach(el=>{ const it=items[+el.dataset.i]; const im=el.querySelector('img'); icon(it.path).then(src=>{ if(src) im.src=src; else { im.remove(); const ph=document.createElement('div'); ph.className='ph'; ph.textContent=(it.name||'?')[0].toUpperCase(); el.insertBefore(ph, el.querySelector('.dot')); } });
     el.onclick=()=>{ el.classList.remove('bounce'); void el.offsetWidth; el.classList.add('bounce'); if(it.run) api?.appActivate(it.bundleId, it.path); else api?.appOpen(it.path); };
     el.oncontextmenu=e=>{ e.preventDefault(); if(it.run) api?.appQuit(it.bundleId, it.pid); }; });
