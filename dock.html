@@ -3,13 +3,11 @@
 <style>
   :root{--a:#00FF85;--b:#39FF14;--ink:#f2f2f6;--muted:#9a9aa6;--line:rgba(255,255,255,.1);--spring:cubic-bezier(.34,1.56,.64,1);--ease:cubic-bezier(.22,1,.36,1)}
   *{box-sizing:border-box} html,body{margin:0;height:100%;background:transparent;font:12px/1.3 -apple-system,"SF Pro Text",Inter,system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased;-webkit-user-select:none;overflow:hidden}
-  body{display:flex;align-items:flex-end;justify-content:center;padding:6px 10px}
+  body{display:flex;align-items:flex-end;justify-content:center;padding:0 12px 6px}
   body.top{align-items:flex-start}
   .dock{display:flex;align-items:center;gap:8px;padding:8px;border-radius:26px;background:rgba(16,16,22,.72);border:1px solid var(--line);box-shadow:0 20px 60px -20px rgba(0,0,0,.8),inset 0 1px 0 rgba(255,255,255,.06);backdrop-filter:blur(30px) saturate(1.5);-webkit-backdrop-filter:blur(30px) saturate(1.5);transform-origin:50% 100%;transition:transform .55s var(--spring),opacity .4s;position:relative}
   body.top .dock{transform-origin:50% 0}
   .dock::before{content:"";position:absolute;inset:-1px;border-radius:inherit;padding:1px;background:linear-gradient(90deg,rgba(0,255,133,.35),rgba(0,212,255,.15),rgba(122,92,255,.3));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;opacity:.7}
-  body.hide .dock{transform:translateY(calc(100% - 14px)) scale(.9);opacity:.85} body.top.hide .dock{transform:translateY(calc(-100% + 14px)) scale(.9)}
-  body.hide:hover .dock{transform:none;opacity:1}
   .w{height:72px;min-width:72px;border-radius:20px;background:rgba(255,255,255,.05);border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:8px 12px;position:relative;transition:transform .35s var(--spring),background .25s,border-color .25s;cursor:default;will-change:transform}
   .w:hover{transform:translateY(-6px) scale(1.08);background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);z-index:2}
   .w.btn{cursor:pointer} .w.btn:active{transform:translateY(-2px) scale(.96)}
@@ -91,8 +89,8 @@ function build(){ const ws=(S.modules?.dock?.widgets)||[]; order=ws; $('#dock').
   document.querySelector('[data-w="notes"]')&&(document.querySelector('[data-w="notes"]').onclick=()=>api?.toggleNotes());
   document.querySelector('[data-w="spotlight"]')&&(document.querySelector('[data-w="spotlight"]').onclick=async()=>{ if(!S.modules?.spotlight?.enabled) await api?.setSettings({modules:{spotlight:{enabled:true}}}); api?.action('spotlight','toggle'); });
   refreshApps(); requestAnimationFrame(fit); }
-function fit(){ const r=$('#dock').getBoundingClientRect(); const need=Math.ceil(r.width+24); if(Math.abs(need-innerWidth)>4) api?.action('dock','resize',need); }
-function paintSettings(){ const d=S.modules?.dock||{}; document.body.classList.toggle('top',d.edge==='top'); document.body.classList.toggle('hide',!!d.autohide); $('#dock').style.zoom=d.size||1; }
+function fit(){ const r=$('#dock').getBoundingClientRect(); const need=Math.ceil(r.width+40); if(Math.abs(need-innerWidth)>4) api?.action('dock','resize',need); }
+function paintSettings(){ const d=S.modules?.dock||{}; document.body.classList.toggle('top',d.edge==='top'); document.body.style.alignItems=d.edge==='top'?'flex-start':'flex-end'; document.body.style.padding=d.edge==='top'?'6px 12px 0':'0 12px 6px'; $('#dock').style.zoom=d.size||1; }
 function clock(){ const n=new Date(); const c=$('#clk'); if(c){ c.textContent=n.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}); $('#date').textContent=n.toLocaleDateString([], {weekday:'short',day:'numeric',month:'short'}); } }
 function paint(){
   const b=D.battery; if(b&&$('#bpct')){ $('#bpct').textContent=b.level+'%'; $('#bfg').style.strokeDashoffset=119.4*(1-b.level/100); $('#bfg').style.stroke=b.charging?'var(--a)':b.level<=20?'#FF5C5C':'#FFB300'; $('#bst').textContent=b.charged?'Full':b.charging?'Charging':b.remaining?b.remaining+' left':'Battery'; }
