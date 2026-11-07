@@ -1,31 +1,68 @@
 <!DOCTYPE html><html><head><meta charset="utf-8"><style>
-  :root{--a:#00FF85;--b:#39FF14;--spring:cubic-bezier(.34,1.56,.64,1)}
+  :root{--a:#00FF85;--b:#39FF14;--muted:#9a9aa6;--spring:cubic-bezier(.34,1.56,.64,1);--ease:cubic-bezier(.22,1,.36,1)}
   html,body{margin:0;height:100%;background:transparent;font:13px/1.4 -apple-system,"SF Pro Text",Inter,system-ui,sans-serif;color:#f2f2f6;-webkit-font-smoothing:antialiased;-webkit-user-select:none;overflow:hidden}
-  .card{position:absolute;left:8px;right:8px;top:8px;bottom:8px;border-radius:22px;background:linear-gradient(135deg,rgba(0,255,133,.16),rgba(0,212,255,.05)),rgba(16,16,22,.94);border:1px solid rgba(0,255,133,.45);box-shadow:0 30px 80px -20px rgba(0,0,0,.9),0 0 60px -18px var(--a);display:flex;align-items:center;gap:16px;padding:18px 20px;animation:pop .55s var(--spring) both}
-  @keyframes pop{from{opacity:0;transform:translateY(-24px) scale(.92)}}
-  .ic{width:52px;height:52px;border-radius:16px;background:rgba(0,255,133,.14);display:grid;place-items:center;flex:none} .ic svg{width:26px;height:26px;stroke:var(--a);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;animation:spin 2.4s linear infinite} .ready .ic svg{animation:none}
-  @keyframes spin{to{transform:rotate(1turn)}}
-  .t{flex:1;min-width:0} .t b{font-size:16px;white-space:nowrap;display:block;letter-spacing:-.2px} .t small{color:#9a9aa6;display:block;margin-top:2px}
-  .bar{height:4px;border-radius:2px;background:rgba(255,255,255,.1);margin-top:8px;overflow:hidden} .bar i{display:block;height:100%;width:0;border-radius:2px;background:var(--a);transition:width .25s} .ready .bar{display:none}
-  @keyframes slide{0%{transform:translateX(-100%)}100%{transform:translateX(400%)}}
-  .btn{all:unset;cursor:pointer;padding:11px 18px;border-radius:999px;font-weight:700;font-size:13px;background:linear-gradient(135deg,var(--a),var(--b));color:#06110a;box-shadow:0 10px 30px -8px var(--a);transition:transform .3s var(--spring);white-space:nowrap} .btn:hover{transform:translateY(-1px) scale(1.03)} .btn:active{transform:scale(.95)} .btn[disabled]{opacity:.5;pointer-events:none}
-  .later{all:unset;cursor:pointer;color:#9a9aa6;font-size:12px;padding:8px 10px;border-radius:9px} .later:hover{background:rgba(255,255,255,.08);color:#fff}
+  .card{position:absolute;left:10px;right:10px;top:10px;bottom:10px;border-radius:24px;background:rgba(14,14,20,.94);border:1px solid rgba(255,255,255,.1);box-shadow:0 30px 80px -20px rgba(0,0,0,.9);overflow:hidden;animation:pop .55s var(--spring) both}
+  @keyframes pop{from{opacity:0;transform:translateY(-26px) scale(.94)}}
+  .aura{position:absolute;inset:-60%;filter:blur(60px);opacity:.16;background:conic-gradient(from 0deg,var(--a),#00D4FF,#7A5CFF,var(--a));animation:spin 18s linear infinite;pointer-events:none} @keyframes spin{to{transform:rotate(1turn)}}
+  .card.ready .aura{opacity:.26} .card.error .aura{background:conic-gradient(from 0deg,#FF5C5C,#FFB300,#FF5C5C);opacity:.16}
+  .in{position:relative;height:100%;display:flex;flex-direction:column;padding:16px 18px 14px;gap:9px;box-sizing:border-box}
+  .top{display:flex;align-items:center;gap:14px}
+  .ic{width:46px;height:46px;border-radius:15px;background:rgba(0,255,133,.12);border:1px solid rgba(0,255,133,.3);display:grid;place-items:center;flex:none;position:relative}
+  .ic svg{width:22px;height:22px;stroke:var(--a);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round} .busy .ic svg{animation:rot 1.6s linear infinite} @keyframes rot{to{transform:rotate(1turn)}}
+  .ic .ring{position:absolute;inset:-3px;border-radius:17px;border:2px solid transparent;border-top-color:var(--a);opacity:0} .busy .ic .ring{opacity:1;animation:rot 1s linear infinite}
+  .t{flex:1;min-width:0} .t b{font-size:16px;display:block;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .t small{color:var(--muted);display:block;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ver{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);padding:3px 8px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);margin-left:8px;vertical-align:middle;font-variant-numeric:tabular-nums} .ver i{color:var(--a)}
   .drag{-webkit-app-region:drag}
+  .bar{height:6px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;position:relative} .bar i{display:block;height:100%;width:0;border-radius:3px;background:linear-gradient(90deg,var(--a),var(--b));box-shadow:0 0 14px var(--a);transition:width .3s var(--ease)}
+  .bar.indet i{width:35%;animation:slide 1.1s ease-in-out infinite} @keyframes slide{0%{transform:translateX(-100%)}100%{transform:translateX(300%)}}
+  .meta{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;min-height:14px}
+  .row{display:flex;align-items:center;gap:8px;margin-top:auto}
+  .btn{all:unset;cursor:pointer;padding:9px 16px;border-radius:999px;font-weight:700;font-size:13px;background:linear-gradient(135deg,var(--a),var(--b));color:#06110a;box-shadow:0 10px 30px -8px var(--a);transition:transform .3s var(--spring),opacity .2s;white-space:nowrap;margin-left:auto} .btn:hover{transform:translateY(-1px) scale(1.03)} .btn:active{transform:scale(.95)} .btn[disabled]{opacity:.45;pointer-events:none}
+  .lnk{all:unset;cursor:pointer;color:var(--muted);font-size:12px;padding:7px 10px;border-radius:9px} .lnk:hover{background:rgba(255,255,255,.08);color:#fff}
+  .error .btn{background:linear-gradient(135deg,#FFB300,#FF7A00);box-shadow:0 10px 30px -8px #FFB300}
+  .ok{position:absolute;inset:0;display:none;align-items:center;justify-content:center;gap:12px;font-size:16px;font-weight:700;background:rgba(14,14,20,.96)} .ok svg{width:26px;height:26px;stroke:var(--a);fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round} .installing .ok{display:flex}
 </style></head><body>
 <div class="card" id="card">
-  <div class="ic drag"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg></div>
-  <div class="t drag"><b id="title">Update Surge</b><small id="sub">A new version is available</small><div class="bar"><i id="bar"></i></div></div>
-  <button class="later" id="later">Later</button>
-  <button class="btn" id="go" disabled>Downloading…</button>
+  <div class="aura"></div>
+  <div class="in">
+    <div class="top drag">
+      <div class="ic"><div class="ring"></div><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg></div>
+      <div class="t"><b id="title">Update Surge</b><small id="sub">…</small></div>
+      <span class="ver" id="ver"></span>
+    </div>
+    <div class="bar" id="bar"><i id="fill"></i></div>
+    <div class="meta"><span id="m1"></span><span id="m2"></span></div>
+    <div class="row">
+      <button class="lnk" id="skip">Skip this version</button>
+      <button class="lnk" id="later">Later</button>
+      <button class="btn" id="go">Update now</button>
+    </div>
+  </div>
+  <div class="ok"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Restarting Surge…</div>
 </div>
 <script>
 const $=s=>document.querySelector(s), api=window.surge;
-function paint(u){ const c=$('#card'); c.classList.toggle('ready',u.status==='ready');
-  $('#bar').style.width=(u.status==='downloading'?(u.progress||0):u.status==='unpacking'?100:0)+'%';
-  $('#title').textContent = u.status==='ready' ? `Surge ${u.latest} is ready` : u.status==='unpacking' ? `Unpacking Surge ${u.latest}…` : u.status==='downloading' ? `Downloading Surge ${u.latest}… ${u.progress||0}%` : u.status==='error' ? 'Update failed' : `Update Surge to ${u.latest}`;
-  $('#sub').textContent = u.status==='ready' ? 'Restart now — about 3 seconds.' : (u.status==='downloading'||u.status==='unpacking') ? 'In the background. Keep working.' : u.status==='error' ? (u.error||'Try again') : `You're on ${u.current}.`;
-  const b=$('#go'); if(u.status==='ready'){ b.textContent='Restart & update'; b.disabled=false; } else if(u.status==='downloading'||u.status==='unpacking'){ b.textContent=u.status==='unpacking'?'Unpacking…':`${u.progress||0}%`; b.disabled=true; } else if(u.status==='error'){ b.textContent='Retry'; b.disabled=false; } else { b.textContent='Update now'; b.disabled=false; } }
-$('#go').onclick=async()=>{ const u=await api?.action('updater','state'); if(u?.status==='ready') api?.action('updater','install'); else { $('#go').disabled=true; $('#go').textContent='Downloading…'; api?.action('updater','download'); } };
-$('#later').onclick=()=>api?.action('updater','later');
+const fmt=b=>(b/1048576).toFixed(1)+' MB', secs=s=>s>=60?Math.round(s/60)+' min':s+' s';
+let U={};
+function paint(u){ U=u; const c=$('#card'); c.className='card '+(u.status==='ready'?'ready':['checking','downloading','unpacking'].includes(u.status)?'busy':u.status==='error'?'error':u.status==='installing'?'installing':'');
+  $('#ver').innerHTML = u.latest ? `${u.current} <i>→</i> ${String(u.latest).replace(/^v/,'')}` : u.current||'';
+  const T={ available:[`Surge ${u.latest} is available`, u.size?`${fmt(u.size)} · downloads in the background`:'Downloads in the background'],
+            checking:['Checking for updates…','One sec'],
+            downloading:[`Downloading Surge ${u.latest}… ${u.progress||0}%`, u.speed?`${fmt(u.speed)}/s${u.eta?' · about '+secs(u.eta)+' left':''}`:'Starting…'],
+            unpacking:[`Unpacking Surge ${u.latest}…`,'Verifying the download'],
+            ready:[`Surge ${u.latest} is ready`,'Restart to switch — takes about 3 seconds.'],
+            installing:['Restarting…',''],
+            error:['Update hit a snag', u.error||'Try again'],
+            uptodate:[`Surge ${u.current} is up to date`,'Nothing to do'] }[u.status]||['Update Surge',''];
+  $('#title').textContent=T[0]; $('#sub').textContent=T[1];
+  const bar=$('#bar'); bar.classList.toggle('indet', u.status==='checking'||u.status==='unpacking'||(u.status==='downloading'&&!u.size));
+  $('#fill').style.width = u.status==='ready'||u.status==='unpacking'?'100%':u.status==='downloading'?(u.progress||0)+'%':'0%';
+  $('#m1').textContent = u.status==='downloading'&&u.size?`${fmt(u.bytes||0)} of ${fmt(u.size)}`:'';
+  $('#m2').textContent = u.lastCheck?`Checked ${new Date(u.lastCheck).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`:'';
+  const b=$('#go'); b.disabled=false;
+  if(u.status==='ready'){ b.textContent='Restart & update'; } else if(u.status==='downloading'||u.status==='unpacking'){ b.textContent='Cancel'; } else if(u.status==='error'){ b.textContent='Retry'; } else if(u.status==='checking'){ b.textContent='Checking…'; b.disabled=true; } else { b.textContent='Update now'; }
+  $('#skip').style.visibility = (u.status==='available'||u.status==='ready')?'visible':'hidden'; }
+$('#go').onclick=()=>{ if(U.status==='ready') api?.action('updater','install'); else if(U.status==='downloading'||U.status==='unpacking') api?.action('updater','cancel'); else if(U.status==='error') api?.action('updater','check'); else api?.action('updater','download'); };
+$('#later').onclick=()=>api?.action('updater','later'); $('#skip').onclick=()=>api?.action('updater','skip');
 (async()=>{ paint(await api?.action('updater','state')||{}); api?.on('updater:state',paint); })();
 </script></body></html>

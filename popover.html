@@ -79,7 +79,7 @@ async function state(){ const st=await api?.action('caffeine','state'); $('#qCaf
   const f=await api?.action('focus','state'); $('#qFocus').classList.toggle('live',!!f&&f.phase!=='idle'); $('#qFocus').lastChild.textContent=f&&f.phase!=='idle'?`${f.mm}:${f.ss}`:'Focus';
   const sp=await api?.action('spotlight','state'); $('#qSpot').classList.toggle('live',!!sp?.on);
   hook=await api?.hookState()||hook; $('#ax').style.display = (hook==='needs-accessibility'||hook==='error') && MODS.some(m=>m.needsHook&&S.modules[m.id]?.enabled) ? 'flex' : 'none';
-  const u=await api?.action('updater','state'); if(u){ $('#ver').textContent='v'+u.current; const box=$('#upd'); if(u.status==='ready'||u.status==='available'||u.status==='downloading'){ box.style.display='flex'; $('#updT').textContent=u.status==='ready'?`Surge ${u.latest} is ready`:u.status==='downloading'?`Downloading ${u.latest}…`:`Surge ${u.latest} available`; $('#updBtn').textContent=u.status==='ready'?'Restart':u.status==='downloading'?'…':'Update'; $('#updBtn').disabled=u.status==='downloading'; } else box.style.display='none'; }
+  const u=await api?.action('updater','state'); if(u){ $('#ver').textContent='v'+u.current; const box=$('#upd'); if(['ready','available','downloading','unpacking'].includes(u.status)){ box.style.display='flex'; $('#updT').textContent=u.status==='ready'?`Surge ${u.latest} is ready`:u.status==='downloading'?`Downloading ${u.latest}… ${u.progress||0}%`:u.status==='unpacking'?`Unpacking ${u.latest}…`:`Surge ${u.latest} available`; $('#updBtn').textContent=u.status==='ready'?'Restart':(u.status==='downloading'||u.status==='unpacking')?'…':'Update'; $('#updBtn').disabled=(u.status==='downloading'||u.status==='unpacking'); } else box.style.display='none'; }
   const c=await api?.action('clip','last'); $('#clip').textContent=c?('Clipboard: '+c.replace(/\s+/g,' ').slice(0,28)+(c.length>28?'…':'')):'Clipboard: —'; }
 $('#master').oninput=e=>{ e.target.style.setProperty('--p',e.target.value*100+'%'); $('#mout').textContent=Math.round(e.target.value*100)+'%'; S.masterVolume=+e.target.value; clearTimeout(window._mt); window._mt=setTimeout(()=>api?.setSettings({masterVolume:+e.target.value}),120); };
 $('#master').onchange=()=>api?.testSound('key',{preset:S.modules.keys?.preset,volume:S.modules.keys?.volume??.6,kind:'key'});
@@ -91,7 +91,7 @@ $('#qSpot').onclick=async()=>{ if(!S.modules.spotlight?.enabled){ S.modules.spot
 $('#qNotes').onclick=()=>{ api?.toggleNotes(); api?.hide(); };
 $('#quit').onclick=()=>api?.quit();
 $('#axBtn').onclick=()=>api?.openAccessibility();
-$('#updBtn').onclick=()=>{ api?.action('updater','install'); toast('Updating…'); };
+$('#updBtn').onclick=async()=>{ const u=await api?.action('updater','state'); if(u?.status==='ready'){ api?.action('updater','install'); toast('Restarting…'); } else { api?.action('updater','download'); toast('Downloading…'); } };
 $('#ver').onclick=async()=>{ toast('Checking…'); const u=await api?.action('updater','check'); toast(u?.status==='available'?`${u.latest} available`:u?.status==='uptodate'?'Up to date':'Check failed'); state(); };
 (async()=>{ MODS=await api?.listModules()||[]; S=await api?.getSettings()||S; hook=await api?.hookState()||hook; build(); paint(); batt(); state();
   api?.on('settings:update',s=>{S=s;paint();}); api?.on('popover:show',()=>{ hook=''; api?.hookState().then(h=>{hook=h;}); batt(); state(); document.querySelector('.panel').style.animation='none'; void document.querySelector('.panel').offsetWidth; document.querySelector('.panel').style.animation=''; });
