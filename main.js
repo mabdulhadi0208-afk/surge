@@ -151,7 +151,7 @@ function appIcon(appPath) {
     try {
       const plist = fs.readFileSync(path.join(appPath, 'Contents', 'Info.plist'), 'utf8');
       let icns = /CFBundleIconFile<\/key>\s*<string>([^<]+)/.exec(plist)?.[1]; if (icns && !icns.endsWith('.icns')) icns += '.icns';
-      const src = icns && path.join(appPath, 'Contents', 'Resources', icns);
+      const src = icns && !icns.includes('..') && path.join(appPath, 'Contents', 'Resources', icns);
       if (src && fs.existsSync(src)) {
         const dir = path.join(app.getPath('userData'), 'icons'); fs.mkdirSync(dir, { recursive: true });
         const out = path.join(dir, Buffer.from(appPath).toString('base64url').slice(-40) + '.png');
@@ -160,7 +160,7 @@ function appIcon(appPath) {
       }
     } catch {}
     fallback();
-    function fallback() { app.getFileIcon(appPath, { size: 'large' }).then(img => done(img.toDataURL())).catch(() => done(null)); }
+    function fallback() { done(null); } // never use app.getFileIcon: Chromium's icon loader can hard-crash on some system app bundles
   });
 }
 function runningApps() {

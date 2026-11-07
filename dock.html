@@ -39,6 +39,7 @@
   /* apps */
   .apps{height:auto;min-width:0;padding:4px 6px;flex-direction:row;align-items:flex-end;gap:2px;background:transparent;border-color:transparent} .apps:hover{transform:none;background:transparent;border-color:transparent}
   .ap{position:relative;width:56px;height:62px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;cursor:pointer;transform-origin:50% 100%;transition:transform .12s ease-out;will-change:transform}
+  .ap .ph{width:48px;height:48px;border-radius:11px;background:linear-gradient(135deg,#3a3a46,#1e1e26);display:grid;place-items:center;font-weight:700;font-size:20px;color:#cfcfd8;box-shadow:0 6px 16px -6px rgba(0,0,0,.8)}
   .ap img{width:48px;height:48px;border-radius:11px;box-shadow:0 6px 16px -6px rgba(0,0,0,.8);pointer-events:none;transition:filter .2s} .ap:active img{filter:brightness(.7)}
   .ap .dot{width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,.75);margin-top:4px;opacity:0;box-shadow:0 0 6px #fff} .ap.run .dot{opacity:1} .ap.front .dot{background:var(--a);box-shadow:0 0 8px var(--a)}
   .ap .tip{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%) translateY(4px);padding:5px 10px;border-radius:9px;background:rgba(20,20,26,.95);border:1px solid var(--line);font-size:11px;white-space:nowrap;opacity:0;pointer-events:none;transition:all .2s} .ap:hover .tip{opacity:1;transform:translateX(-50%)}
@@ -60,7 +61,7 @@ async function refreshApps(){ const box=$('#apps'); if(!box) return; running=awa
   const key=items.map(i=>i.path+(i.run?1:0)+(i.front?1:0)).join(); if(key===lastAppsKey) return; lastAppsKey=key; APPS=items;
   const sepAt=items.findIndex(i=>!i.pinned);
   box.innerHTML=items.map((it,i)=>`${i===sepAt&&i>0?'<div class="apsep"></div>':''}<div class="ap ${it.run?'run':''} ${it.front?'front':''}" data-i="${i}"><div class="tip">${it.name}</div><img alt="" src="${iconCache[it.path]||''}"><div class="dot"></div></div>`).join('');
-  box.querySelectorAll('.ap').forEach(el=>{ const it=items[+el.dataset.i]; const im=el.querySelector('img'); icon(it.path).then(src=>{ if(src) im.src=src; else im.style.background='linear-gradient(135deg,#444,#222)'; });
+  box.querySelectorAll('.ap').forEach(el=>{ const it=items[+el.dataset.i]; const im=el.querySelector('img'); icon(it.path).then(src=>{ if(src) im.src=src; else { im.remove(); const ph=document.createElement('div'); ph.className='ph'; ph.textContent=(it.name||'?')[0].toUpperCase(); el.insertBefore(ph, el.querySelector('.dot')); } });
     el.onclick=()=>{ el.classList.remove('bounce'); void el.offsetWidth; el.classList.add('bounce'); if(it.run&&it.bundleId) api?.appActivate(it.bundleId); else api?.appOpen(it.path); };
     el.oncontextmenu=e=>{ e.preventDefault(); if(it.run&&it.bundleId) api?.appQuit(it.bundleId); }; });
   requestAnimationFrame(fit); }

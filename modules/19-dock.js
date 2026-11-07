@@ -68,7 +68,7 @@ module.exports = {
     win.on('closed', () => (win = null));
     poll = setInterval(() => module.exports._tick(ctx), 2000);
     try { ctx.globalShortcut.register('CommandOrControl+Shift+D', () => module.exports._toggle(ctx)); } catch {}
-    screen.on('display-metrics-changed', () => module.exports._place(ctx));
+    if (!module.exports._dispHooked) { module.exports._dispHooked = true; screen.on('display-metrics-changed', () => module.exports._place(ctx)); }
     if (ctx.mod('dock').hideMacDock) module.exports._macDock(true);
   },
   onSettings(ctx) { module.exports._place(ctx); const h = !!ctx.mod('dock').hideMacDock; if (h !== macDockHidden) module.exports._macDock(h); if (win && !win.isDestroyed()) win.webContents.send('settings:update', ctx.settings); },
