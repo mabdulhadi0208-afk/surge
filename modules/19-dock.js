@@ -58,15 +58,20 @@ module.exports = {
   },
   async _confirmMacDock(ctx) {
     const r = await dialog.showMessageBox({ type: 'question', buttons: ['Replace it', 'Keep the macOS Dock'], defaultId: 0, cancelId: 1, message: 'Replace the macOS Dock with Surge Dock?',
-      detail: 'Apple\'s Dock will be hidden while this is on. It comes back instantly if you turn this off, disable Surge Dock, or quit Surge.' });
+      detail: 'Surge will take over the Dock. macOS will ask you to allow Surge to control "System Events" — that permission is what lets Surge switch the Dock off and on cleanly.\n\nApple\'s Dock comes back instantly if you turn this off, disable Surge Dock, or quit Surge.' });
     if (r.response !== 0) { ctx.applyPatch({ modules: { dock: { hideMacDock: false } } }); return false; }
+    // this call triggers the Automation (System Events) permission prompt the first time
+    const ok = await new Promise(res => execFile('osascript', ['-e', 'tell application "System Events" to set autohide of dock preferences to true'], { timeout: 15000 }, (e) => res(!e)));
+    if (!ok) { await dialog.showMessageBox({ type: 'warning', buttons: ['Open Automation settings', 'Cancel'], defaultId: 0, cancelId: 1, message: 'Surge needs permission to control System Events',
+        detail: 'System Settings → Privacy & Security → Automation → Surge → turn on System Events. Then flip "Replace the macOS Dock" on again.' }).then(x => x.response === 0 && require('electron').shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_Automation'));
+      ctx.applyPatch({ modules: { dock: { hideMacDock: false } } }); return false; }
     return true;
   },
   _macDock(hide) {
     try { const cur = require('child_process').execFileSync('defaults', ['read', 'com.apple.dock', 'autohide-delay']).toString().trim(); if ((hide && cur === '1000') || (!hide && cur !== '1000')) { macDockHidden = hide; return; } } catch { if (!hide) { macDockHidden = false; return; } }
     const cmds = hide
-      ? [['defaults', ['write', 'com.apple.dock', 'autohide', '-bool', 'true']], ['defaults', ['write', 'com.apple.dock', 'autohide-delay', '-float', '1000']], ['defaults', ['write', 'com.apple.dock', 'autohide-time-modifier', '-float', '0']]]
-      : [['defaults', ['write', 'com.apple.dock', 'autohide', '-bool', 'false']], ['defaults', ['delete', 'com.apple.dock', 'autohide-delay']], ['defaults', ['delete', 'com.apple.dock', 'autohide-time-modifier']]];
+      ? [['osascript', ['-e', 'tell application "System Events" to set autohide of dock preferences to true']], ['defaults', ['write', 'com.apple.dock', 'autohide-delay', '-float', '1000']], ['defaults', ['write', 'com.apple.dock', 'autohide-time-modifier', '-float', '0']]]
+      : [['osascript', ['-e', 'tell application "System Events" to set autohide of dock preferences to false']], ['defaults', ['delete', 'com.apple.dock', 'autohide-delay']], ['defaults', ['delete', 'com.apple.dock', 'autohide-time-modifier']]];
     const run = (i) => { if (i >= cmds.length) return execFile('killall', ['Dock'], () => {}); execFile(cmds[i][0], cmds[i][1], () => run(i + 1)); }; run(0);
     macDockHidden = hide;
   },
