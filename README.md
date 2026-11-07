@@ -6,7 +6,7 @@ Started as a charging glow. Now a menu-bar toolbox where every feature is an ind
 |---|---|---|
 | Glow | **Charge Glow** | Edge aurora on plug-in (green), warm sweep on unplug, red pulse on low battery, gold at 100%, charge capsule, chimes |
 | Glow | **Network Glow** | Ice glow when Wi-Fi comes back, amber when you drop offline |
-| Sound | **Keyboard Sounds** | 115 synthesised presets in Thocky · Creamy · Clicky · Clacky · Special, search + favourites + 🎲, pitch variety, deep spacebar, release sound |
+| Sound | **Keyboard Sounds** | 145 synthesised presets: **Switches** (30 real-switch sound-alikes: MX Blue/Brown/Red/Black/Clear/Green/Speed Silver, Holy Panda, Boba U4T, Zealios V2, Box White/Jade/Navy, Topre, Buckling Spring, NK Cream, Oil King…) · Thocky · Creamy · Clicky · Clacky · Special, search + favourites + 🎲, pitch variety, deep spacebar, release sound |
 | Sound | **Mouse Sounds** | 14 click sounds (Click, Pop, Glass, Shutter, Metal, Marble…) + 3 scroll styles |
 | Sound | **Hourly Chime** | Soft bell on the hour, quiet hours |
 | Screen | **Click Ripple** | Glowing ring under every click (left/right colours) |

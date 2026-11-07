@@ -1,10 +1,10 @@
-// Keyboard Sounds — 115 synthesised presets in Thocky / Creamy / Clicky / Clacky / Special.
+// Keyboard Sounds — 145 synthesised presets: 30 real-switch sound-alikes + Thocky / Creamy / Clicky / Clacky / Special.
 let off = [], last = 0, stats = { today: 0, day: '' };
 const dayKey = () => new Date().toDateString();
 module.exports = {
   id: 'keys', name: 'Keyboard Sounds', icon: 'keyboard', group: 'Sound', needsHook: true,
-  desc: 'Over 100 key sounds in Thocky, Creamy, Clicky, Clacky and Special — all synthesised live, no samples.',
-  defaults: { preset: 'thocky:deep-thock', volume: 0.6, pitchVariance: 0.22, spaceThock: true, releaseSound: true, favorites: [] },
+  desc: '145 key sounds: 30 real-switch sound-alikes (MX Blue, Holy Panda, Box Jade, Topre…) plus Thocky, Creamy, Clicky, Clacky, Special — all synthesised live.',
+  defaults: { preset: 'switches:holy-panda', volume: 0.6, pitchVariance: 0.22, spaceThock: true, releaseSound: true, favorites: [] },
   schema: [
     { k: 'preset', t: 'soundpicker', label: 'Sound', lib: 'keyboard' },
     { k: 'volume', t: 'range', label: 'Volume', min: 0, max: 1, step: .01, fmt: 'pct' },
