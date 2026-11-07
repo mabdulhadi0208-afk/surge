@@ -58,11 +58,11 @@ module.exports = {
       const cur = ctx.app.getVersion();
       if (newer(latest, cur)) {
         // no API: build the asset URL from the tag, then HEAD it for size
-        let url = `https://github.com/${REPO}/releases/download/${latest}/${ZIP}`, isZip = true;
-        let head = await sh('curl', ['-sIL', '-o', '/dev/null', '-w', '%{http_code} %{size_download} %{content_length_download}', url], { timeout: 15000 }).catch(() => '000');
-        if (!head.startsWith('200')) { url = `https://github.com/${REPO}/releases/download/${latest}/${ASSET}`; isZip = false; head = await sh('curl', ['-sIL', '-o', '/dev/null', '-w', '%{http_code} %{size_download} %{content_length_download}', url], { timeout: 15000 }).catch(() => '000'); }
-        if (!head.startsWith('200')) throw new Error('asset not ready yet (' + head.slice(0, 3) + ')');
-        state.latest = latest; state.url = url; state.isZip = isZip; state.size = parseInt(head.split(' ')[2], 10) || 0; state.status = 'available';
+        const probe = async (u) => { const h = await sh('curl', ['-sIL', u], { timeout: 15000 }).catch(() => ''); const codes = [...h.matchAll(/^HTTP\/[\d.]+ (\d{3})/gm)].map(m => +m[1]); const len = [...h.matchAll(/^content-length:\s*(\d+)/gmi)].map(m => +m[1]); return { ok: codes.length && codes[codes.length - 1] === 200, size: len.length ? len[len.length - 1] : 0 }; };
+        let url = `https://github.com/${REPO}/releases/download/${latest}/${ZIP}`, isZip = true, p = await probe(url);
+        if (!p.ok) { url = `https://github.com/${REPO}/releases/download/${latest}/${ASSET}`; isZip = false; p = await probe(url); }
+        if (!p.ok) throw new Error('asset not ready yet');
+        state.latest = latest; state.url = url; state.isZip = isZip; state.size = p.size; state.status = 'available';
         log('available', latest, isZip ? 'zip' : 'dmg', state.size);
         ctx.setTray('updater', { title: '↑', menu: [{ label: `Update ${latest} available`, click: () => module.exports._install(ctx) }] });
         if (ctx.mod('updater').popup && (manual || Date.now() > snoozedUntil)) module.exports._show(ctx);
