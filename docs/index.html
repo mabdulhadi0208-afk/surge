@@ -21,14 +21,12 @@
   .wrap{width:min(1120px,92vw);margin:0 auto}
 
   /* ---------- cursor ---------- */
-  .cur{position:fixed;left:0;top:0;width:14px;height:14px;border-radius:50%;background:#fff;pointer-events:none;z-index:999;transform:translate(-50%,-50%);mix-blend-mode:difference;transition:width .35s var(--spring),height .35s var(--spring)}
+  .cur{position:fixed;left:0;top:0;width:14px;height:14px;border-radius:50%;background:#fff;pointer-events:none;z-index:999;transform:translate(-50%,-50%);background:rgba(255,255,255,.9);box-shadow:0 0 0 1px rgba(0,0,0,.35);transition:width .35s var(--spring),height .35s var(--spring)}
   .cur.big{width:56px;height:56px}
   .spot{position:fixed;left:0;top:0;width:900px;height:900px;margin:-450px 0 0 -450px;pointer-events:none;z-index:0;background:radial-gradient(circle,rgba(0,255,133,.10),transparent 60%);will-change:transform;transform:translate(50vw,30vh)}
   @media (hover:none){.cur{display:none}}
 
   /* ---------- grain + blobs ---------- */
-  .grain{position:fixed;inset:0;pointer-events:none;z-index:50;opacity:.35;mix-blend-mode:overlay;
-    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .5 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
   .blobs{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
   .blobs{background:radial-gradient(42vw 42vw at 12% 8%,rgba(0,255,133,.16),transparent 60%),radial-gradient(40vw 40vw at 92% 30%,rgba(57,255,20,.10),transparent 60%),radial-gradient(45vw 45vw at 55% 110%,rgba(0,229,160,.12),transparent 60%)}
   .blob{display:none}
@@ -123,7 +121,7 @@
   .card p{color:var(--muted);margin:0;font-size:15px}
   .ico{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:rgba(255,255,255,.06);border:1px solid var(--line)}
   .ico svg{width:20px;height:20px;stroke:var(--a);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-  .card .viz{position:absolute;right:-30px;bottom:-30px;width:180px;height:180px;border-radius:50%;filter:blur(40px);opacity:.35;background:var(--vc,var(--a));transition:transform .8s var(--ease)}
+  .card .viz{position:absolute;right:-30px;bottom:-30px;width:180px;height:180px;border-radius:50%;opacity:.35;background:radial-gradient(circle,var(--vc,var(--a)) 0%,transparent 70%);transition:transform .8s var(--ease)}
   .card:hover .viz{transform:scale(1.4)}
   @media (max-width:820px){.card,.card.third{grid-column:span 12}}
 
@@ -308,7 +306,6 @@
 
 <footer><div class="wrap"><span>© 2026 Surge. Not affiliated with Apple.</span><span>Made in Jeddah with too much shadowBlur ✨</span></div></footer>
 
-<script src="https://unpkg.com/lenis@1.1.18/dist/lenis.min.js"></script>
 <script>
 /* ===================== Surge glow engine v2 =====================
    Everything moves:
@@ -377,9 +374,11 @@
     const loop = opts.loop ?? false, gap = opts.gap ?? 1500, refW = opts.refWidth ?? 1440;
     const onDone = opts.onDone || (() => {});
 
+    let cw = 0, ch = 0; try { new ResizeObserver(es => { const b = es[0].contentRect; cw = b.width; ch = b.height; }).observe(canvas); } catch {}
     function size() {
-      const r = canvas.getBoundingClientRect();
-      const w = r.width || canvas.width, h = r.height || canvas.height;
+      // layout read once per resize, not per frame (getBoundingClientRect forces layout under 3D transforms)
+      if (!cw || !ch) { const r = canvas.getBoundingClientRect(); cw = r.width; ch = r.height; }
+      const w = cw || canvas.width, h = ch || canvas.height;
       dpr = Math.min(root.devicePixelRatio || 1, opts.maxDpr ?? 1.5);
       if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) { canvas.width = w * dpr; canvas.height = h * dpr; }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0); W = w; H = h;
@@ -559,10 +558,9 @@
 <script>
 /* ================= smooth scroll ================= */
 let lenis = null;
-try { if (window.Lenis && matchMedia('(hover:hover) and (min-width:820px)').matches) { lenis = new Lenis({ lerp: .085, smoothWheel: true, syncTouch: false }); const l = t => { lenis.raf(t); requestAnimationFrame(l); }; requestAnimationFrame(l); } } catch {}
 document.querySelectorAll('a[href^="#"]').forEach(a => a.addEventListener('click', e => {
   const t = document.querySelector(a.getAttribute('href')); if (!t) return; e.preventDefault();
-  lenis ? lenis.scrollTo(t, { offset: -20, duration: 1.4 }) : t.scrollIntoView({ behavior: 'smooth' });
+  t.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }));
 
 /* ================= cursor + spotlight + magnetic ================= */
@@ -570,7 +568,9 @@ const cur = document.getElementById('cur'), spot = document.getElementById('spot
 let mx = innerWidth/2, my = innerHeight/2, cx = mx, cy = my;
 addEventListener('pointermove', e => { mx = e.clientX; my = e.clientY; }, { passive: true });
 let sx = mx, sy = my;
-if (matchMedia('(hover:hover)').matches) (function loopCur(){ cx += (mx-cx)*.22; cy += (my-cy)*.22; sx += (mx-sx)*.08; sy += (my-sy)*.08; cur.style.transform = `translate(${cx}px,${cy}px) translate(-50%,-50%)`; spot.style.transform = `translate(${sx}px,${sy}px)`; requestAnimationFrame(loopCur); })();
+let curIdle = 0, curOn = false;
+function loopCur(){ cx += (mx-cx)*.22; cy += (my-cy)*.22; sx += (mx-sx)*.08; sy += (my-sy)*.08; cur.style.transform = `translate(${cx}px,${cy}px) translate(-50%,-50%)`; spot.style.transform = `translate(${sx}px,${sy}px)`; if (Math.abs(mx-cx) + Math.abs(my-cy) + Math.abs(mx-sx) + Math.abs(my-sy) > .5 || performance.now() - curIdle < 120) requestAnimationFrame(loopCur); else curOn = false; }
+if (matchMedia('(hover:hover)').matches) addEventListener('pointermove', () => { curIdle = performance.now(); if (!curOn) { curOn = true; requestAnimationFrame(loopCur); } }, { passive: true });
 document.querySelectorAll('a,button,.mini,.tilt').forEach(el => { el.addEventListener('pointerenter', () => cur.classList.add('big')); el.addEventListener('pointerleave', () => cur.classList.remove('big')); });
 document.querySelectorAll('.mag').forEach(el => {
   el.addEventListener('pointermove', e => { const r = el.getBoundingClientRect(); const dx = e.clientX-(r.left+r.width/2), dy = e.clientY-(r.top+r.height/2); el.style.transform = `translate(${dx*.22}px,${dy*.28}px) scale(1.04)`; });
@@ -614,7 +614,7 @@ function updatePhase(){ phaseTick = false; if (!phase.visible && !stepsBox.getBo
   const f = Math.max(0, Math.min(.999, (innerHeight*.6 - r.top)/(r.height))); if (Math.abs(f - lastF) > .002) { lastF = f; phase.scrubTo(f); }
   steps.forEach(s => { const sr = s.getBoundingClientRect(); s.classList.toggle('on', sr.top < innerHeight*.72 && sr.bottom > innerHeight*.28); }); }
 const onScroll = () => { if (!phaseTick) { phaseTick = true; requestAnimationFrame(updatePhase); } };
-addEventListener('scroll', onScroll, { passive: true }); if (lenis) lenis.on('scroll', onScroll); updatePhase();
+addEventListener('scroll', onScroll, { passive: true }); updatePhase();
 
 /* customize */
 const mini = makeGlow(document.getElementById('mini-c'), { gap: 1200, settings:{ theme:'aurora' } });
