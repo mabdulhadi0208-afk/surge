@@ -60,7 +60,7 @@ async function refreshApps(){ const box=$('#apps'); if(!box) return; running=awa
   const sepAt=items.findIndex(i=>!i.pinned);
   box.innerHTML=items.map((it,i)=>`${i===sepAt&&i>0?'<div class="apsep"></div>':''}<div class="ap ${it.run?'run':''} ${it.front?'front':''}" data-i="${i}"><div class="tip">${it.name}</div><img alt="" src="${iconCache[it.path]||''}"><div class="dot"></div></div>`).join('');
   box.querySelectorAll('.ap').forEach(el=>{ const it=items[+el.dataset.i]; const im=el.querySelector('img'); icon(it.path).then(src=>{ if(src) im.src=src; else { im.remove(); const ph=document.createElement('div'); ph.className='ph'; ph.textContent=(it.name||'?')[0].toUpperCase(); el.insertBefore(ph, el.querySelector('.dot')); } });
-    el.onclick=()=>{ el.classList.remove('bounce'); void el.offsetWidth; el.classList.add('bounce'); if(it.run&&it.bundleId) api?.appActivate(it.bundleId); else api?.appOpen(it.path); };
+    el.onclick=()=>{ el.classList.remove('bounce'); void el.offsetWidth; el.classList.add('bounce'); if(it.run) api?.appActivate(it.bundleId, it.path); else api?.appOpen(it.path); };
     el.oncontextmenu=e=>{ e.preventDefault(); if(it.run&&it.bundleId) api?.appQuit(it.bundleId); }; });
   requestAnimationFrame(fit); }
 addEventListener('mousemove',e=>{ const d=S.modules?.dock||{}; const els=document.querySelectorAll('.ap'); if(!els.length) return; if(!d.magnify){ els.forEach(x=>x.style.transform=''); return; } const box=$('#apps').getBoundingClientRect(); const inside=e.clientY>box.top-30&&e.clientY<box.bottom+10; els.forEach(x=>{ const r=x.getBoundingClientRect(); const dx=Math.abs(e.clientX-(r.left+r.width/2)); const s=inside?1+Math.max(0,1-dx/140)*.5:1; x.style.transform=`scale(${s})`; }); });
