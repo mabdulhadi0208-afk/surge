@@ -98,8 +98,11 @@ async function install() {
   fs.writeFileSync(script, `#!/bin/bash
 exec >> "${logf}" 2>&1
 echo "=== $(date) swap ${C.app.getVersion()} -> ${sv}"
-NEW="${state.staged}"; APP="${target}"
-for i in $(seq 1 60); do pgrep -x Surge >/dev/null || break; sleep 0.1; done
+NEW="${state.staged}"; APP="${target}"; OLDPID=${process.pid}
+# wait for the old Surge (this exact pid) to be gone; escalate to SIGKILL if it hangs on exit so the new one can take the single-instance lock
+for i in $(seq 1 40); do kill -0 $OLDPID 2>/dev/null || break; sleep 0.1; done
+kill -0 $OLDPID 2>/dev/null && { echo "old pid $OLDPID still alive, SIGTERM"; kill -TERM $OLDPID 2>/dev/null; sleep 1; }
+kill -0 $OLDPID 2>/dev/null && { echo "old pid $OLDPID stuck, SIGKILL"; kill -KILL $OLDPID 2>/dev/null; sleep 0.5; }
 pkill -x Surge 2>/dev/null; sleep 0.3
 rm -rf "$APP.old"; mv "$APP" "$APP.old" || { echo "mv failed"; exit 1; }
 if mv "$NEW" "$APP" 2>/dev/null || ditto "$NEW" "$APP"; then xattr -cr "$APP" 2>/dev/null; echo "swapped"; else echo "swap failed, rolling back"; rm -rf "$APP"; mv "$APP.old" "$APP"; fi
@@ -107,11 +110,15 @@ touch "${path.join(C.app.getPath('userData'), 'just-updated')}"
 open -a "$APP" || ("$APP/Contents/MacOS/Surge" >/dev/null 2>&1 & disown)
 for i in $(seq 1 40); do pgrep -f "$APP/Contents/MacOS/Surge" >/dev/null && break; sleep 0.25; done
 if pgrep -f "$APP/Contents/MacOS/Surge" >/dev/null; then echo "launched OK"; rm -rf "$APP.old" "$NEW"; else echo "launch failed, restoring old"; rm -rf "$APP"; mv "$APP.old" "$APP" 2>/dev/null; open -a "$APP"; fi
+# belt and braces: if 8s later there's still no Surge in the menu bar, launch it again
+sleep 8; pgrep -f "$APP/Contents/MacOS/Surge" >/dev/null || { echo "no Surge running after swap, relaunching"; open -a "$APP"; }
 echo "=== done"
 `); fs.chmodSync(script, 0o755);
   set({ status: 'installing' }); log('installing', sv);
   const child = spawn('/bin/bash', [script], { detached: true, stdio: 'ignore' }); child.unref();
+  try { C.stopHook?.(); } catch {}                                   // the native hook is what makes exit hang
   setTimeout(() => C.app.exit(0), 150);
+  setTimeout(() => { try { process.kill(process.pid, 'SIGKILL'); } catch {} }, 2500);   // if Electron won't die, make it
   return state;
 }
 

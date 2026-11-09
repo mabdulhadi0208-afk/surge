@@ -319,7 +319,7 @@ function updateTray() {
 const ctx = {
   app, screen, clipboard, Notification, nativeTheme, powerSaveBlocker, globalShortcut, execFile, os,
   get settings() { return settings; }, mod, fireGlow, overlaySend, setOverlayPersistent, play, sysSound, onInput, hookState: () => hookState,
-  setTray, setTrayBattery, openSettings, toggleNotes, readBattery, applyPatch: (p) => applyPatch(p), get battery() { return battery; }, set battery(v) { battery = v; },
+  setTray, setTrayBattery, openSettings, toggleNotes, readBattery, stopHook: () => { try { if (hookStarted) hook.stop(); hookStarted = false; } catch {} }, applyPatch: (p) => applyPatch(p), get battery() { return battery; }, set battery(v) { battery = v; },
   notify: (title, body) => { try { new Notification({ title, body, silent: true }).show(); } catch {} },
   broadcast: (ch, p) => { [settingsWin, notesWin, audioWin, popWin, ...overlays].forEach(w => { try { if (w && !w.isDestroyed()) w.webContents.send(ch, p); } catch {} }); },
 };
@@ -365,9 +365,17 @@ ipcMain.on('notes:save', (_e, text) => { try { fs.writeFileSync(notesPath(), Str
 
 /* ------------------------------------------------------------------ boot */
 const gotLock = app.requestSingleInstanceLock();
-if (!gotLock) app.quit();
-app.on('second-instance', () => openSettings());
+if (!gotLock) {
+  // Another Surge holds the lock. Right after an update that's the OLD process still shutting down (the native input hook can take a
+  // few seconds to let go) — if we just quit here, nothing ever appears in the menu bar. So retry a few times instead of dying silently.
+  const n = +(process.env.SURGE_RELAUNCH || 0);
+  log('single-instance lock busy, attempt', n);
+  if (n < 10) { process.env.SURGE_RELAUNCH = String(n + 1); setTimeout(() => { app.relaunch(); app.exit(0); }, 1500); }
+  else app.exit(0);
+}
+app.on('second-instance', () => { if (gotLock) openSettings(); });
 app.whenReady().then(async () => {
+  if (!gotLock) return;
   log('boot', app.getVersion(), process.platform, process.arch, 'electron', process.versions.electron, process.execPath);
   try { require('child_process').execFile('codesign', ['-d', '-r-', app.getAppPath().replace(/\/Contents\/Resources\/app(\.asar)?$/, '')], (e, o, er) => log('codesign', ((o || '') + (er || '')).replace(/\s+/g, ' '))); } catch {}
   if (process.platform === 'darwin' && app.isPackaged) {
