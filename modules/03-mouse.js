@@ -16,7 +16,7 @@ module.exports = {
     const tick = (vol) => { const s = ctx.mod('mouse'); ctx.play('scroll', { preset: s.scrollPreset, volume: s.volume * .5 * vol }); };
     let lastTick = 0, lastEv = 0, gap = 1000, coastT = null;
     const stopCoast = () => { clearTimeout(inertia); inertia = null; clearTimeout(coastT); coastT = null; };
-    off.push(ctx.onInput('mousedown', e => { stopCoast(); const s = ctx.mod('mouse'); ctx.play('click', { preset: s.preset, volume: s.volume, master: e.button === 2 && s.rightDifferent ? .85 : 1 }); }));
+    off.push(ctx.onInput('mousedown', e => { stopCoast(); const s = ctx.mod('mouse'); ctx.play('click', { preset: s.preset, volume: s.volume, pitch: e.button === 2 && s.rightDifferent ? .86 : 1 }); }));
     off.push(ctx.onInput('mouseup', () => { const s = ctx.mod('mouse'); ctx.play('click', { preset: s.preset, volume: s.volume, up: true }); }));
     off.push(ctx.onInput('wheel', () => {
       const s = ctx.mod('mouse'); if (!s.scroll) return;

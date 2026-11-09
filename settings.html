@@ -147,7 +147,7 @@ function build(){
   let panes = `<section class="pane on" id="pane-all">
     <div class="hero"><div><h2>Your Mac, with extras.</h2><p>Flip anything on. Each module is independent, tiny, and lives in the menu bar.</p></div><div class="n"><span id="onCount">0</span>/${MODS.length}</div></div>
     <div class="note" id="hookNote"></div>
-    <div class="grid">${MODS.map((m,i)=>`<div class="mod ${m.needsHook?'needs':''}" data-m="${m.id}" style="animation-delay:${i*40}ms"><div class="top"><div class="ic">${ic(m.icon)}</div><h4>${m.name}</h4></div><p>${m.desc}</p><div class="need">Needs Input Monitoring permission</div><div class="tg" data-m="${m.id}"></div></div>`).join('')}</div></section>`;
+    <div class="grid">${MODS.map((m,i)=>`<div class="mod ${m.needsHook?'needs':''}" data-m="${m.id}" style="animation-delay:${i*40}ms"><div class="top"><div class="ic">${ic(m.icon)}</div><h4>${m.name}</h4></div><p>${m.desc}</p><div class="need">Needs Accessibility permission</div><div class="tg" data-m="${m.id}"></div></div>`).join('')}</div></section>`;
   for (const m of MODS) panes += `<section class="pane" id="pane-${m.id}"><div class="card"><h3>${m.name}</h3><div class="row"><div class="l">Enabled<small>${m.desc}</small></div><div class="tg" data-m="${m.id}"></div></div>${m.needsHook?'<div class="row"><div class="l"><small id="hook-'+m.id+'"></small></div></div>':''}</div>${m.id==='glow'?'<div class="card"><h3>Live preview</h3><div class="preview" id="preview"><canvas id="pc"></canvas></div></div>':''}${m.schema.length?'<div class="card"><h3>Options</h3>'+m.schema.map(f=>field(m,f)).join('')+'</div>':''}</section>`;
   panes += `<section class="pane" id="pane-about"><div class="about"><div class="logo"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></div><h2>Surge</h2><p>${MODS.length} modules and counting. Every sound is synthesised, every glow is drawn live, nothing phones home.</p><p style="font-size:12px"><span id="aboutVer">v…</span> · <span id="reset" style="cursor:pointer;text-decoration:underline">reset all settings</span></p></div></section>`;
   $('#panes').innerHTML = panes;
@@ -222,7 +222,7 @@ async function buildApps(el, mid, k){
     el.querySelectorAll('.wi').forEach(w=>w.onclick=()=>{ const c=S.modules[mid][k]||[]; set(mid,{[k]: c.includes(w.dataset.p)?c.filter(x=>x!==w.dataset.p):[...c,w.dataset.p]}); render(); }); };
   el._render = render; render();
 }
-const WNAMES={apps:'Apps',clock:'Clock',battery:'Battery',stats:'CPU / Mem',media:'Now Playing',volume:'Volume',focus:'Focus',caffeine:'Caffeine',glow:'Glow',notes:'Notes',spotlight:'Spotlight'};
+const WNAMES={apps:'Apps',launchpad:'Launchpad',clock:'Clock',battery:'Battery',stats:'CPU / Mem',media:'Now Playing',volume:'Volume',focus:'Focus',caffeine:'Caffeine',glow:'Glow',notes:'Notes',spotlight:'Spotlight'};
 function buildWidgets(el, mid, k){
   const all = el.dataset.opts.split(',');
   const render = () => { const cur = S.modules[mid]?.[k] || []; const items = [...cur, ...all.filter(x=>!cur.includes(x))];
@@ -249,7 +249,7 @@ function paint(){
       if (f.t==='soundpicker' && el._render && !el.contains(document.activeElement)) el._render();
       if ((f.t==='widgets' || f.t==='apps') && el._render && !el.contains(document.activeElement)) el._render();
     }
-    const h = document.getElementById('hook-'+m.id); if (h) h.textContent = hook==='running' ? 'Input monitoring: active' : hook==='ready' ? 'Turns on when enabled — macOS will ask for Input Monitoring permission once.' : hook==='needs-accessibility' ? 'Waiting for permission: System Settings → Privacy & Security → Accessibility → turn on Surge. Starts automatically once granted.' : hook==='error' ? 'Hook failed to start. Check Accessibility and Input Monitoring for Surge, then relaunch.' : 'Global input hook not installed in this build (uiohook-napi). Run npm install on a Mac.';
+    const h = document.getElementById('hook-'+m.id); if (h) h.textContent = hook==='running' ? 'Input monitoring: active' : hook==='ready' ? 'Turns on when enabled — macOS will ask for Accessibility permission once.' : hook==='needs-accessibility' ? 'Waiting for permission: System Settings → Privacy & Security → Accessibility → turn on Surge. Starts automatically once granted.' : hook==='error' ? 'Hook failed to start. Check Accessibility and Input Monitoring for Surge, then relaunch.' : 'Global input hook not installed in this build (uiohook-napi). Run npm install on a Mac.';
   }
   $('#onCount').textContent = on;
   const mv = $('#master'); if (document.activeElement !== mv) { mv.value = S.masterVolume ?? 1; mv.style.setProperty('--p', (S.masterVolume ?? 1)*100+'%'); }

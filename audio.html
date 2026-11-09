@@ -23,9 +23,9 @@ function tone({ f = 200, f2 = null, dur = .05, vol = .4, type = 'sine', t = AC.c
 }
 
 const NOTES=[523.25,587.33,659.25,698.46,783.99,880,987.77,1046.5];
-function playPreset(p, v, kind, variance){
+function playPreset(p, v, kind, variance, pitch = 1){
   v *= p.gain ?? 1;
-  const pv = p.pv ?? variance ?? .2, m = 1 + rnd(-pv, pv), t0 = AC.currentTime;
+  const pv = p.pv ?? variance ?? .2, m = (1 + rnd(-pv, pv)) * pitch, t0 = AC.currentTime;
   const deep = kind === 'space' ? (p.space || 1.5) : 1;
   const hits = [{ t: t0, g: 1 }]; if (p.rattle) hits.push({ t: t0 + p.rattle.delay, g: p.rattle.vol });
   for (const h of hits) {
@@ -52,7 +52,7 @@ function play(p) {
   if (v <= 0) return;
   switch (p.sound) {
     case 'key': { const pr = SurgeSounds.findKey(p.preset); if (p.kind === 'up') playUp(pr, v); else playPreset(pr, v, p.kind, p.variance); break; }
-    case 'click': { const pr = SurgeSounds.findMouse(p.preset); if (p.up) playUp(pr, v); else playPreset(pr, v, 'key', .05); break; }
+    case 'click': { const pr = SurgeSounds.findMouse(p.preset); if (p.up) playUp(pr, v); else playPreset(pr, v, 'key', .05, p.pitch || 1); break; }
     case 'scroll': playPreset(SurgeSounds.findScroll(p.preset), v, 'key', .08); break;
     case 'capsOn': tone({ f: 660, f2: 990, dur: .12, vol: v * .5 }); break;
     case 'capsOff': tone({ f: 990, f2: 660, dur: .12, vol: v * .5 }); break;

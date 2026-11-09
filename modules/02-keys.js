@@ -1,6 +1,7 @@
 // Keyboard Sounds — 145 synthesised presets: 30 real-switch sound-alikes + Thocky / Creamy / Clicky / Clacky / Special.
 let off = [], last = 0, stats = { today: 0, day: '' };
 const dayKey = () => new Date().toDateString();
+const MODS = new Set([42, 54, 29, 3613, 56, 3640, 3675, 3676, 58, 3613]);
 module.exports = {
   id: 'keys', name: 'Keyboard Sounds', icon: 'keyboard', group: 'Sound', needsHook: true,
   desc: '145 key sounds: 30 real-switch sound-alikes (MX Blue, Holy Panda, Box Jade, Topre…) plus Thocky, Creamy, Clicky, Clacky, Special — all synthesised live.',
@@ -21,7 +22,8 @@ module.exports = {
       const s = ctx.mod('keys'); const now = Date.now(); if (now - last < 10) return; last = now;
       if (stats.day !== dayKey()) { stats.day = dayKey(); stats.today = 0; } stats.today++;
       const kind = e.keycode === 57 && s.spaceThock ? 'space' : e.keycode === 28 ? 'enter' : 'key';
-      ctx.play('key', { preset: s.preset, volume: s.volume, variance: s.pitchVariance, kind });
+      const modifier = MODS.has(e.keycode);                       // shift / ctrl / alt / cmd / caps / fn → quieter, like a real board
+      ctx.play('key', { preset: s.preset, volume: s.volume * (modifier ? .55 : 1), variance: s.pitchVariance, kind });
     }));
     off.push(ctx.onInput('keyup', e => { down.set(e.keycode, 0); const s = ctx.mod('keys'); if (s.releaseSound) ctx.play('key', { preset: s.preset, volume: s.volume * .5, kind: 'up' }); }));
   },

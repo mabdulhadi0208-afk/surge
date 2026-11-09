@@ -11,7 +11,7 @@ function cpu(os) { const c = os.cpus(); let idle = 0, total = 0; for (const k of
 module.exports = {
   id: 'dock', name: 'Surge Dock', icon: 'dock', group: 'Screen',
   desc: 'A full Dock replacement: your apps (pinned + running, macOS-style magnification) plus widgets — clock, battery, CPU, now playing, volume, focus, caffeine. Can hide the macOS Dock for good.',
-  defaults: { edge: 'bottom', offset: 10, size: 1, autohide: false, hideMacDock: false, magnify: true, pinned: DEFAULT_PINS, widgets: ['apps', 'launchpad', 'clock', 'battery', 'volume', 'focus', 'caffeine'] },
+  defaults: { edge: 'bottom', offset: 10, size: 1, autohide: false, hideMacDock: false, macDockConfirmed: false, magnify: true, pinned: DEFAULT_PINS, widgets: ['apps', 'launchpad', 'clock', 'battery', 'volume', 'focus', 'caffeine'] },
   schema: [
     { k: 'edge', t: 'seg', label: 'Edge', opts: [['bottom', 'Bottom'], ['top', 'Top']] },
     { k: 'offset', t: 'range', label: 'Distance from edge', min: 0, max: 120, step: 2, fmt: 'px' },
@@ -61,6 +61,7 @@ module.exports = {
     else if (revealed && !hideT) hideT = setTimeout(() => { hideT = null; module.exports._slide(ctx, false); }, 500);
   },
   async _confirmMacDock(ctx) {
+    if (ctx.mod('dock').macDockConfirmed) return true;
     const r = await dialog.showMessageBox({ type: 'question', buttons: ['Replace it', 'Keep the macOS Dock'], defaultId: 0, cancelId: 1, message: 'Replace the macOS Dock with Surge Dock?',
       detail: 'Surge will take over the Dock. macOS will ask you to allow Surge to control "System Events" — that permission is what lets Surge switch the Dock off and on cleanly.\n\nApple\'s Dock comes back instantly if you turn this off, disable Surge Dock, or quit Surge.' });
     if (r.response !== 0) { ctx.applyPatch({ modules: { dock: { hideMacDock: false } } }); return false; }
@@ -69,6 +70,7 @@ module.exports = {
     if (!ok) { await dialog.showMessageBox({ type: 'warning', buttons: ['Open Automation settings', 'Cancel'], defaultId: 0, cancelId: 1, message: 'Surge needs permission to control System Events',
         detail: 'System Settings → Privacy & Security → Automation → Surge → turn on System Events. Then flip "Replace the macOS Dock" on again.' }).then(x => x.response === 0 && require('electron').shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_Automation'));
       ctx.applyPatch({ modules: { dock: { hideMacDock: false } } }); return false; }
+    ctx.applyPatch({ modules: { dock: { macDockConfirmed: true } } });
     return true;
   },
   _macDock(hide, ctx) {
@@ -120,7 +122,7 @@ module.exports = {
   start(ctx) {
     module.exports._ctx = ctx;
     win = new BrowserWindow({ width: 900, height: 300, show: false, frame: false, transparent: true, hasShadow: false, resizable: false, movable: false,
-      alwaysOnTop: true, skipTaskbar: true, focusable: true, fullscreenable: false, backgroundColor: '#00000000',
+      alwaysOnTop: true, skipTaskbar: true, focusable: false, fullscreenable: false, backgroundColor: '#00000000',
       webPreferences: { preload: path.join(__dirname, '..', 'preload.js'), contextIsolation: true, backgroundThrottling: false } });
     win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
     win.setAlwaysOnTop(true, 'floating');

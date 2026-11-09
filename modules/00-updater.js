@@ -126,7 +126,7 @@ async function poll() {
 module.exports = {
   id: 'updater', name: 'Auto Update', icon: 'refresh', group: 'System', defaultEnabled: true,
   desc: 'Watches GitHub for new versions, downloads them in the background, verifies them, and installs in one click.',
-  defaults: { auto: true, popup: true, pollSeconds: 1 },
+  defaults: { auto: true, popup: true, pollSeconds: 1, skipped: null },
   schema: [
     { k: 'auto', t: 'toggle', label: 'Download automatically', hint: 'New versions download in the background; you choose when to restart' },
     { k: 'popup', t: 'toggle', label: 'Show the update card', hint: 'A floating card appears on top of whatever you\'re doing' },
@@ -135,12 +135,12 @@ module.exports = {
   ],
   actions: {
     check: () => check(true), install: () => install(), download: () => download(),
-    later: () => { snoozedUntil = Date.now() + 2 * 3600000; hideCard(); }, skip: () => { skipVersion = state.latest; hideCard(); },
+    later: () => { snoozedUntil = Date.now() + 2 * 3600000; hideCard(); }, skip: () => { skipVersion = state.latest; C.applyPatch({ modules: { updater: { skipped: skipVersion } } }); hideCard(); },
     cancel: () => { try { dlProc?.kill('SIGTERM'); } catch {} set({ status: 'available', progress: 0 }); },
     state: () => ({ ...state, current: C.app.getVersion(), lastCheck }),
   },
   start(ctx) {
-    C = ctx;
+    C = ctx; skipVersion = ctx.mod('updater').skipped || null;
     try { const f = path.join(ctx.app.getPath('userData'), 'just-updated'); if (fs.existsSync(f)) { fs.rmSync(f); setTimeout(() => ctx.fireGlow('full', { level: 100, hud: { text: `Updated to Surge ${ctx.app.getVersion()}`, color: '#00FF85' } }), 1500); log('updated to', ctx.app.getVersion());
         // if macOS dropped our Accessibility grant across the update, don't make the user remove+re-add Surge by hand:
         // clear the stale entry ourselves and re-ask once (one click on Allow instead of a trip through System Settings)

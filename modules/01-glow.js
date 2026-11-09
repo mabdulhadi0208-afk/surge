@@ -20,7 +20,7 @@ module.exports = {
     { k: 'trayStyle', t: 'seg', label: 'Menu bar', opts: [['both','Battery + %'],['icon','Battery'],['pct','% only'],['bolt','Bolt']] },
     { t: 'actions', label: 'Preview', opts: [['preview','Plug in'],['unplug','Unplug'],['low','Low'],['full','Full']] },
   ],
-  onSettings(ctx) { const b = ctx.battery; if (b) { const ts = ctx.mod('glow').trayStyle || 'both'; ctx.setTrayBattery?.(ts === 'pct' || ts === 'bolt' ? null : b); ctx.setTray('glow', { title: ts === 'icon' ? '' : `${b.level}%`, menu: [{ label: 'Preview glow', click: () => ctx.fireGlow('preview') }] }); } },
+  onSettings(ctx) { const b = ctx.battery; if (b) { const ts = ctx.mod('glow').trayStyle || 'both'; ctx.setTrayBattery?.(ts === 'pct' || ts === 'bolt' ? null : b); ctx.setTray('glow', { title: ts === 'icon' || ts === 'bolt' ? '' : `${b.level}%`, menu: [{ label: 'Preview glow', click: () => ctx.fireGlow('preview') }] }); } },
   actions: { preview: (ctx, kind) => ctx.fireGlow(kind, kind === 'low' ? { level: 12 } : kind === 'full' ? { level: 100 } : {}) },
   start(ctx) {
     const s = () => ctx.mod('glow');
@@ -33,9 +33,9 @@ module.exports = {
       } else if (prev && s().fullGlow && b.charging && b.level >= 100 && prev.level < 100 && !fullAlerted) { fullAlerted = true; ctx.fireGlow('full', { level: 100 }); chime('Hero'); }
       if (s().lowAlert > 0 && !b.charging && b.level <= s().lowAlert && !lowAlerted) { lowAlerted = true; ctx.fireGlow('low'); chime('Basso'); }
       if (b.level > s().lowAlert + 5) lowAlerted = false;
-      const status = b.charged ? 'Fully charged' : b.charging ? `Charging${b.remaining ? ' · ' + b.remaining + ' to full' : ''}` : `On battery${b.remaining ? ' · ' + b.remaining + ' left' : ''}`;
+      const status = b.charged ? 'Fully charged' : b.holding ? 'Plugged in · charging on hold' : b.charging ? `Charging${b.remaining ? ' · ' + b.remaining + ' to full' : ''}` : `On battery${b.remaining ? ' · ' + b.remaining + ' left' : ''}`;
       const ts = s().trayStyle || 'both'; ctx.setTrayBattery?.(ts === 'pct' || ts === 'bolt' ? null : b);
-      ctx.setTray('glow', { title: ts === 'icon' ? '' : `${b.level}%`, menu: [{ label: status, enabled: false }, { label: 'Preview glow', click: () => ctx.fireGlow('preview') }] });
+      ctx.setTray('glow', { title: ts === 'icon' || ts === 'bolt' ? '' : `${b.level}%`, menu: [{ label: status, enabled: false }, { label: 'Preview glow', click: () => ctx.fireGlow('preview') }] });
     }); };
     tick(); timer = setInterval(tick, 1200);
     if (!module.exports._pm) { module.exports._pm = true; try { const { powerMonitor } = require('electron'); powerMonitor.on('resume', () => setTimeout(() => timer && tick(), 1500)); powerMonitor.on('on-ac', () => setTimeout(() => timer && tick(), 200)); powerMonitor.on('on-battery', () => setTimeout(() => timer && tick(), 200)); } catch {} }

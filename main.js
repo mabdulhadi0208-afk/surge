@@ -126,7 +126,7 @@ function ensureAudio() {
   audioWin.webContents.on('console-message', (_e, lvl, msg) => lvl >= 2 && log('audio', msg));
   return audioWin;
 }
-function play(sound, opts = {}) { if (settings.muted) return; const w = ensureAudio(); if (!w || w.isDestroyed()) return; const send = () => { try { w.webContents.send('audio:play', { sound, master: settings.masterVolume ?? 1, ...opts }); } catch {} }; w.webContents.isLoading() ? w.webContents.once('did-finish-load', send) : send(); }
+function play(sound, opts = {}) { if (settings.muted && !opts.force) return; const w = ensureAudio(); if (!w || w.isDestroyed()) return; const send = () => { try { w.webContents.send('audio:play', { sound, master: settings.masterVolume ?? 1, ...opts }); } catch {} }; w.webContents.isLoading() ? w.webContents.once('did-finish-load', send) : send(); }
 function sysSound(name) { if (process.platform === 'darwin') execFile('afplay', [`/System/Library/Sounds/${name}.aiff`], () => {}); }
 
 /* ------------------------------------------------------------------ battery (shared by modules) */
@@ -138,7 +138,8 @@ function readBattery(cb) {
     const src = /'(AC|Battery) Power'/.exec(out), lvl = /(\d{1,3})%/.exec(out);
     if (!lvl) return cb(null);
     const time = /(\d{1,2}:\d{2}) remaining/.exec(out);
-    cb({ level: parseInt(lvl[1], 10), charging: src ? src[1] === 'AC' : !/discharging/i.test(out), remaining: time ? time[1] : null, charged: /charged/i.test(out) });
+    const ac = src ? src[1] === 'AC' : !/discharging/i.test(out);
+    cb({ level: parseInt(lvl[1], 10), charging: ac, holding: ac && /not charging/i.test(out), remaining: time ? time[1] : null, charged: /charged/i.test(out) });
   });
 }
 
@@ -237,7 +238,7 @@ ipcMain.handle('apps:icon', (_e, p) => appIcon(p));
 ipcMain.on('apps:reveal', (_e, p) => { if (typeof p === 'string' && p.endsWith('.app')) execFile('open', ['-R', p], () => {}); });
 ipcMain.on('apps:forcequit', (_e, pid) => { if (Number.isInteger(pid) && pid > 1) { try { process.kill(pid, 'SIGKILL'); } catch {} } });
 ipcMain.on('apps:openwith', (_e, p, files) => { if (typeof p === 'string' && p.endsWith('.app') && Array.isArray(files)) execFile('open', ['-a', p, ...files.filter(f => typeof f === 'string').slice(0, 50)], () => {}); });
-ipcMain.on('apps:open', (_e, p) => { execFile('open', ['-a', p], (err) => err && execFile('open', [p], () => {})); });
+ipcMain.on('apps:open', (_e, p) => { if (typeof p !== 'string' || !p) return; execFile('open', ['-a', p], (err) => err && execFile('open', [p], () => {})); });
 ipcMain.on('apps:activate', (_e, bundleId, p) => { if (p) execFile('open', ['-a', p], (err) => err && bundleId && execFile('open', ['-b', bundleId], () => {})); else if (bundleId) execFile('open', ['-b', bundleId], () => {}); });
 ipcMain.on('apps:quit', (_e, bundleId, pid) => { if (pid) { try { process.kill(pid, 'SIGTERM'); } catch {} } else if (bundleId) execFile('osascript', ['-e', `tell application id "${bundleId}" to quit`], () => {}); });
 
@@ -344,13 +345,13 @@ function applyPatch(patch) {
 /* ------------------------------------------------------------------ ipc */
 ipcMain.handle('settings:get', () => settings);
 ipcMain.handle('settings:set', (_e, patch) => { applyPatch(patch); return settings; });
-ipcMain.handle('settings:reset', () => { settings = { launchAtLogin: false, modules: {} }; for (const id in MODULES) settings.modules[id] = defaultsFor(MODULES[id]); saveSettings(); reconcile(); ctx.broadcast('settings:update', settings); return settings; });
+ipcMain.handle('settings:reset', () => { settings = { launchAtLogin: settings.launchAtLogin, masterVolume: 1, muted: false, modules: {} }; for (const id in MODULES) settings.modules[id] = defaultsFor(MODULES[id]); saveSettings(); reconcile(); ctx.broadcast('settings:update', settings); updateTray(); return settings; });
 ipcMain.handle('modules:list', () => Object.values(MODULES).map(m => ({ id: m.id, name: m.name, icon: m.icon, group: m.group, desc: m.desc, needsHook: !!m.needsHook, schema: m.schema || [] })));
 ipcMain.handle('battery:get', () => battery);
 ipcMain.handle('hook:state', () => hookState);
 ipcMain.handle('module:action', (_e, id, action, arg) => { try { return MODULES[id]?.actions?.[action]?.(ctx, arg); } catch (e) { console.error(e); } });
 ipcMain.on('glow:preview', (_e, kind) => fireGlow(kind || 'preview', kind === 'low' ? { level: 12 } : kind === 'full' ? { level: 100 } : {}));
-ipcMain.on('audio:test', (_e, sound, opts) => play(sound, opts));
+ipcMain.on('audio:test', (_e, sound, opts) => play(sound, { ...(opts || {}), force: true }));
 ipcMain.on('win:close', (e) => BrowserWindow.fromWebContents(e.sender)?.close());
 ipcMain.on('win:hide', (e) => BrowserWindow.fromWebContents(e.sender)?.hide());
 ipcMain.on('win:minimize', (e) => BrowserWindow.fromWebContents(e.sender)?.minimize());
@@ -384,10 +385,9 @@ app.whenReady().then(async () => {
     try { const m = require(path.join(__dirname, 'modules', f)); MODULES[m.id] = m; } catch (e) { console.error('module load', f, e); }
   }
   log('modules', Object.keys(MODULES).join(','), 'hook', hookState);
-  {
-  }
   const firstRun = !fs.existsSync(settingsPath());
-  loadSettings(); saveSettings();
+  loadSettings(); if (firstRun) settings.launchAtLogin = true; saveSettings();
+  if (process.platform === 'darwin' && app.isPackaged) { try { if (app.getLoginItemSettings().openAtLogin !== settings.launchAtLogin) app.setLoginItemSettings({ openAtLogin: settings.launchAtLogin, openAsHidden: true }); } catch {} }
   Menu.setApplicationMenu(Menu.buildFromTemplate([{ label: 'Surge', submenu: [
     { label: 'Settings…', accelerator: 'Cmd+,', click: () => openSettings() },
     { label: 'Quick Notes', accelerator: 'Cmd+Shift+N', click: toggleNotes },
