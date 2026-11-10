@@ -3,7 +3,15 @@
 <style>
   :root{--a:#00FF85;--ink:#f4f4f7;--muted:#9a9aa6;--spring:cubic-bezier(.34,1.4,.64,1);--ease:cubic-bezier(.22,1,.36,1);--mh:0px}
   *{box-sizing:border-box} html,body{margin:0;height:100%;background:transparent;overflow:hidden;font:12.5px/1.2 -apple-system,"SF Pro Text","Segoe UI",Inter,system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased;-webkit-user-select:none}
-  body{display:flex;justify-content:center;align-items:flex-start;padding-top:6px} body.notch{padding-top:0}
+  body{display:flex;justify-content:center;align-items:flex-start;padding-top:var(--off,6px)} body.notch{padding-top:0}
+  .isl{zoom:var(--z,1)}
+  body.glass:not(.notch) .isl{background:rgba(22,22,28,.62);backdrop-filter:blur(26px) saturate(1.6);-webkit-backdrop-filter:blur(26px) saturate(1.6)}
+  body.tint:not(.notch) .isl{background:color-mix(in srgb,var(--a) 16%,#000)}
+  body.light:not(.notch){--ink:#111114;--muted:#5d5d68} body.light:not(.notch) .isl{background:#f5f5f7;box-shadow:0 10px 30px -10px rgba(0,0,0,.45),0 0 0 1px rgba(0,0,0,.08) inset} body.light:not(.notch) .q{background:rgba(0,0,0,.07)} body.light:not(.notch) .q:hover{background:rgba(0,0,0,.13)} body.light:not(.notch) .ring .bg{stroke:rgba(0,0,0,.15)}
+  body.noring .isl.event{box-shadow:0 10px 30px -10px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.07) inset}
+  .eq{display:inline-flex;gap:2px;align-items:flex-end;height:11px} .eq i{width:2.5px;background:var(--a);border-radius:2px;animation:eq .9s ease-in-out infinite} .eq i:nth-child(2){animation-delay:.2s} .eq i:nth-child(3){animation-delay:.4s} @keyframes eq{0%,100%{height:3px}50%{height:11px}}
+  .trk{max-width:92px;overflow:hidden;text-overflow:ellipsis}
+  .x .date.m{cursor:pointer;color:var(--ink)} .mc{display:inline-flex;gap:2px;margin-left:6px;vertical-align:middle} .mc button{all:unset;cursor:pointer;width:22px;height:22px;border-radius:7px;display:grid;place-items:center} .mc button:hover{background:rgba(128,128,128,.25)} .mc svg{width:11px;height:11px;fill:var(--ink)}
   .isl{position:relative;width:176px;height:32px;border-radius:18px;background:#000;box-shadow:0 10px 30px -10px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.07) inset;overflow:hidden;transition:width .5s var(--spring),height .5s var(--spring),border-radius .4s var(--ease),box-shadow .4s;cursor:default}
   body.notch .isl{width:330px;height:var(--mh);border-radius:0 0 16px 16px;box-shadow:none}
   .isl.event{width:300px;height:44px;border-radius:22px;box-shadow:0 14px 40px -12px var(--ec,#00FF85),0 0 0 1px rgba(255,255,255,.08) inset}
@@ -39,7 +47,7 @@
 </style></head>
 <body>
 <div class="isl" id="isl">
-  <div class="lay c"><div class="l"><svg class="ring" viewBox="0 0 16 16"><circle class="bg" cx="8" cy="8" r="6" fill="none" stroke-width="2.4"/><circle class="fg" id="fg" cx="8" cy="8" r="6" fill="none" stroke-width="2.4" stroke-dasharray="37.7" stroke-dashoffset="37.7"/></svg><span id="pct">—</span></div><div class="r" id="live"></div></div>
+  <div class="lay c"><div class="l" id="sl"></div><div class="r" id="sr"></div></div>
   <div class="lay e"><i></i><span id="et"></span><b id="es"></b></div>
   <div class="lay x">
     <div class="top"><div><div class="time" id="time">--:--</div><div class="date" id="date"></div></div><div class="bat"><b id="xb">—</b><small id="xs"></small></div></div>
@@ -56,22 +64,36 @@
 <script>
 const $=s=>document.querySelector(s), api=window.surge, isl=$('#isl'); let D={}, evT=null, openT=null, closeT=null, over=false;
 function setOver(v){ if(v===over) return; over=v; api?.action('island','hover',v); }
-function clock(){ const n=new Date(); $('#time').textContent=n.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}); $('#date').textContent=n.toLocaleDateString([], {weekday:'long',day:'numeric',month:'long'}); paintLive(); }
-function paintLive(){ const f=D.focus, c=D.caffeine, el=$('#live'); let h='';
-  if(f&&f.phase!=='idle') h=`<span class="dot" style="background:${f.phase==='work'?'#00FF85':'#7DF9FF'};box-shadow:0 0 8px ${f.phase==='work'?'#00FF85':'#7DF9FF'}"></span>${f.mm}:${f.ss}`;
-  else if(c&&c.on) h=`☕ ${c.left!=null?c.left+'m':'awake'}`;
-  else if(D.muted) h='<span style="color:#FF5C5C">muted</span>';
-  else if(!D.s||D.s.clock!==false) h=new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});
-  if(el.innerHTML!==h) el.innerHTML=h; }
-function paint(){ const b=D.battery;
-  if(b){ $('#pct').textContent=b.level+'%'; $('#fg').style.strokeDashoffset=37.7*(1-b.level/100); const col=b.charging?'#00FF85':b.level<=20?'#FF5C5C':'#f4f4f7'; $('#fg').style.stroke=col;
-    $('#xb').textContent=b.level+'%'; $('#xs').textContent=b.charged?'Fully charged':b.holding?'Plugged in · on hold':b.charging?(b.remaining?b.remaining+' to full':'Charging'):(b.remaining?b.remaining+' left':'On battery'); }
-  else { $('#pct').textContent='⚡'; $('#fg').style.strokeDashoffset=0; $('#fg').style.stroke='#00FF85'; $('#xb').textContent='Plugged in'; $('#xs').textContent='No battery'; }
+function clock(){ $('#time').textContent=new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}); paintLive(); }
+const tm=()=>new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});
+function slot(kind){ const b=D.battery, f=D.focus, c=D.caffeine, m=D.media;
+  if(kind==='none') return '';
+  if(kind==='battery'){ if(!b) return '<span style="color:var(--a)">⚡</span>'; const col=b.charging?'var(--a)':b.level<=20?'#FF5C5C':'var(--ink)';
+    return `<svg class="ring" viewBox="0 0 16 16"><circle class="bg" cx="8" cy="8" r="6" fill="none" stroke-width="2.4"/><circle class="fg" cx="8" cy="8" r="6" fill="none" stroke-width="2.4" stroke-dasharray="37.7" stroke-dashoffset="${(37.7*(1-b.level/100)).toFixed(1)}" style="stroke:${col}"/></svg><span>${b.level}%</span>`; }
+  if(kind==='clock') return tm();
+  if(kind==='date') return new Date().toLocaleDateString([], {weekday:'short',day:'numeric',month:'short'});
+  if(kind==='cpu') return `<span style="color:var(--muted)">CPU</span> ${Math.round((D.cpu||0)*100)}%`;
+  // auto: whatever is live right now
+  if(f&&f.phase!=='idle'){ const col=f.phase==='work'?'var(--a)':'#7DF9FF'; return `<span class="dot" style="background:${col};box-shadow:0 0 8px ${col}"></span>${f.mm}:${f.ss}`; }
+  if(m&&m.playing) return `<span class="eq"><i></i><i></i><i></i></span><span class="trk">${esc(m.name)}</span>`;
+  if(c&&c.on) return `☕ ${c.left!=null?c.left+'m':'awake'}`;
+  if(D.muted) return '<span style="color:#FF5C5C">muted</span>';
+  return (!D.s||D.s.clock!==false)?tm():''; }
+const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function paintLive(){ const s=D.s||{}; for(const [id,k] of [['#sl',s.left||'battery'],['#sr',s.right||'auto']]){ const h=slot(k), el=$(id); if(el.dataset.h!==h){ el.dataset.h=h; el.innerHTML=h; } } }
+function applyStyle(){ const s=D.s||{}; const cl=document.body.classList; ['glass','tint','light'].forEach(c=>cl.toggle(c,s.style===c)); cl.toggle('noring',s.glowRing===false);
+  const r=document.documentElement.style; r.setProperty('--a',s.accent||'#00FF85'); r.setProperty('--z',s.size||1); r.setProperty('--off',(s.offset??6)+'px'); }
+function paint(){ const b=D.battery; applyStyle();
+  if(b){ $('#xb').textContent=b.level+'%'; $('#xs').textContent=b.charged?'Fully charged':b.holding?'Plugged in · on hold':b.charging?(b.remaining?b.remaining+' to full':'Charging'):(b.remaining?b.remaining+' left':'On battery'); }
+  else { $('#xb').textContent='Plugged in'; $('#xs').textContent='No battery'; }
+  const m=D.media, d=$('#date'); const key=m?m.name+'|'+m.artist+'|'+m.playing:'';
+  if(d.dataset.k!==key){ d.dataset.k=key; d.classList.toggle('m',!!m); if(m){ d.innerHTML=`♪ ${esc(m.name)} <span style="color:var(--muted)">· ${esc(m.artist)}</span><span class="mc"><button data-m="prev"><svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zM20 6 9 12l11 6z"/></svg></button><button data-m="play"><svg viewBox="0 0 24 24"><path d="${m.playing?'M6 5h4v14H6zM14 5h4v14h-4z':'M7 5l12 7-12 7z'}"/></svg></button><button data-m="next"><svg viewBox="0 0 24 24"><path d="M16 6h2v12h-2zM4 6l11 6-11 6z"/></svg></button></span>`; d.querySelectorAll('[data-m]').forEach(x=>x.onclick=()=>api?.action('dock','media',x.dataset.m)); } else d.textContent=new Date().toLocaleDateString([], {weekday:'long',day:'numeric',month:'long'}); }
   $('#qMute').classList.toggle('red',!!D.muted); $('#mw').style.opacity=D.muted?.15:1;
   $('#qCaf').classList.toggle('on',!!(D.caffeine&&D.caffeine.on)); $('#qFocus').classList.toggle('on',!!(D.focus&&D.focus.phase!=='idle')); paintLive(); }
-function showEvent(e){ if(isl.classList.contains('open')) return; isl.style.setProperty('--ec',e.color||'#00FF85'); $('#et').textContent=e.text; $('#es').textContent=e.sub||''; isl.classList.add('event'); clearTimeout(evT); evT=setTimeout(()=>isl.classList.remove('event'),2800); }
-isl.addEventListener('mouseenter',()=>{ clearTimeout(closeT); if(D.s&&D.s.expand===false) return; openT=setTimeout(()=>{ isl.classList.remove('event'); isl.classList.add('open'); },140); });
-isl.addEventListener('mouseleave',()=>{ clearTimeout(openT); closeT=setTimeout(()=>isl.classList.remove('open'),160); });
+function showEvent(e){ if(isl.classList.contains('open')) return; isl.style.setProperty('--ec',e.color||'#00FF85'); $('#et').textContent=e.text; $('#es').textContent=e.sub||''; isl.classList.add('event'); clearTimeout(evT); evT=setTimeout(()=>isl.classList.remove('event'),((D.s&&D.s.hold)||2.8)*1000); }
+isl.addEventListener('click',e=>{ if(e.target.closest('.q,.mc')||!D.s||D.s.trigger!=='click'||D.s.expand===false) return; isl.classList.remove('event'); isl.classList.toggle('open'); });
+isl.addEventListener('mouseenter',()=>{ clearTimeout(closeT); if(D.s&&(D.s.expand===false||D.s.trigger==='click')) return; openT=setTimeout(()=>{ isl.classList.remove('event'); isl.classList.add('open'); },140); });
+isl.addEventListener('mouseleave',()=>{ clearTimeout(openT); closeT=setTimeout(()=>isl.classList.remove('open'),D.s&&D.s.trigger==='click'?500:160); });
 document.addEventListener('mousemove',e=>setOver(!!e.target.closest('#isl'))); document.addEventListener('mouseleave',()=>{ setOver(false); clearTimeout(openT); isl.classList.remove('open'); });
 document.querySelectorAll('.q').forEach(b=>b.onclick=async()=>{ const a=b.dataset.a;
   if(a==='glow') api?.preview('preview');
