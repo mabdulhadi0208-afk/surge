@@ -1,7 +1,7 @@
 name: Build & Release
 on:
   push:
-    branches: [main]
+    branches: [main, 'test/**']
     paths-ignore: ['docs/**', 'README.md']
     tags: ['v*']
   workflow_dispatch:
@@ -87,6 +87,11 @@ jobs:
           # 3. REAL update test: install to /Applications, launch, make it update itself (swap + relaunch), then make sure it STAYS up
           V=$(node -p "require('./package.json').version"); L=~/Library/Logs/Surge
           rm -rf /Applications/Surge.app "$L"; ditto "$APP" /Applications/Surge.app
+          # make the runner look like a real user's Mac: keyboard/mouse permission GRANTED (so the native input hook really runs) and the heavy modules ON
+          for DB in "/Library/Application Support/com.apple.TCC/TCC.db" "$HOME/Library/Application Support/com.apple.TCC/TCC.db"; do for SVC in kTCCServiceAccessibility kTCCServiceListenEvent kTCCServicePostEvent; do
+            sudo sqlite3 "$DB" "INSERT OR REPLACE INTO access VALUES('$SVC','app.surge.glow',0,2,4,1,NULL,NULL,0,'UNUSED',NULL,0,1700000000,NULL,NULL,'UNUSED',1700000000);" 2>/dev/null && echo "granted $SVC" || echo "could not grant $SVC ($DB)"; done; done
+          mkdir -p "$HOME/Library/Application Support/Surge"
+          echo '{"launchAtLogin":false,"welcomed":true,"modules":{"keys":{"enabled":true},"mouse":{"enabled":true},"ripple":{"enabled":true},"caps":{"enabled":true},"typing":{"enabled":true},"dock":{"enabled":true,"autohide":true},"island":{"enabled":true},"stats":{"enabled":true},"clip":{"enabled":true},"focus":{"enabled":true},"caffeine":{"enabled":true}}}' > "$HOME/Library/Application Support/Surge/settings.json"
           (SURGE_SELFTEST=swap /Applications/Surge.app/Contents/MacOS/Surge >/dev/null 2>&1 &); sleep 4
           P1=$(pgrep -f "/Applications/Surge.app/Contents/MacOS/Surge" | head -1); [ -n "$P1" ] && echo "✓ app launched (pid $P1)" || { echo "✗ app did not launch"; cat $L/surge.log; exit 1; }
           sleep 30
@@ -98,6 +103,8 @@ jobs:
           grep -q "start island" $L/surge.log && echo "✓ island started" || { echo "✗ island did not start"; cat $L/surge.log; exit 1; }
           grep -q "start glow" $L/surge.log && echo "✓ modules started" || { echo "✗ modules did not start"; cat $L/surge.log; exit 1; }
           grep -i "UNCAUGHT\|module load\|UNHANDLED" $L/surge.log && { echo "✗ errors in log"; exit 1; } || echo "✓ no errors in log"
+          grep -q "hook started" $L/surge.log && echo "✓ input hook was running during the update (like a real Mac)" || echo "! hook did not start on this runner — update tested without it"
+          echo "----- surge.log"; cat $L/surge.log; echo "----- update.log"; cat $L/update.log; ls ~/Library/Logs/DiagnosticReports 2>/dev/null | grep -i surge || true
           # 3b. watchdog: kill it the hard way, it must come back on its own
           kill -9 $P2; sleep 10
           P3=$(pgrep -f "/Applications/Surge.app/Contents/MacOS/Surge" | head -1); [ -n "$P3" ] && [ "$P3" != "$P2" ] && echo "✓ watchdog brought Surge back after a hard kill (pid $P3)" || { echo "✗ watchdog did not relaunch"; cat $L/surge.log; exit 1; }
@@ -113,6 +120,7 @@ jobs:
       - id: v
         run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
       - uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
         with:
           tag_name: v${{ steps.v.outputs.version }}
           name: Surge ${{ steps.v.outputs.version }}
@@ -127,6 +135,7 @@ jobs:
   win:
     runs-on: windows-latest
     needs: mac
+    if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
