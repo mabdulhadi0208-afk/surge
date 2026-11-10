@@ -58,7 +58,7 @@
     <button class="q" id="qSpot"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>Spotlight</button>
     <button class="q" id="qNotes"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Notes</button>
   </div>
-  <div class="upd" id="ax" style="display:none;border-color:rgba(255,179,0,.5);background:linear-gradient(135deg,rgba(255,179,0,.18),rgba(255,122,0,.06))"><svg viewBox="0 0 24 24" style="stroke:#FFB300"><path d="M12 3v10M12 17h.01"/><circle cx="12" cy="12" r="10"/></svg><span>Keyboard &amp; mouse need Accessibility</span><button id="axBtn" style="background:#FFB300">Allow</button></div>
+  <div class="upd" id="ax" style="display:none;border-color:rgba(255,179,0,.5);background:linear-gradient(135deg,rgba(255,179,0,.18),rgba(255,122,0,.06))"><svg viewBox="0 0 24 24" style="stroke:#FFB300"><path d="M12 3v10M12 17h.01"/><circle cx="12" cy="12" r="10"/></svg><span id="axT">Keyboard &amp; mouse need Accessibility</span><button id="axBtn" style="background:#FFB300">Allow</button></div>
   <div class="upd" id="upd" style="display:none"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg><span id="updT"></span><button id="updBtn">Restart</button></div>
   <footer><span id="clip">Clipboard: —</span><div class="grow"></div><a id="ver"></a><a id="quit">Quit</a></footer>
   <div class="toast" id="toast"></div>
@@ -79,7 +79,7 @@ async function batt(){ const b=await api?.getBattery(); if(!b) return; $('#pct')
 async function state(){ const st=await api?.action('caffeine','state'); $('#qCaf').classList.toggle('live',!!st?.on); $('#qCaf').lastChild.textContent=st?.on?(st.left!=null?`☕ ${st.left}m`:'☕ Awake'):'Caffeine';
   const f=await api?.action('focus','state'); $('#qFocus').classList.toggle('live',!!f&&f.phase!=='idle'); $('#qFocus').lastChild.textContent=f&&f.phase!=='idle'?`${f.mm}:${f.ss}`:'Focus';
   const sp=await api?.action('spotlight','state'); $('#qSpot').classList.toggle('live',!!sp?.on);
-  hook=await api?.hookState()||hook; document.querySelectorAll('.m').forEach(b=>{ const m=MODS.find(x=>x.id===b.dataset.m); b.classList.toggle('need',!!(m?.needsHook&&hook!=='running')); }); $('#ax').style.display = (hook==='needs-accessibility'||hook==='error') && MODS.some(m=>m.needsHook&&S.modules[m.id]?.enabled) ? 'flex' : 'none';
+  hook=await api?.hookState()||hook; document.querySelectorAll('.m').forEach(b=>{ const m=MODS.find(x=>x.id===b.dataset.m); b.classList.toggle('need',!!(m?.needsHook&&hook!=='running')); }); $('#axT').textContent = hook==='stale' ? 'Keyboard & mouse permission is stuck' : 'Keyboard & mouse need Accessibility'; $('#axBtn').textContent = hook==='stale' ? 'Repair' : 'Allow'; $('#ax').style.display = (hook==='needs-accessibility'||hook==='error'||hook==='stale') && MODS.some(m=>m.needsHook&&S.modules[m.id]?.enabled) ? 'flex' : 'none';
   const u=await api?.action('updater','state'); if(u){ $('#ver').textContent='v'+u.current; const box=$('#upd'); if(['ready','available','downloading','unpacking'].includes(u.status)){ box.style.display='flex'; $('#updT').textContent=u.status==='ready'?`Surge ${u.latest} is ready`:u.status==='downloading'?`Downloading ${u.latest}… ${u.progress||0}%`:u.status==='unpacking'?`Unpacking ${u.latest}…`:`Surge ${u.latest} available`; $('#updBtn').textContent=u.status==='ready'?'Restart':(u.status==='downloading'||u.status==='unpacking')?'…':'Update'; $('#updBtn').disabled=(u.status==='downloading'||u.status==='unpacking'); } else box.style.display='none'; }
   const c=await api?.action('clip','last'); $('#clip').textContent=c?('Clipboard: '+c.replace(/\s+/g,' ').slice(0,28)+(c.length>28?'…':'')):'Clipboard: —'; }
 $('#master').oninput=e=>{ e.target.style.setProperty('--p',e.target.value*100+'%'); $('#mout').textContent=Math.round(e.target.value*100)+'%'; S.masterVolume=+e.target.value; clearTimeout(window._mt); window._mt=setTimeout(()=>api?.setSettings({masterVolume:+e.target.value}),120); };
@@ -91,7 +91,7 @@ $('#qFocus').onclick=async()=>{ if(!S.modules.focus?.enabled){ S.modules.focus.e
 $('#qSpot').onclick=async()=>{ if(!S.modules.spotlight?.enabled){ S.modules.spotlight.enabled=true; await api?.setSettings({modules:{spotlight:{enabled:true}}}); } await api?.action('spotlight','toggle'); state(); api?.hide(); };
 $('#qNotes').onclick=()=>{ api?.toggleNotes(); api?.hide(); };
 $('#quit').onclick=()=>api?.quit();
-$('#axBtn').onclick=()=>api?.openAccessibility();
+$('#axBtn').onclick=()=>{ if(hook==='stale'){ toast('Repairing — Surge will restart'); api?.repairAccessibility(); } else api?.openAccessibility(); };
 $('#updBtn').onclick=async()=>{ const u=await api?.action('updater','state'); if(u?.status==='ready'){ api?.action('updater','install'); toast('Restarting…'); } else { api?.action('updater','download'); toast('Downloading…'); } };
 $('#ver').onclick=async()=>{ toast('Checking…'); const u=await api?.action('updater','check'); toast(u?.status==='available'?`${u.latest} available`:u?.status==='uptodate'?'Up to date':'Check failed'); state(); };
 (async()=>{ MODS=await api?.listModules()||[]; S=await api?.getSettings()||S; hook=await api?.hookState()||hook; build(); paint(); batt(); state();

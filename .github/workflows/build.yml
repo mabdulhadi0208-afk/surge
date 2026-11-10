@@ -81,10 +81,25 @@ jobs:
           codesign --verify --deep --strict "$MNT/Surge.app" && echo "✓ dmg app signature valid"
           test -L "$MNT/Applications" && echo "✓ dmg has Applications shortcut"
           hdiutil detach -quiet "$MNT"
-          # 3. the app actually boots: launch headless for 8s and require the boot line in the log
-          rm -f ~/Library/Logs/Surge/surge.log; ("$APP/Contents/MacOS/Surge" >/dev/null 2>&1 &) ; sleep 8; pkill -x Surge || true
-          grep -q "boot $(node -p "require('./package.json').version")" ~/Library/Logs/Surge/surge.log && echo "✓ app boots and logs its version" || { echo "✗ app did not boot"; cat ~/Library/Logs/Surge/surge.log 2>/dev/null; exit 1; }
-          grep -qi "UNCAUGHT\|module load" ~/Library/Logs/Surge/surge.log && { echo "✗ errors during boot:"; grep -i "UNCAUGHT\|module load" ~/Library/Logs/Surge/surge.log; exit 1; } || echo "✓ no boot errors"
+          # 3. REAL update test: install to /Applications, launch, make it update itself (swap + relaunch), then make sure it STAYS up
+          V=$(node -p "require('./package.json').version"); L=~/Library/Logs/Surge
+          rm -rf /Applications/Surge.app "$L"; ditto "$APP" /Applications/Surge.app
+          (SURGE_SELFTEST=swap /Applications/Surge.app/Contents/MacOS/Surge >/dev/null 2>&1 &); sleep 4
+          P1=$(pgrep -f "/Applications/Surge.app/Contents/MacOS/Surge" | head -1); [ -n "$P1" ] && echo "✓ app launched (pid $P1)" || { echo "✗ app did not launch"; cat $L/surge.log; exit 1; }
+          sleep 30
+          grep -q "launched OK" $L/update.log && echo "✓ update swap relaunched the app" || { echo "✗ swap did not relaunch"; cat $L/update.log $L/surge.log; exit 1; }
+          P2=$(pgrep -f "/Applications/Surge.app/Contents/MacOS/Surge" | head -1); [ -n "$P2" ] && [ "$P2" != "$P1" ] && echo "✓ new process after update (pid $P2)" || { echo "✗ no new process after update"; cat $L/update.log $L/surge.log; exit 1; }
+          sleep 15
+          kill -0 $P2 2>/dev/null && echo "✓ still running 15s after the update (did not quit)" || { echo "✗ app QUIT after updating"; cat $L/update.log $L/surge.log; exit 1; }
+          [ "$(grep -c "boot $V" $L/surge.log)" -ge 2 ] && echo "✓ booted twice, version $V" || { echo "✗ expected two boots"; cat $L/surge.log; exit 1; }
+          grep -q "start glow" $L/surge.log && echo "✓ modules started" || { echo "✗ modules did not start"; cat $L/surge.log; exit 1; }
+          grep -i "UNCAUGHT\|module load\|UNHANDLED" $L/surge.log && { echo "✗ errors in log"; exit 1; } || echo "✓ no errors in log"
+          # 3b. watchdog: kill it the hard way, it must come back on its own
+          kill -9 $P2; sleep 10
+          P3=$(pgrep -f "/Applications/Surge.app/Contents/MacOS/Surge" | head -1); [ -n "$P3" ] && [ "$P3" != "$P2" ] && echo "✓ watchdog brought Surge back after a hard kill (pid $P3)" || { echo "✗ watchdog did not relaunch"; cat $L/surge.log; exit 1; }
+          # 3c. a normal quit must stay quit
+          osascript -e 'tell application "Surge" to quit' || pkill -x Surge; sleep 8
+          pgrep -f "/Applications/Surge.app/Contents/MacOS/Surge" >/dev/null && { echo "✗ Surge came back after a normal quit"; exit 1; } || echo "✓ normal quit stays quit"
           # 4. required files made it into the bundle
           npx --yes @electron/asar list "$APP/Contents/Resources/app.asar" | grep -q "assets/tray/bolt.png" && echo "✓ tray assets bundled"
           npx --yes @electron/asar list "$APP/Contents/Resources/app.asar" | grep -q "launchpad.html" && echo "✓ launchpad bundled"

@@ -20,7 +20,7 @@ const settingsPath = () => path.join(app.getPath('userData'), 'settings.json');
 function defaultsFor(m) { return { enabled: !!m.defaultEnabled, ...(m.defaults || {}) }; }
 function loadSettings() {
   let raw = {}; try { raw = JSON.parse(fs.readFileSync(settingsPath(), 'utf8')); } catch {}
-  settings = { launchAtLogin: !!raw.launchAtLogin, masterVolume: raw.masterVolume ?? 1, muted: !!raw.muted, modules: {} };
+  settings = { launchAtLogin: !!raw.launchAtLogin, masterVolume: raw.masterVolume ?? 1, muted: !!raw.muted, welcomed: raw.welcomed, modules: {} };
   for (const id in MODULES) settings.modules[id] = { ...defaultsFor(MODULES[id]), ...(raw.modules?.[id] || {}) };
 }
 function saveSettings() { try { fs.mkdirSync(path.dirname(settingsPath()), { recursive: true }); fs.writeFileSync(settingsPath(), JSON.stringify(settings, null, 2)); } catch (e) { console.error(e); } }
@@ -67,14 +67,38 @@ function watchHookAlive() {
 function onHookDead() {
   log(`hook dead: cursor moved but no events (AX trusted=${accessibilityOK(false)})`);
   try { hook.stop(); } catch {} hookStarted = false; hookState = 'needs-accessibility'; ctx.broadcast('settings:update', settings);
-  if (deadFixes++ > 0) return;                                                                      // only auto-fix once per launch
-  const { execFile } = require('child_process');
-  // clear the stale entries so the toggle in System Settings is real again, then raise the single macOS Allow prompt
-  execFile('tccutil', ['reset', 'Accessibility', 'app.surge.glow'], () => execFile('tccutil', ['reset', 'ListenEvent', 'app.surge.glow'], () => {
-    setTimeout(() => { axPrompted = false; try { systemPreferences.isTrustedAccessibilityClient(true); } catch {} ensureHook();
-      fireGlow('warn', { hud: { text: 'macOS reset Surge\'s permission — click Allow to keep keyboard & mouse sounds', color: '#FFD60A' } }); }, 400);
-  }));
+  // NEVER reset the permission entry from a running Surge: macOS terminates the app whose entry is reset (that was the "updated and quit" bug).
+  // Mark it stale instead; the popover/settings offer a one-click Repair that resets + relaunches on purpose.
+  hookState = 'stale'; ctx.broadcast('settings:update', settings);
+  if (deadFixes++ === 0) fireGlow('warn', { hud: { text: 'Keyboard & mouse permission needs a repair — click ⚡ → Repair', color: '#FFD60A' } });
 }
+/* ---- clean-exit marker + watchdog: if Surge dies without meaning to (crash, killed by macOS), it comes back by itself */
+const cleanExitPath = () => path.join(app.getPath('userData'), 'clean-exit');
+function markCleanExit() { try { fs.writeFileSync(cleanExitPath(), String(Date.now())); } catch {} }
+function bundlePath() { const p = process.execPath; const i = p.indexOf('.app/Contents/MacOS/'); return i > 0 ? p.slice(0, i + 4) : null; }
+function startWatchdog() {
+  try { fs.rmSync(cleanExitPath(), { force: true }); } catch {}
+  const bundle = bundlePath(); if (!IS_MAC || !app.isPackaged || !bundle) return;
+  const cnt = path.join(app.getPath('userData'), 'watchdog-count'), lg = path.join(app.getPath('logs'), 'surge.log');
+  // waits for this pid to end; a clean exit leaves the marker → do nothing. Otherwise reopen (max 3 times per 5 minutes, so a real crash loop can't spin forever)
+  const sh = `PID=${process.pid}; while kill -0 $PID 2>/dev/null; do sleep 2; done
+[ -f "${cleanExitPath()}" ] && exit 0
+sleep 1; pgrep -f "${bundle}/Contents/MacOS/Surge" >/dev/null && exit 0
+NOW=$(date +%s); T=0; N=0; [ -f "${cnt}" ] && read T N < "${cnt}"; [ $((NOW-T)) -gt 300 ] && { T=$NOW; N=0; }
+[ "$N" -ge 3 ] && { echo "[watchdog] giving up after 3 relaunches in 5 min" >> "${lg}"; exit 0; }
+echo "$T $((N+1))" > "${cnt}"; echo "[watchdog] Surge ended unexpectedly — relaunching" >> "${lg}"; open -a "${bundle}"`;
+  try { require('child_process').spawn('/bin/bash', ['-c', sh], { detached: true, stdio: 'ignore' }).unref(); log('watchdog armed'); } catch (e) { log('watchdog failed', e.message); }
+}
+// deliberate repair: reset the stale entries from a detached script, relaunch, and let the fresh launch ask once
+function repairAccessibility() {
+  const bundle = bundlePath(); if (!IS_MAC || !bundle) return;
+  try { fs.writeFileSync(path.join(app.getPath('userData'), 'ax-prompt'), '1'); } catch {}
+  const sh = `sleep 0.6; tccutil reset Accessibility app.surge.glow; tccutil reset ListenEvent app.surge.glow; sleep 1; pkill -x Surge; sleep 0.5; open -a "${bundle}"`;
+  log('permission repair: reset + relaunch'); markCleanExit();
+  require('child_process').spawn('/bin/bash', ['-c', sh], { detached: true, stdio: 'ignore' }).unref();
+  setTimeout(() => app.exit(0), 300);
+}
+ipcMain.on('ax:repair', repairAccessibility);
 ipcMain.on('open:accessibility', () => { try { systemPreferences.isTrustedAccessibilityClient(true); } catch {} shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility'); });
 ipcMain.on('open:inputmonitoring', () => shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent'));
 function onInput(ev, fn) { hookListeners[ev].add(fn); ensureHook(); return () => hookListeners[ev].delete(fn); }
@@ -364,7 +388,7 @@ function updateTray() {
 const ctx = {
   app, screen, clipboard, Notification, nativeTheme, powerSaveBlocker, globalShortcut, execFile, os,
   get settings() { return settings; }, mod, fireGlow, overlaySend, setOverlayPersistent, play, sysSound, onInput, hookState: () => hookState,
-  setTray, setTrayBattery, openSettings, toggleNotes, readBattery, stopHook: () => { try { if (hookStarted) hook.stop(); hookStarted = false; } catch {} }, applyPatch: (p) => applyPatch(p), get battery() { return battery; }, set battery(v) { battery = v; },
+  setTray, setTrayBattery, openSettings, toggleNotes, readBattery, markCleanExit, bundlePath, stopHook: () => { try { if (hookStarted) hook.stop(); hookStarted = false; } catch {} }, applyPatch: (p) => applyPatch(p), get battery() { return battery; }, set battery(v) { battery = v; },
   notify: (title, body) => { try { new Notification({ title, body, silent: true }).show(); } catch {} },
   broadcast: (ch, p) => { [settingsWin, notesWin, audioWin, popWin, ...overlays].forEach(w => { try { if (w && !w.isDestroyed()) w.webContents.send(ch, p); } catch {} }); },
 };
@@ -390,7 +414,7 @@ function applyPatch(patch) {
 /* ------------------------------------------------------------------ ipc */
 ipcMain.handle('settings:get', () => settings);
 ipcMain.handle('settings:set', (_e, patch) => { applyPatch(patch); return settings; });
-ipcMain.handle('settings:reset', () => { settings = { launchAtLogin: settings.launchAtLogin, masterVolume: 1, muted: false, modules: {} }; for (const id in MODULES) settings.modules[id] = defaultsFor(MODULES[id]); saveSettings(); reconcile(); ctx.broadcast('settings:update', settings); updateTray(); return settings; });
+ipcMain.handle('settings:reset', () => { settings = { launchAtLogin: settings.launchAtLogin, masterVolume: 1, muted: false, welcomed: true, modules: {} }; for (const id in MODULES) settings.modules[id] = defaultsFor(MODULES[id]); saveSettings(); reconcile(); ctx.broadcast('settings:update', settings); updateTray(); return settings; });
 ipcMain.handle('modules:list', () => Object.values(MODULES).map(m => ({ id: m.id, name: m.name, icon: m.icon, group: m.group, desc: m.desc, needsHook: !!m.needsHook, schema: m.schema || [] })));
 ipcMain.handle('battery:get', () => battery);
 ipcMain.handle('hook:state', () => hookState);
@@ -419,8 +443,12 @@ if (!gotLock) {
   else app.exit(0);
 }
 app.on('second-instance', () => { if (gotLock) openSettings(); });
+app.on('before-quit', markCleanExit);
+for (const sig of ['SIGTERM', 'SIGINT']) process.on(sig, () => { markCleanExit(); app.quit(); });
 app.whenReady().then(async () => {
   if (!gotLock) return;
+  startWatchdog();
+  try { const f = path.join(app.getPath('userData'), 'ax-prompt'); if (fs.existsSync(f)) { fs.rmSync(f); setTimeout(() => { try { systemPreferences.isTrustedAccessibilityClient(true); } catch {} }, 1500); } } catch {}
   log('boot', app.getVersion(), process.platform, process.arch, 'electron', process.versions.electron, process.execPath);
   if (IS_MAC) try { require('child_process').execFile('codesign', ['-d', '-r-', app.getAppPath().replace(/\/Contents\/Resources\/app(\.asar)?$/, '')], (e, o, er) => log('codesign', ((o || '') + (er || '')).replace(/\s+/g, ' '))); } catch {}
   if (process.platform === 'darwin' && app.isPackaged) {
@@ -439,7 +467,7 @@ app.whenReady().then(async () => {
   }
   log('modules', Object.keys(MODULES).join(','), 'hook', hookState);
   const firstRun = !fs.existsSync(settingsPath());
-  loadSettings(); if (firstRun) settings.launchAtLogin = true; saveSettings();
+  loadSettings(); if (firstRun) { settings.launchAtLogin = true; settings.welcomed = false; } saveSettings();
   if ((IS_MAC || IS_WIN) && app.isPackaged) { try { if (app.getLoginItemSettings().openAtLogin !== settings.launchAtLogin) app.setLoginItemSettings({ openAtLogin: settings.launchAtLogin, openAsHidden: true }); } catch {} }
   Menu.setApplicationMenu(Menu.buildFromTemplate([{ label: 'Surge', submenu: [
     { label: 'Settings…', accelerator: 'Cmd+,', click: () => openSettings() },
@@ -457,7 +485,11 @@ app.whenReady().then(async () => {
   screen.on('display-added', rebuild); screen.on('display-removed', rebuild); screen.on('display-metrics-changed', rebuild);
   try { globalShortcut.register('CommandOrControl+Shift+N', toggleNotes); } catch {}
   reconcile();
-  if (firstRun) setTimeout(() => { fireGlow('preview'); openSettings('welcome'); }, 900);
+  // Welcome shows once. A fresh DMG install first swaps itself to the stable-identity build (see updater), so wait for that restart before greeting.
+  if (!firstRun && settings.welcomed === undefined) { settings.welcomed = true; saveSettings(); }
+  const greet = () => { if (settings.welcomed) return; settings.welcomed = true; saveSettings(); openSettings('welcome'); };
+  if (firstRun) setTimeout(() => fireGlow('preview'), 900);
+  if (!settings.welcomed) setTimeout(() => { if (MODULES.updater?._migrating?.()) setTimeout(greet, 45000); else greet(); }, 2500);
 });
 app.on('window-all-closed', () => {});
 app.on('will-quit', () => { try { winapps?.stop(); } catch {} try { globalShortcut.unregisterAll(); hook?.stop(); const dk = MODULES.dock; if (dk && running.has('dock')) dk.stop(ctx); } catch {} });

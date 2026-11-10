@@ -19,6 +19,8 @@ function bundlePath() { const p = process.execPath; const i = p.indexOf('.app/Co
 const fmtMB = b => (b / 1048576).toFixed(1) + ' MB';
 
 let C = null; // ctx
+let adhoc = false, migrate = false;
+const migratedFlag = () => path.join(C.app.getPath('userData'), 'migrated-' + C.app.getVersion());
 const log = (...a) => { try { fs.appendFileSync(path.join(C.app.getPath('logs'), 'surge.log'), `[${new Date().toISOString()}] updater: ${a.join(' ')}\n`); } catch {} };
 const updDir = () => path.join(C.app.getPath('userData'), 'update');
 function clearStaged() { try { fs.rmSync(updDir(), { recursive: true, force: true }); } catch {} state.staged = null; }
@@ -43,8 +45,9 @@ async function check(manual) {
   try {
     const latest = await latestTag(); if (!latest) throw new Error('GitHub did not answer');
     const cur = C.app.getVersion();
-    if (!newer(latest, cur)) { if (state.staged) clearStaged(); set({ status: 'uptodate', latest }); C.setTray('updater', { title: '' }); if (manual) C.fireGlow('hud', { hud: { text: `Surge ${cur} is up to date`, color: '#00FF85' } }); return state; }
-    if (!manual && skipVersion === latest) { set({ status: 'uptodate', latest }); return state; }
+    if (!newer(latest, cur) && adhoc && same(latest, cur) && !fs.existsSync(migratedFlag())) { migrate = true; log('identity switch: fetching the cert-signed build of', latest); }
+    else if (!newer(latest, cur)) { if (state.staged) clearStaged(); set({ status: 'uptodate', latest }); C.setTray('updater', { title: '' }); if (manual) C.fireGlow('hud', { hud: { text: `Surge ${cur} is up to date`, color: '#00FF85' } }); return state; }
+    if (!manual && !migrate && skipVersion === latest) { set({ status: 'uptodate', latest }); return state; }
     // staged copy must be exactly this version, otherwise it's stale
     if (state.staged) { const sv = stagedVersion(state.staged); if (!sv || !same(sv, latest)) { log('discard stale staged', sv); clearStaged(); } }
     if (state.staged) { set({ status: 'ready', latest }); showCardIfAllowed(manual); return state; }
@@ -53,6 +56,7 @@ async function check(manual) {
     if (!p.ok) throw new Error(`${latest} is published but the file isn't ready yet`);
     set({ status: 'available', latest, url, isZip, size: p.size, progress: 0, bytes: 0 });
     log('available', latest, isZip ? 'zip' : 'dmg', fmtMB(p.size));
+    if (migrate) { download().then(() => { if (state.staged) { try { fs.writeFileSync(migratedFlag(), '1'); } catch {} install(); } }); return state; }
     C.setTray('updater', { title: '↑', menu: [{ label: `Update to ${latest}`, click: () => install() }] });
     showCardIfAllowed(manual);
     if (C.mod('updater').auto) download();
@@ -87,6 +91,7 @@ async function download() {
     if (!sv || !same(sv, state.latest)) throw new Error(`unpacked version mismatch (${sv})`);
     await sh('xattr', ['-cr', staged]).catch(() => {});
     set({ staged, status: 'ready' }); log('staged', state.latest);
+    if (migrate) return;
     C.setTray('updater', { title: '↑', menu: [{ label: `Restart to update to ${state.latest}`, click: () => install() }] });
     showCardIfAllowed(false); C.notify('Surge update ready', `${state.latest} is downloaded. Click Restart on the card.`);
   } catch (e) { clearInterval(prog); set({ status: 'error', error: e.message }); log('download failed:', e.message); try { await sh('hdiutil', ['detach', '-quiet', mnt]); } catch {} }
@@ -98,11 +103,12 @@ async function install() {
     // NSIS one-click installer: /S = silent; it replaces the app in place and relaunches it. Marker makes the new build show the "Updated" glow.
     try { fs.writeFileSync(path.join(C.app.getPath('userData'), 'just-updated'), ''); } catch {}
     set({ status: 'installing' }); log('installing (windows)', state.latest);
+    try { C.markCleanExit?.(); } catch {}
     const child = spawn(state.staged, ['/S', '--force-run'], { detached: true, stdio: 'ignore', windowsHide: true }); child.unref();
     setTimeout(() => C.app.exit(0), 400);
     return state;
   }
-  const sv = stagedVersion(state.staged); if (!sv || !newer(sv, C.app.getVersion())) { clearStaged(); set({ status: 'error', error: 'staged copy was not newer — fetching again' }); return check(true); }
+  const sv = stagedVersion(state.staged); if (!sv || !(newer(sv, C.app.getVersion()) || (migrate && same(sv, C.app.getVersion())))) { clearStaged(); set({ status: 'error', error: 'staged copy was not newer — fetching again' }); return check(true); }
   const target = bundlePath(); if (!target) { set({ status: 'error', error: 'Not running from an .app bundle' }); return state; }
   const logf = path.join(C.app.getPath('logs'), 'update.log'); const script = path.join(updDir(), 'swap.sh');
   fs.writeFileSync(script, `#!/bin/bash
@@ -126,7 +132,7 @@ echo "=== done"
 `); fs.chmodSync(script, 0o755);
   set({ status: 'installing' }); log('installing', sv);
   const child = spawn('/bin/bash', [script], { detached: true, stdio: 'ignore' }); child.unref();
-  try { C.stopHook?.(); } catch {}                                   // the native hook is what makes exit hang
+  try { C.markCleanExit?.(); C.stopHook?.(); } catch {}              // marker: the watchdog must not fight the swap; the native hook is what makes exit hang
   setTimeout(() => C.app.exit(0), 150);
   setTimeout(() => { try { process.kill(process.pid, 'SIGKILL'); } catch {} }, 2500);   // if Electron won't die, make it
   return state;
@@ -159,13 +165,11 @@ module.exports = {
   start(ctx) {
     C = ctx; skipVersion = ctx.mod('updater').skipped || null;
     try { const f = path.join(ctx.app.getPath('userData'), 'just-updated'); if (fs.existsSync(f)) { fs.rmSync(f); setTimeout(() => ctx.fireGlow('full', { level: 100, hud: { text: `Updated to Surge ${ctx.app.getVersion()}`, color: '#00FF85' } }), 1500); log('updated to', ctx.app.getVersion());
-        // if macOS dropped our Accessibility grant across the update, don't make the user remove+re-add Surge by hand:
-        // clear the stale entry ourselves and re-ask once (one click on Allow instead of a trip through System Settings)
-        setTimeout(() => { try { const { systemPreferences } = require('electron'); if (process.platform === 'darwin' && !systemPreferences.isTrustedAccessibilityClient(false)) {
-          log('accessibility lost after update → resetting stale TCC entry and re-asking');
-          const { execFile } = require('child_process');
-          execFile('tccutil', ['reset', 'Accessibility', 'app.surge.glow'], () => execFile('tccutil', ['reset', 'ListenEvent', 'app.surge.glow'], () => { try { systemPreferences.isTrustedAccessibilityClient(true); } catch {} ctx.fireGlow('warn', { hud: { text: 'Click Allow so keyboard & mouse sounds keep working', color: '#FFD60A' } }); }));
-        } } catch (e) { log('tcc reset failed', e.message); } }, 2500); } } catch {}
+        setTimeout(() => { try { const { systemPreferences } = require('electron'); if (process.platform === 'darwin') log('after update: accessibility trusted =', systemPreferences.isTrustedAccessibilityClient(false)); } catch {} }, 2500); } } catch {}
+    // A fresh DMG install is ad-hoc signed (so Gatekeeper opens it). Updates are cert-signed (so permissions survive). Switch to the cert build
+    // of the SAME version right away, before the user grants anything, so no later update ever changes the app's identity.
+    if (process.platform === 'darwin' && ctx.app.isPackaged && bundlePath()) execFile('codesign', ['-dv', bundlePath()], (e, o, er) => { adhoc = /Signature=adhoc/.test((o || '') + (er || '')); if (adhoc) log('ad-hoc build detected → will switch to the stable-identity build'); });
+    if (process.env.SURGE_SELFTEST === 'swap') setTimeout(async () => { try { log('SELFTEST swap: staging a copy of myself'); const dir = updDir(); fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true }); await sh('ditto', [bundlePath(), path.join(dir, 'Surge.app')]); state.staged = path.join(dir, 'Surge.app'); state.latest = 'v' + ctx.app.getVersion(); migrate = true; await install(); } catch (e) { log('SELFTEST failed', e.message); } }, 5000);
     const staged = path.join(updDir(), 'Surge.app');
     if (fs.existsSync(staged)) { const sv = stagedVersion(staged); if (sv && newer(sv, ctx.app.getVersion())) { state.staged = staged; state.status = 'ready'; state.latest = 'v' + sv; } else clearStaged(); }
     setTimeout(() => check(false), 3000);
@@ -175,4 +179,5 @@ module.exports = {
   onSettings(ctx) { clearInterval(timer); timer = setInterval(poll, Math.max(1, ctx.mod('updater').pollSeconds || 1) * 1000); },
   stop(ctx) { clearInterval(timer); ctx.setTray('updater', { title: '' }); if (popup && !popup.isDestroyed()) popup.destroy(); popup = null; },
   _check: (ctx, manual) => check(!!manual),
+  _migrating: () => adhoc && !fs.existsSync(migratedFlag()),
 };
