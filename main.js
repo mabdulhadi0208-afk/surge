@@ -8,8 +8,8 @@ const IS_MAC = process.platform === 'darwin', IS_WIN = process.platform === 'win
 
 /* ------------------------------------------------------------------ logging (~/Library/Logs/Surge/surge.log) */
 let logStream = null;
-function log(...a) { const line = `[${new Date().toISOString()}] ${a.map(x => x instanceof Error ? (x.stack || x.message) : typeof x === 'object' ? JSON.stringify(x) : String(x)).join(' ')}\n`; try { logStream?.write(line); } catch {} process.stderr.write(line); }
-try { const dir = app.getPath('logs'); fs.mkdirSync(dir, { recursive: true }); logStream = fs.createWriteStream(path.join(dir, 'surge.log'), { flags: 'a' }); } catch {}
+function log(...a) { const line = `[${new Date().toISOString()}] ${a.map(x => x instanceof Error ? (x.stack || x.message) : typeof x === 'object' ? JSON.stringify(x) : String(x)).join(' ')}\n`; try { if (logFile) fs.appendFileSync(logFile, line); } catch {} try { process.stderr.write(line); } catch {} }   // synchronous on purpose: if the app ever freezes, the last line shows where
+let logFile = null; try { const dir = app.getPath('logs'); fs.mkdirSync(dir, { recursive: true }); logFile = path.join(dir, 'surge.log'); } catch {}
 process.on('uncaughtException', e => log('UNCAUGHT', e)); process.on('unhandledRejection', e => log('UNHANDLED', e));
 console.error = (...a) => log('ERR', ...a); console.warn = (...a) => log('WARN', ...a);
 
@@ -46,7 +46,7 @@ function ensureHook() {
   }
   try {
     if (!hookWired) { for (const ev of Object.keys(hookListeners)) hook.on(ev, (e) => { hookEvents++; hookListeners[ev].forEach(fn => { try { fn(e); } catch (err) { console.error(err); } }); }); hookWired = true; }
-    hook.start(); hookStarted = true; hookState = 'running'; log('hook started');
+    log('hook starting…'); hook.start(); hookStarted = true; hookState = 'running'; log('hook started');
     fireGlow('hud', { hud: { text: 'Keyboard & mouse hook active', color: '#00FF85' } });
     watchHookAlive();
   } catch (e) { hookState = 'error'; console.error('hook start failed', e.message); }
@@ -394,7 +394,7 @@ const ctx = {
   broadcast: (ch, p) => { [settingsWin, notesWin, audioWin, popWin, ...overlays].forEach(w => { try { if (w && !w.isDestroyed()) w.webContents.send(ch, p); } catch {} }); },
 };
 const running = new Set();
-function startModule(id) { const m = MODULES[id]; if (!m || running.has(id)) return; try { m.start?.(ctx); running.add(id); log('start', id); } catch (e) { console.error(`[${id}] start`, e); } }
+function startModule(id) { const m = MODULES[id]; if (!m || running.has(id)) return; try { log('starting', id); m.start?.(ctx); running.add(id); log('start', id); } catch (e) { console.error(`[${id}] start`, e); } }
 function stopModule(id) { const m = MODULES[id]; if (!m || !running.has(id)) return; try { m.stop?.(ctx); } catch (e) { console.error(`[${id}] stop`, e); } running.delete(id); trayExtras[id] = null; delete trayKeys[id]; updateTray(); }
 function reconcile() {
   for (const id in MODULES) {
