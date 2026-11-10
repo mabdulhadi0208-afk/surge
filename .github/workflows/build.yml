@@ -73,7 +73,7 @@ jobs:
           set -e
           APP=$(ls -d dist/mac*/Surge.app | head -1)
           # 1. updater zip: cert-signed with the pinned requirement → permissions survive updates
-          codesign -d -r- "$APP" 2>&1 | grep -q 'certificate leaf = H"CBDD9960F4309101C52C2F71998F8EBAC8D5B200"' && echo "✓ zip app has the pinned identity" || { echo "✗ zip app is not cert-signed"; exit 1; }
+          codesign -d -r- "$APP" 2>&1 | grep -qi 'certificate leaf = H"CBDD9960F4309101C52C2F71998F8EBAC8D5B200"' && echo "✓ zip app has the pinned identity" || { echo "✗ zip app is not cert-signed"; exit 1; }
           codesign --verify --deep --strict "$APP" && echo "✓ zip app signature valid"
           # 2. DMG app: must be AD-HOC (a self-signed cert makes Gatekeeper say "damaged")
           MNT=$(mktemp -d); hdiutil attach -nobrowse -quiet -mountpoint "$MNT" dist/Surge-mac-arm64.dmg
