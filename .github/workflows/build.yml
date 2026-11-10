@@ -58,9 +58,13 @@ jobs:
             codesign --force --deep --sign "$SIGN_ID" --requirements "=$REQ" "$APP"
           fi
           codesign -d -r- "$APP" 2>&1 | tail -2
-          # fast packaging: ditto zip (what the in-app updater downloads) + plain hdiutil DMG, in parallel — no second electron-builder pass
+          # ZIP (what the in-app updater installs; quarantine is stripped on update) keeps the cert signature → stable identity, permissions survive updates.
+          # DMG (fresh downloads) is re-signed AD-HOC: Gatekeeper calls a self-signed app "damaged", but an ad-hoc one just needs right-click → Open.
           ( cd "$(dirname "$APP")" && ditto -c -k --sequesterRsrc --keepParent Surge.app ../Surge-mac-arm64.zip ) &
-          ( STAGE=$(mktemp -d) && cp -R "$APP" "$STAGE/" && ln -s /Applications "$STAGE/Applications" \
+          ( STAGE=$(mktemp -d) && cp -R "$APP" "$STAGE/" \
+            && find "$STAGE/Surge.app" \( -name "*.node" -o -name "*.dylib" \) -exec codesign --force --sign - {} \; \
+            && codesign --force --deep --sign - "$STAGE/Surge.app" \
+            && ln -s /Applications "$STAGE/Applications" \
             && hdiutil create -volname Surge -srcfolder "$STAGE" -ov -format UDZO -imagekey zlib-level=1 -quiet dist/Surge-mac-arm64.dmg ) &
           wait
           ls -la dist/*.dmg dist/*.zip
@@ -76,7 +80,8 @@ jobs:
             dist/*.zip
           body: |
             ⚡ Surge ${{ steps.v.outputs.version }}
-            Download **Surge-mac-arm64.dmg**, drag to Applications, right-click → Open on first launch.
+            Mac: download **Surge-mac-arm64.dmg**, drag to Applications, right-click → Open on first launch.
+            Windows: run **Surge-win-x64.exe** (SmartScreen: More info → Run anyway).
 
   win:
     runs-on: windows-latest
