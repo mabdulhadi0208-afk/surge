@@ -113,6 +113,7 @@ async function install() {
   const logf = path.join(C.app.getPath('logs'), 'update.log'); const script = path.join(updDir(), 'swap.sh');
   fs.writeFileSync(script, `#!/bin/bash
 exec >> "${logf}" 2>&1
+unset SURGE_SELFTEST SURGE_RELAUNCH
 echo "=== $(date) swap ${C.app.getVersion()} -> ${sv}"
 NEW="${state.staged}"; APP="${target}"; OLDPID=${process.pid}
 # wait for the old Surge (this exact pid) to be gone; escalate to SIGKILL if it hangs on exit so the new one can take the single-instance lock

@@ -55,7 +55,10 @@ jobs:
             codesign --force --deep --sign - "$APP"
           else
             find "$APP" \( -name "*.node" -o -name "*.dylib" \) -exec codesign --force --sign "$SIGN_ID" {} \;
-            codesign --force --deep --sign "$SIGN_ID" --requirements "=$REQ" "$APP"
+            # nested code first with its own identity; the pinned requirement goes on the main bundle ONLY
+            # (applying it with --deep stamped helpers/frameworks with a requirement they can never satisfy → "nested code is modified or invalid")
+            codesign --force --deep --sign "$SIGN_ID" "$APP"
+            codesign --force --sign "$SIGN_ID" --requirements "=$REQ" "$APP"
           fi
           codesign -d -r- "$APP" 2>&1 | tail -2
           # ZIP (what the in-app updater installs; quarantine is stripped on update) keeps the cert signature → stable identity, permissions survive updates.
@@ -74,11 +77,11 @@ jobs:
           APP=$(ls -d dist/mac*/Surge.app | head -1)
           # 1. updater zip: cert-signed with the pinned requirement → permissions survive updates
           codesign -d -r- "$APP" 2>&1 | grep -qi 'certificate leaf = H"CBDD9960F4309101C52C2F71998F8EBAC8D5B200"' && echo "✓ zip app has the pinned identity" || { echo "✗ zip app is not cert-signed"; exit 1; }
-          codesign --verify --deep --strict "$APP" && echo "✓ zip app signature valid"
+          codesign --verify --deep --strict "$APP" && echo "✓ zip app signature valid (strict, nested code included)" || { echo "✗ zip app signature INVALID"; exit 1; }
           # 2. DMG app: must be AD-HOC (a self-signed cert makes Gatekeeper say "damaged")
           MNT=$(mktemp -d); hdiutil attach -nobrowse -quiet -mountpoint "$MNT" dist/Surge-mac-arm64.dmg
           codesign -dv "$MNT/Surge.app" 2>&1 | grep -q 'Signature=adhoc' && echo "✓ dmg app is ad-hoc (right-click → Open works)" || { echo "✗ dmg app is NOT ad-hoc → would show as damaged"; hdiutil detach -quiet "$MNT"; exit 1; }
-          codesign --verify --deep --strict "$MNT/Surge.app" && echo "✓ dmg app signature valid"
+          codesign --verify --deep --strict "$MNT/Surge.app" && echo "✓ dmg app signature valid" || { echo "✗ dmg app signature INVALID"; hdiutil detach -quiet "$MNT"; exit 1; }
           test -L "$MNT/Applications" && echo "✓ dmg has Applications shortcut"
           hdiutil detach -quiet "$MNT"
           # 3. REAL update test: install to /Applications, launch, make it update itself (swap + relaunch), then make sure it STAYS up
