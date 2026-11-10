@@ -146,7 +146,6 @@ function setOverlayPersistent(id, on) { on ? overlayPersistent.add(id) : overlay
 function fireGlow(kind, extra = {}) {
   glowBusy++; syncOverlayVisibility();
   overlaySend('glow:fire', { kind, level: extra.level ?? battery?.level ?? 100, settings: mod('glow'), ...extra });
-  try { if (running.has('island')) MODULES.island._event(ctx, kind, extra); } catch {}
 }
 ipcMain.on('glow:done', () => { glowBusy = Math.max(0, glowBusy - 1); syncOverlayVisibility(); });
 
@@ -306,7 +305,6 @@ ipcMain.handle('apps:installed', async () => { if (IS_WIN) return installedWin()
   for (const d of dirs) { try { for (const f of fs.readdirSync(d)) if (f.endsWith('.app')) out.push({ name: f.replace(/\.app$/, ''), path: path.join(d, f) }); } catch {} }
   out.sort((a, b) => a.name.localeCompare(b.name)); return out; });
 ipcMain.handle('apps:icon', (_e, p) => appIcon(p));
-ipcMain.on('file:dragout', (e, p) => { try { if (typeof p === 'string' && fs.existsSync(p) && (mod('island')?.shelf || []).includes(p)) e.sender.startDrag({ file: p, icon: nativeImage.createFromPath(path.join(__dirname, 'assets', 'tray', 'bolt.png')) }); } catch (err) { console.error('dragout', err.message); } });
 ipcMain.on('apps:reveal', (_e, p) => { if (!isApp(p)) return; if (IS_WIN) shell.showItemInFolder(p); else execFile('open', ['-R', p], () => {}); });
 ipcMain.on('apps:forcequit', (_e, pid) => { if (!Number.isInteger(pid) || pid <= 1) return; if (IS_WIN) execFile('taskkill', ['/PID', String(pid), '/F'], { windowsHide: true }, () => {}); else { try { process.kill(pid, 'SIGKILL'); } catch {} } });
 ipcMain.on('apps:openwith', (_e, p, files) => { if (!isApp(p) || !Array.isArray(files)) return; const fl = files.filter(f => typeof f === 'string').slice(0, 50); if (IS_WIN) { try { require('child_process').spawn(p, fl, { detached: true, stdio: 'ignore' }).unref(); } catch {} } else execFile('open', ['-a', p, ...fl], () => {}); });

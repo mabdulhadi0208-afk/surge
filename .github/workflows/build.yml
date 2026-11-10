@@ -91,7 +91,7 @@ jobs:
           for DB in "/Library/Application Support/com.apple.TCC/TCC.db" "$HOME/Library/Application Support/com.apple.TCC/TCC.db"; do for SVC in kTCCServiceAccessibility kTCCServiceListenEvent kTCCServicePostEvent; do
             sudo sqlite3 "$DB" "INSERT OR REPLACE INTO access VALUES('$SVC','app.surge.glow',0,2,4,1,NULL,NULL,0,'UNUSED',NULL,0,1700000000,NULL,NULL,'UNUSED',1700000000);" 2>/dev/null && echo "granted $SVC" || echo "could not grant $SVC ($DB)"; done; done
           mkdir -p "$HOME/Library/Application Support/Surge"
-          echo '{"launchAtLogin":false,"welcomed":true,"modules":{"keys":{"enabled":true},"mouse":{"enabled":true},"ripple":{"enabled":true},"caps":{"enabled":true},"typing":{"enabled":true},"dock":{"enabled":true,"autohide":true},"island":{"enabled":true},"stats":{"enabled":true},"clip":{"enabled":true},"focus":{"enabled":true},"caffeine":{"enabled":true}}}' > "$HOME/Library/Application Support/Surge/settings.json"
+          echo '{"launchAtLogin":false,"welcomed":true,"modules":{"keys":{"enabled":true},"mouse":{"enabled":true},"ripple":{"enabled":true},"caps":{"enabled":true},"typing":{"enabled":true},"dock":{"enabled":true,"autohide":true},"stats":{"enabled":true},"clip":{"enabled":true},"focus":{"enabled":true},"caffeine":{"enabled":true}}}' > "$HOME/Library/Application Support/Surge/settings.json"
           (SURGE_SELFTEST=swap /Applications/Surge.app/Contents/MacOS/Surge >/dev/null 2>&1 &); sleep 4
           P1=$(pgrep -f "/Applications/Surge.app/Contents/MacOS/Surge" | head -1); [ -n "$P1" ] && echo "✓ app launched (pid $P1)" || { echo "✗ app did not launch"; cat $L/surge.log; exit 1; }
           sleep 30
@@ -100,7 +100,6 @@ jobs:
           sleep 15
           kill -0 $P2 2>/dev/null && echo "✓ still running 15s after the update (did not quit)" || { echo "✗ app QUIT after updating"; cat $L/update.log $L/surge.log; exit 1; }
           [ "$(grep -c "boot $V" $L/surge.log)" -ge 2 ] && echo "✓ booted twice, version $V" || { echo "✗ expected two boots"; cat $L/surge.log; exit 1; }
-          grep -q "start island" $L/surge.log && echo "✓ island started" || { echo "✗ island did not start"; cat $L/surge.log; exit 1; }
           grep -q "start glow" $L/surge.log && echo "✓ modules started" || { echo "✗ modules did not start"; cat $L/surge.log; exit 1; }
           grep -i "UNCAUGHT\|module load\|UNHANDLED" $L/surge.log && { echo "✗ errors in log"; exit 1; } || echo "✓ no errors in log"
           [ "$(grep -c "hook started" $L/surge.log)" -ge 2 ] && echo "✓ keyboard/mouse hook started before AND after the update (permission granted, like a real Mac)" || { echo "✗ hook did not start on both launches"; cat $L/surge.log; exit 1; }
