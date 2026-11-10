@@ -179,8 +179,31 @@ function toggleNotes() {
 
 /* ------------------------------------------------------------------ apps (for Surge Dock) */
 const iconCache = new Map();
+const winapps = IS_WIN ? require('./winapps') : null;
+const isApp = p => typeof p === 'string' && !!p && (IS_WIN ? /\.(exe|lnk)$/i.test(p) : p.endsWith('.app'));
+let winInstalled = null, winRunning = [];
+function installedWin() {
+  // Start Menu shortcuts → their target .exe (lower-cased path is the app's identity on Windows)
+  if (winInstalled) return winInstalled;
+  const out = new Map();
+  const roots = [path.join(process.env.ProgramData || 'C:\\ProgramData', 'Microsoft', 'Windows', 'Start Menu', 'Programs'), path.join(app.getPath('appData'), 'Microsoft', 'Windows', 'Start Menu', 'Programs')];
+  const walk = (d, depth) => { let ents = []; try { ents = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const e of ents) { const f = path.join(d, e.name);
+      if (e.isDirectory()) { if (depth < 4) walk(f, depth + 1); continue; }
+      if (!/\.lnk$/i.test(e.name)) continue; const name = e.name.replace(/\.lnk$/i, '');
+      if (/uninstall|readme|help|documentation|website|license|release notes/i.test(name)) continue;
+      try { const t = shell.readShortcutLink(f).target; if (t && /\.exe$/i.test(t) && fs.existsSync(t)) { const k = t.toLowerCase(); if (!out.has(k) && !/\\surge\.exe$/.test(k)) out.set(k, { name, path: k }); } } catch {} } };
+  roots.forEach(r => walk(r, 0));
+  const ex = 'c:\\windows\\explorer.exe'; out.set(ex, { name: 'File Explorer', path: ex });
+  winInstalled = [...out.values()].sort((a, b) => a.name.localeCompare(b.name)); setTimeout(() => (winInstalled = null), 60000);
+  return winInstalled;
+}
 function appIcon(appPath) {
   if (iconCache.has(appPath)) return Promise.resolve(iconCache.get(appPath));
+  if (IS_WIN) return (async () => { let v = null;
+    try { const b64 = await winapps.icon(appPath); if (b64 && b64.length > 200) v = 'data:image/png;base64,' + b64; } catch {}
+    if (!v) { try { const img = await app.getFileIcon(appPath, { size: 'large' }); if (!img.isEmpty()) v = img.toDataURL(); } catch {} }
+    iconCache.set(appPath, v); return v; })();
   return new Promise((resolve) => {
     const done = (v) => { iconCache.set(appPath, v); resolve(v); };
     try {
@@ -226,6 +249,12 @@ function parseLsappinfo(o) {
 }
 let appsWarned = false;
 function runningApps() {
+  if (IS_WIN) return winapps.list().then(l => { if (!l) return winRunning;
+    const names = new Map(installedWin().map(a => [a.path, a.name])); const seen = new Map();
+    for (const a of l) { const k = a.path.toLowerCase(); if (/\\windows\\systemapps\\|applicationframehost|textinputhost|shellexperiencehost|\\surge\.exe$/.test(k)) continue;
+      const e = seen.get(k); if (e) { e.front = e.front || a.front; continue; }
+      seen.set(k, { name: names.get(k) || a.desc || a.name, bundleId: null, path: k, pid: a.pid, front: a.front, bg: false }); }
+    return (winRunning = [...seen.values()]); });
   return new Promise((resolve) => execFile('lsappinfo', ['list'], { timeout: 4000, maxBuffer: 8 * 1024 * 1024 }, (e, o) => {
     let list = (!e && o) ? parseLsappinfo(o) : [];
     list = list.filter(a => a.path && /\.app\/?$/.test(a.path) && !a.bg && a.name !== 'Surge');
@@ -241,16 +270,16 @@ function runningApps() {
   }));
 }
 ipcMain.handle('apps:running', () => runningApps());   // icons are fetched separately by the dock, never block the list
-ipcMain.handle('apps:installed', async () => { const dirs = ['/Applications', '/System/Applications', path.join(os.homedir(), 'Applications')]; const out = [];
+ipcMain.handle('apps:installed', async () => { if (IS_WIN) return installedWin(); const dirs = ['/Applications', '/System/Applications', path.join(os.homedir(), 'Applications')]; const out = [];
   for (const d of dirs) { try { for (const f of fs.readdirSync(d)) if (f.endsWith('.app')) out.push({ name: f.replace(/\.app$/, ''), path: path.join(d, f) }); } catch {} }
   out.sort((a, b) => a.name.localeCompare(b.name)); return out; });
 ipcMain.handle('apps:icon', (_e, p) => appIcon(p));
-ipcMain.on('apps:reveal', (_e, p) => { if (typeof p === 'string' && p.endsWith('.app')) execFile('open', ['-R', p], () => {}); });
-ipcMain.on('apps:forcequit', (_e, pid) => { if (Number.isInteger(pid) && pid > 1) { try { process.kill(pid, 'SIGKILL'); } catch {} } });
-ipcMain.on('apps:openwith', (_e, p, files) => { if (typeof p === 'string' && p.endsWith('.app') && Array.isArray(files)) execFile('open', ['-a', p, ...files.filter(f => typeof f === 'string').slice(0, 50)], () => {}); });
-ipcMain.on('apps:open', (_e, p) => { if (typeof p !== 'string' || !p) return; execFile('open', ['-a', p], (err) => err && execFile('open', [p], () => {})); });
-ipcMain.on('apps:activate', (_e, bundleId, p) => { if (p) execFile('open', ['-a', p], (err) => err && bundleId && execFile('open', ['-b', bundleId], () => {})); else if (bundleId) execFile('open', ['-b', bundleId], () => {}); });
-ipcMain.on('apps:quit', (_e, bundleId, pid) => { if (pid) { try { process.kill(pid, 'SIGTERM'); } catch {} } else if (bundleId) execFile('osascript', ['-e', `tell application id "${bundleId}" to quit`], () => {}); });
+ipcMain.on('apps:reveal', (_e, p) => { if (!isApp(p)) return; if (IS_WIN) shell.showItemInFolder(p); else execFile('open', ['-R', p], () => {}); });
+ipcMain.on('apps:forcequit', (_e, pid) => { if (!Number.isInteger(pid) || pid <= 1) return; if (IS_WIN) execFile('taskkill', ['/PID', String(pid), '/F'], { windowsHide: true }, () => {}); else { try { process.kill(pid, 'SIGKILL'); } catch {} } });
+ipcMain.on('apps:openwith', (_e, p, files) => { if (!isApp(p) || !Array.isArray(files)) return; const fl = files.filter(f => typeof f === 'string').slice(0, 50); if (IS_WIN) { try { require('child_process').spawn(p, fl, { detached: true, stdio: 'ignore' }).unref(); } catch {} } else execFile('open', ['-a', p, ...fl], () => {}); });
+ipcMain.on('apps:open', (_e, p) => { if (typeof p !== 'string' || !p) return; if (IS_WIN) { if (isApp(p)) shell.openPath(p); return; } execFile('open', ['-a', p], (err) => err && execFile('open', [p], () => {})); });
+ipcMain.on('apps:activate', (_e, bundleId, p) => { if (IS_WIN) { const r = winRunning.find(a => a.path === p); if (r) winapps.activate(r.pid); else if (isApp(p)) shell.openPath(p); return; } if (p) execFile('open', ['-a', p], (err) => err && bundleId && execFile('open', ['-b', bundleId], () => {})); else if (bundleId) execFile('open', ['-b', bundleId], () => {}); });
+ipcMain.on('apps:quit', (_e, bundleId, pid) => { if (IS_WIN) { if (Number.isInteger(pid) && pid > 1) execFile('taskkill', ['/PID', String(pid)], { windowsHide: true }, () => {}); return; } if (pid) { try { process.kill(pid, 'SIGTERM'); } catch {} } else if (bundleId) execFile('osascript', ['-e', `tell application id "${bundleId}" to quit`], () => {}); });
 
 /* ------------------------------------------------------------------ popover (click the menu-bar bolt) */
 let popWin = null, popHidAt = 0;
@@ -431,4 +460,4 @@ app.whenReady().then(async () => {
   if (firstRun) setTimeout(() => { fireGlow('preview'); openSettings('welcome'); }, 900);
 });
 app.on('window-all-closed', () => {});
-app.on('will-quit', () => { try { globalShortcut.unregisterAll(); hook?.stop(); const dk = MODULES.dock; if (dk && running.has('dock')) dk.stop(ctx); } catch {} });
+app.on('will-quit', () => { try { winapps?.stop(); } catch {} try { globalShortcut.unregisterAll(); hook?.stop(); const dk = MODULES.dock; if (dk && running.has('dock')) dk.stop(ctx); } catch {} });

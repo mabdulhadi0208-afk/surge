@@ -239,7 +239,7 @@ function audition(lib, id){ const s = S.modules; if (lib==='keyboard') { api?.te
   else { api?.testSound('click', { preset: id, volume: s.mouse.volume }); setTimeout(()=>api?.testSound('click', { preset: id, volume: s.mouse.volume, up: true }), 80); } }
 async function buildApps(el, mid, k){
   const all = await api?.appsInstalled() || [];
-  const render = () => { const cur = S.modules[mid]?.[k] || []; const items=[...cur.map(p=>({name:p.split('/').pop().replace(/\.app$/,''),path:p})), ...all.filter(a=>!cur.includes(a.path))];
+  const render = () => { const cur = S.modules[mid]?.[k] || []; const items=[...cur.map(p=>({name:all.find(a=>a.path===p)?.name||p.split(/[\\/]/).pop().replace(/\.(app|exe)$/i,''),path:p})), ...all.filter(a=>!cur.includes(a.path))];
     el.innerHTML = `<input class="q" placeholder="Search apps…" style="all:unset;width:100%;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:13px;color:var(--text);margin-bottom:8px">` + `<div class="al">${items.map(a=>`<div class="wi ${cur.includes(a.path)?'on':''}" data-p="${a.path}"><i></i>${a.name}</div>`).join('')}</div>`;
     el.querySelector('.q').oninput = e => { const q=e.target.value.toLowerCase(); el.querySelectorAll('.wi').forEach(w=>w.style.display=w.textContent.toLowerCase().includes(q)?'':'none'); };
     el.querySelectorAll('.wi').forEach(w=>w.onclick=()=>{ const c=S.modules[mid][k]||[]; set(mid,{[k]: c.includes(w.dataset.p)?c.filter(x=>x!==w.dataset.p):[...c,w.dataset.p]}); render(); }); };

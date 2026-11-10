@@ -73,11 +73,12 @@ setInterval(()=>{ if(tipTarget && tipTarget[0].isConnected && !dragging) showTip
 document.addEventListener('mouseover',e=>{ if(dragging) return hideTip(); const a=e.target.closest('.ap'); if(a) return showTip(a,a.dataset.name); const w=e.target.closest('.w[data-tip]'); if(w) return showTip(w,w.dataset.tip); hideTip(); });
 document.addEventListener('mouseleave',hideTip);
 /* ---------- apps */
+const WINOS=!/Mac/.test(navigator.platform); const NAMES={}; const nameOf=p=>NAMES[p]||p.split(/[\\/]/).pop().replace(/\.(app|exe)$/i,'');
 const hist=[]; let APPS=[], running=[], iconCache={}; let lastAppsKey=''; const launching=new Map();
 async function icon(p){ if(iconCache[p]!==undefined) return iconCache[p]; iconCache[p]=null; const i=await api?.appIcon(p); iconCache[p]=i||null; return i; }
 function iconNode(it){ const d=document.createElement('div'); const src=iconCache[it.path]; if(src){ d.className='ic'; d.innerHTML=`<img alt="" src="${src}">`; } else { d.className='ic ph'; d.textContent=(it.name||'?')[0].toUpperCase(); icon(it.path).then(s=>{ if(s){ d.className='ic'; d.innerHTML=`<img alt="" src="${s}">`; } }); } return d; }
 async function refreshApps(){ const box=$('#apps'); if(!box||dragging) return; running=await api?.appsRunning()||[]; const pins=S.modules?.dock?.pinned||[];
-  const items=[]; for(const p of pins){ const r=running.find(a=>a.path===p); items.push({path:p,name:r?r.name:p.split('/').pop().replace(/\.app$/,''),bundleId:r?.bundleId,pid:r?.pid,run:!!r,front:!!r?.front,pinned:true}); }
+  const items=[]; for(const p of pins){ const r=running.find(a=>a.path===p); items.push({path:p,name:r?r.name:nameOf(p),bundleId:r?.bundleId,pid:r?.pid,run:!!r,front:!!r?.front,pinned:true}); }
   for(const r of running){ if(!pins.includes(r.path)) items.push({path:r.path,name:r.name,bundleId:r.bundleId,pid:r.pid,run:true,front:r.front,pinned:false}); }
   for(const [p,t] of launching){ const it=items.find(i=>i.path===p); if((it&&it.run)||Date.now()-t>10000) launching.delete(p); }
   const key=items.map(i=>i.path+(i.run?1:0)+(i.front?1:0)+(i.pid||'')+(launching.has(i.path)?'L':'')).join(); if(key===lastAppsKey) return; lastAppsKey=key; APPS=items;
@@ -128,7 +129,7 @@ document.addEventListener('mouseleave',closeCtx);
 addEventListener('blur',closeCtx);
 /* ---------- click-through everywhere except the pill / menu */
 let overDock=false; function setOver(v){ if(v===overDock) return; overDock=v; api?.action('dock','hover',v); }
-document.addEventListener('mousemove',e=>setOver(!!(e.target.closest('#dock')||e.target.closest('#ctx')||dragging)));
+document.addEventListener('mousemove',e=>setOver(!!(e.target.closest('#dock')||e.target.closest('#ctx')||dragging||$('#ctx').style.display==='block')));
 document.addEventListener('mouseleave',()=>{ if(!dragging) setOver(false); });
 /* ---------- widgets */
 function tpl(id){
@@ -151,7 +152,7 @@ function setVol(v){ v=Math.max(0,Math.min(100,Math.round(v))); const el=$('#vol'
 function build(){ const ws=(S.modules?.dock?.widgets)||[]; order=ws; $('#dock').innerHTML = ws.length ? ws.map(tpl).join('') : `<div class="empty">Pick widgets in Settings → Surge Dock</div>`;
   document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>api?.action('dock','media',b.dataset.m));
   const v=$('#vol'); if(v){ v.oninput=()=>setVol(+v.value); $('#wvol').onwheel=e=>{ e.preventDefault(); setVol(+v.value-Math.sign(e.deltaY+e.deltaX)*3); }; $('#volIc').onclick=()=>{ const cur=+v.value; if(cur>0){ lastVol=cur; setVol(0); } else setVol(lastVol||50); }; }
-  $('#wclock')&&($('#wclock').onclick=()=>api?.appOpen('/System/Applications/Calendar.app'));
+  $('#wclock')&&!WINOS&&($('#wclock').onclick=()=>api?.appOpen('/System/Applications/Calendar.app')); if(WINOS&&$('#wclock')) $('#wclock').removeAttribute('data-tip');
   $('#wfocus')&&($('#wfocus').onclick=async()=>{ const f=D.focus; if(!D.focusOn) await api?.setSettings({modules:{focus:{enabled:true}}}); await api?.action('focus', f&&f.phase!=='idle'?'stop':'start'); });
   $('#wcaf')&&($('#wcaf').onclick=async()=>{ if(!S.modules?.caffeine?.enabled) await api?.setSettings({modules:{caffeine:{enabled:true}}}); await api?.action('caffeine','toggle'); });
   document.querySelector('[data-w="glow"]')&&(document.querySelector('[data-w="glow"]').onclick=()=>api?.preview('preview'));
@@ -159,7 +160,7 @@ function build(){ const ws=(S.modules?.dock?.widgets)||[]; order=ws; $('#dock').
   document.querySelector('[data-w="launchpad"]')&&(document.querySelector('[data-w="launchpad"]').onclick=()=>api?.action('dock','launchpad'));
   document.querySelector('[data-w="spotlight"]')&&(document.querySelector('[data-w="spotlight"]').onclick=async()=>{ if(!S.modules?.spotlight?.enabled) await api?.setSettings({modules:{spotlight:{enabled:true}}}); api?.action('spotlight','toggle'); });
   refreshApps(); requestAnimationFrame(fit); }
-function fit(){ const r=$('#dock').getBoundingClientRect(); const n=document.querySelectorAll('.ap').length; const need=Math.ceil(r.width+40+(n?140:0)); if(Math.abs(need-innerWidth)>60||need>innerWidth) api?.action('dock','resize',need); }
+function fit(){ const r=$('#dock').getBoundingClientRect(); api?.action('dock','rect',{l:r.left,t:r.top,w:r.width,h:r.height}); const n=document.querySelectorAll('.ap').length; const need=Math.ceil(r.width+40+(n?140:0)); if(Math.abs(need-innerWidth)>60||need>innerWidth) api?.action('dock','resize',need); }
 function paintSettings(){ const d=S.modules?.dock||{}; document.body.classList.toggle('top',d.edge==='top'); document.body.style.alignItems=d.edge==='top'?'flex-start':'flex-end'; document.body.style.padding=d.edge==='top'?'6px 12px 0':'0 12px 6px'; $('#dock').style.zoom=d.size||1; }
 function clock(){ const n=new Date(); const c=$('#clk'); if(c){ const t=n.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}); c.innerHTML=t.replace(':','<i>:</i>'); $('#date').textContent=n.toLocaleDateString([], {weekday:'short',day:'numeric',month:'short'}); } }
 function paint(){
@@ -171,8 +172,9 @@ function paint(){
   if($('#ftime')){ const f=D.focus; const on=f&&f.phase!=='idle'; $('#ftime').textContent=on?`${f.mm}:${f.ss}`:'Focus'; $('#wfocus').classList.toggle('live',!!on); $('#wfocus').classList.toggle('on',!!on&&f.phase==='work'); }
   if($('#caft')){ const c=D.caffeine; $('#caft').textContent=c&&c.on?(c.left!=null?`${c.left}m`:'Awake'):'Caffeine'; $('#wcaf').classList.toggle('on',!!(c&&c.on)); }
 }
-(async()=>{ S=await api?.getSettings()||{}; paintSettings(); build(); clock(); setInterval(clock,1000);
+(async()=>{ S=await api?.getSettings()||{}; paintSettings(); build(); api?.appsInstalled?.().then(l=>{ (l||[]).forEach(a=>NAMES[a.path]=a.name); lastAppsKey=''; refreshApps(); }); clock(); setInterval(clock,1000);
   api?.on('settings:update',s=>{ const before=JSON.stringify(S.modules?.dock?.widgets); S=s; paintSettings(); if(JSON.stringify(S.modules?.dock?.widgets)!==before) build(); else { lastAppsKey=''; refreshApps(); fit(); } });
+  api?.on('dock:hidden',()=>{ overDock=false; closeCtx(); hideTip(); mx=null; kick(); });
   api?.on('dock:data',d=>{ D=d; paint(); refreshApps(); }); setInterval(refreshApps,1500); })();
 </script>
 </body></html>
