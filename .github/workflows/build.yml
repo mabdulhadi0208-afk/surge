@@ -68,6 +68,28 @@ jobs:
             && hdiutil create -volname Surge -srcfolder "$STAGE" -ov -format UDZO -imagekey zlib-level=1 -quiet dist/Surge-mac-arm64.dmg ) &
           wait
           ls -la dist/*.dmg dist/*.zip
+      - name: Release gate (refuse to publish broken files)
+        run: |
+          set -e
+          APP=$(ls -d dist/mac*/Surge.app | head -1)
+          # 1. updater zip: cert-signed with the pinned requirement → permissions survive updates
+          codesign -d -r- "$APP" 2>&1 | grep -q 'certificate leaf = H"CBDD9960F4309101C52C2F71998F8EBAC8D5B200"' && echo "✓ zip app has the pinned identity" || { echo "✗ zip app is not cert-signed"; exit 1; }
+          codesign --verify --deep --strict "$APP" && echo "✓ zip app signature valid"
+          # 2. DMG app: must be AD-HOC (a self-signed cert makes Gatekeeper say "damaged")
+          MNT=$(mktemp -d); hdiutil attach -nobrowse -quiet -mountpoint "$MNT" dist/Surge-mac-arm64.dmg
+          codesign -dv "$MNT/Surge.app" 2>&1 | grep -q 'Signature=adhoc' && echo "✓ dmg app is ad-hoc (right-click → Open works)" || { echo "✗ dmg app is NOT ad-hoc → would show as damaged"; hdiutil detach -quiet "$MNT"; exit 1; }
+          codesign --verify --deep --strict "$MNT/Surge.app" && echo "✓ dmg app signature valid"
+          test -L "$MNT/Applications" && echo "✓ dmg has Applications shortcut"
+          hdiutil detach -quiet "$MNT"
+          # 3. the app actually boots: launch headless for 8s and require the boot line in the log
+          rm -f ~/Library/Logs/Surge/surge.log; ("$APP/Contents/MacOS/Surge" >/dev/null 2>&1 &) ; sleep 8; pkill -x Surge || true
+          grep -q "boot $(node -p "require('./package.json').version")" ~/Library/Logs/Surge/surge.log && echo "✓ app boots and logs its version" || { echo "✗ app did not boot"; cat ~/Library/Logs/Surge/surge.log 2>/dev/null; exit 1; }
+          grep -qi "UNCAUGHT\|module load" ~/Library/Logs/Surge/surge.log && { echo "✗ errors during boot:"; grep -i "UNCAUGHT\|module load" ~/Library/Logs/Surge/surge.log; exit 1; } || echo "✓ no boot errors"
+          # 4. required files made it into the bundle
+          npx --yes @electron/asar list "$APP/Contents/Resources/app.asar" | grep -q "assets/tray/bolt.png" && echo "✓ tray assets bundled"
+          npx --yes @electron/asar list "$APP/Contents/Resources/app.asar" | grep -q "launchpad.html" && echo "✓ launchpad bundled"
+          # 5. sizes sane
+          for f in dist/Surge-mac-arm64.dmg dist/Surge-mac-arm64.zip; do s=$(stat -f%z "$f"); [ "$s" -gt 60000000 ] && echo "✓ $f $s bytes" || { echo "✗ $f too small ($s)"; exit 1; }; done
         env: { CSC_IDENTITY_AUTO_DISCOVERY: "false" }
       - id: v
         run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
@@ -99,6 +121,23 @@ jobs:
       - run: npm ci --no-audit --no-fund --prefer-offline
       - run: npx electron-builder --win nsis --x64 --publish never
         env: { CSC_IDENTITY_AUTO_DISCOVERY: "false" }
+      - name: Release gate (installer installs, app boots)
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem dist\*.exe | Select-Object -First 1
+          if ($exe.Length -lt 50MB) { throw "installer too small: $($exe.Length)" }
+          Start-Process -FilePath $exe.FullName -ArgumentList '/S' -Wait
+          $app = "$env:LOCALAPPDATA\Programs\Surge\Surge.exe"
+          if (!(Test-Path $app)) { throw "silent install did not produce $app" }
+          "✓ installed to $app"
+          $p = Start-Process -FilePath $app -PassThru; Start-Sleep -Seconds 10
+          $log = "$env:USERPROFILE\AppData\Roaming\Surge\logs\surge.log"
+          if (!(Test-Path $log)) { throw "no log written — app did not boot" }
+          $v = node -p "require('./package.json').version"
+          if (!(Select-String -Path $log -Pattern "boot $v" -Quiet)) { Get-Content $log; throw "boot line missing" }
+          if (Select-String -Path $log -Pattern "UNCAUGHT|module load" -Quiet) { Get-Content $log; throw "errors during boot" }
+          "✓ app boots on Windows and logs its version"; Get-Content $log | Select-Object -First 12
+          Stop-Process -Name Surge -Force -ErrorAction SilentlyContinue
       - id: v
         shell: bash
         run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
