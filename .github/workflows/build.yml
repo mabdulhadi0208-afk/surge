@@ -95,6 +95,7 @@ jobs:
           sleep 15
           kill -0 $P2 2>/dev/null && echo "✓ still running 15s after the update (did not quit)" || { echo "✗ app QUIT after updating"; cat $L/update.log $L/surge.log; exit 1; }
           [ "$(grep -c "boot $V" $L/surge.log)" -ge 2 ] && echo "✓ booted twice, version $V" || { echo "✗ expected two boots"; cat $L/surge.log; exit 1; }
+          grep -q "start island" $L/surge.log && echo "✓ island started" || { echo "✗ island did not start"; cat $L/surge.log; exit 1; }
           grep -q "start glow" $L/surge.log && echo "✓ modules started" || { echo "✗ modules did not start"; cat $L/surge.log; exit 1; }
           grep -i "UNCAUGHT\|module load\|UNHANDLED" $L/surge.log && { echo "✗ errors in log"; exit 1; } || echo "✓ no errors in log"
           # 3b. watchdog: kill it the hard way, it must come back on its own

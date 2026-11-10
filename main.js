@@ -139,6 +139,7 @@ function setOverlayPersistent(id, on) { on ? overlayPersistent.add(id) : overlay
 function fireGlow(kind, extra = {}) {
   glowBusy++; syncOverlayVisibility();
   overlaySend('glow:fire', { kind, level: extra.level ?? battery?.level ?? 100, settings: mod('glow'), ...extra });
+  try { if (running.has('island')) MODULES.island._event(ctx, kind, extra); } catch {}
 }
 ipcMain.on('glow:done', () => { glowBusy = Math.max(0, glowBusy - 1); syncOverlayVisibility(); });
 
