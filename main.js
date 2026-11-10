@@ -27,31 +27,38 @@ function saveSettings() { try { fs.mkdirSync(path.dirname(settingsPath()), { rec
 function mod(id) { return settings.modules[id]; }
 
 /* ------------------------------------------------------------------ global input hook (optional native dep) */
-let hook = null, hookState = 'unavailable';
-try {
-  const { uIOhook } = require('uiohook-napi');
-  hook = uIOhook; hookState = 'ready'; try { hook.setMaxListeners(64); } catch {}
-} catch (e) { setTimeout(() => log('uiohook-napi not available:', e.message), 0); }
+let hookAvail = false, hookState = 'unavailable';
+try { require.resolve('uiohook-napi'); hookAvail = true; hookState = 'ready'; } catch (e) { setTimeout(() => log('uiohook-napi not available:', e.message), 0); }
 const hookListeners = { keydown: new Set(), keyup: new Set(), mousedown: new Set(), mouseup: new Set(), wheel: new Set(), mousemove: new Set() };
-let hookStarted = false;
-let hookWired = false, hookRetry = null, axPrompted = false;
+let hookStarted = false, hookStarting = false, hookProc = null, hookTries = 0, hookRetry = null, axPrompted = false, quitting = false;
 function accessibilityOK(prompt) { if (process.platform !== 'darwin') return true; try { return systemPreferences.isTrustedAccessibilityClient(!!prompt); } catch { return true; } }
 function ensureHook() {
-  if (!hook || hookStarted) return hookStarted;
+  if (!hookAvail || hookStarted || hookStarting || quitting) return hookStarted;
   if (!accessibilityOK(false)) {
     // silent: no macOS prompt, no dialog. The popover/settings show a single Allow button that triggers the prompt.
     hookState = 'needs-accessibility'; if (!axPrompted) { axPrompted = true; log('hook waiting for Accessibility permission'); }
     if (!hookRetry) hookRetry = setInterval(() => { if (accessibilityOK(false)) { clearInterval(hookRetry); hookRetry = null; ensureHook(); ctx.broadcast('settings:update', settings); } }, 3000);
     return false;
   }
-  try {
-    if (!hookWired) { for (const ev of Object.keys(hookListeners)) hook.on(ev, (e) => { hookEvents++; hookListeners[ev].forEach(fn => { try { fn(e); } catch (err) { console.error(err); } }); }); hookWired = true; }
-    log('hook starting…'); hook.start(); hookStarted = true; hookState = 'running'; log('hook started');
-    fireGlow('hud', { hud: { text: 'Keyboard & mouse hook active', color: '#00FF85' } });
-    watchHookAlive();
-  } catch (e) { hookState = 'error'; console.error('hook start failed', e.message); }
-  return hookStarted;
+  // The native hook lives in a helper process (hookhost.js). If its start() blocks, only the helper is stuck: we kill it and try again.
+  hookStarting = true; let started = false; log('hook host starting, try', hookTries + 1);
+  let child; try { const { utilityProcess } = require('electron'); child = utilityProcess.fork(path.join(__dirname, 'hookhost.js'), [], { serviceName: 'Surge Input', stdio: 'ignore' }); } catch (e) { hookStarting = false; hookState = 'error'; console.error('hook host spawn failed', e.message); return false; }
+  hookProc = child;
+  const t = setTimeout(() => { if (!started) { log('hook host did not start within 4s (native start blocked) — killing it'); try { child.kill(); } catch {} } }, 4000);
+  child.on('message', (m) => {
+    if (m.ev) { if (!hookEvents++) log('hook first event'); hookListeners[m.ev]?.forEach(fn => { try { fn(m.e); } catch (err) { console.error(err); } }); return; }
+    if (m.started) { started = true; clearTimeout(t); hookStarting = false; hookStarted = true; hookState = 'running'; log('hook started'); setTimeout(() => { if (hookProc === child) hookTries = 0; }, 30000); watchHookAlive(); ctx.broadcast('settings:update', settings); }
+    else if (m.error) log('hook host error:', m.error);
+  });
+  child.on('exit', (code) => {
+    clearTimeout(t); if (hookProc !== child) return; hookProc = null; const was = hookStarted; hookStarted = false; hookStarting = false; if (quitting) return;
+    log('hook host exited', code, was ? '(was running)' : '(never started)');
+    if (++hookTries < 4) setTimeout(ensureHook, 700 * hookTries);
+    else { hookState = accessibilityOK(false) ? 'stale' : 'needs-accessibility'; log('hook host gave up after 4 tries →', hookState); ctx.broadcast('settings:update', settings); }
+  });
+  return false;
 }
+function stopHook() { const c = hookProc; hookProc = null; hookStarted = false; hookStarting = false; try { c?.kill(); } catch {} }
 // macOS can leave the hook "running" but silently deliver nothing (stale Accessibility / Input Monitoring entry after an update).
 // Detect it the honest way: the cursor moves (Electron sees that without any permission) but the hook reports no events → the grant is dead.
 let hookEvents = 0, deadFixes = 0, aliveT = null;
@@ -66,7 +73,7 @@ function watchHookAlive() {
 }
 function onHookDead() {
   log(`hook dead: cursor moved but no events (AX trusted=${accessibilityOK(false)})`);
-  try { hook.stop(); } catch {} hookStarted = false; hookState = 'needs-accessibility'; ctx.broadcast('settings:update', settings);
+  stopHook();
   // NEVER reset the permission entry from a running Surge: macOS terminates the app whose entry is reset (that was the "updated and quit" bug).
   // Mark it stale instead; the popover/settings offer a one-click Repair that resets + relaunches on purpose.
   hookState = 'stale'; ctx.broadcast('settings:update', settings);
@@ -389,7 +396,7 @@ function updateTray() {
 const ctx = {
   app, screen, clipboard, Notification, nativeTheme, powerSaveBlocker, globalShortcut, execFile, os,
   get settings() { return settings; }, mod, fireGlow, overlaySend, setOverlayPersistent, play, sysSound, onInput, hookState: () => hookState,
-  setTray, setTrayBattery, openSettings, toggleNotes, readBattery, markCleanExit, bundlePath, stopHook: () => { try { if (hookStarted) hook.stop(); hookStarted = false; } catch {} }, applyPatch: (p) => applyPatch(p), get battery() { return battery; }, set battery(v) { battery = v; },
+  setTray, setTrayBattery, openSettings, toggleNotes, readBattery, markCleanExit, bundlePath, stopHook: () => { quitting = true; stopHook(); }, applyPatch: (p) => applyPatch(p), get battery() { return battery; }, set battery(v) { battery = v; },
   notify: (title, body) => { try { new Notification({ title, body, silent: true }).show(); } catch {} },
   broadcast: (ch, p) => { [settingsWin, notesWin, audioWin, popWin, ...overlays].forEach(w => { try { if (w && !w.isDestroyed()) w.webContents.send(ch, p); } catch {} }); },
 };
@@ -493,4 +500,4 @@ app.whenReady().then(async () => {
   if (!settings.welcomed) setTimeout(() => { if (MODULES.updater?._migrating?.()) setTimeout(greet, 45000); else greet(); }, 2500);
 });
 app.on('window-all-closed', () => {});
-app.on('will-quit', () => { try { winapps?.stop(); } catch {} try { globalShortcut.unregisterAll(); hook?.stop(); const dk = MODULES.dock; if (dk && running.has('dock')) dk.stop(ctx); } catch {} });
+app.on('will-quit', () => { quitting = true; stopHook(); try { winapps?.stop(); } catch {} try { globalShortcut.unregisterAll(); const dk = MODULES.dock; if (dk && running.has('dock')) dk.stop(ctx); } catch {} });

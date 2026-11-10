@@ -103,13 +103,16 @@ jobs:
           grep -q "start island" $L/surge.log && echo "✓ island started" || { echo "✗ island did not start"; cat $L/surge.log; exit 1; }
           grep -q "start glow" $L/surge.log && echo "✓ modules started" || { echo "✗ modules did not start"; cat $L/surge.log; exit 1; }
           grep -i "UNCAUGHT\|module load\|UNHANDLED" $L/surge.log && { echo "✗ errors in log"; exit 1; } || echo "✓ no errors in log"
-          grep -q "hook started" $L/surge.log && echo "✓ input hook was running during the update (like a real Mac)" || echo "! hook did not start on this runner — update tested without it"
+          [ "$(grep -c "hook started" $L/surge.log)" -ge 2 ] && echo "✓ keyboard/mouse hook started before AND after the update (permission granted, like a real Mac)" || { echo "✗ hook did not start on both launches"; cat $L/surge.log; exit 1; }
+          [ "$(grep -c "start dock" $L/surge.log)" -ge 2 ] && echo "✓ startup ran to the end both times (no freeze)" || { echo "✗ startup did not finish (FROZEN)"; cat $L/surge.log; exit 1; }
+          osascript -e 'with timeout of 5 seconds' -e 'tell application "System Events" to key code 49' -e 'end timeout' >/dev/null 2>&1 || true; sleep 2
+          grep -q "hook first event" $L/surge.log && echo "✓ a real key press reached Surge through the hook" || echo "! could not send a synthetic key on this runner (event delivery not verified)"
           echo "----- surge.log"; cat $L/surge.log; echo "----- update.log"; cat $L/update.log; ls ~/Library/Logs/DiagnosticReports 2>/dev/null | grep -i surge || true
           # 3b. watchdog: kill it the hard way, it must come back on its own
           kill -9 $P2; sleep 10
           P3=$(pgrep -f "/Applications/Surge.app/Contents/MacOS/Surge" | head -1); [ -n "$P3" ] && [ "$P3" != "$P2" ] && echo "✓ watchdog brought Surge back after a hard kill (pid $P3)" || { echo "✗ watchdog did not relaunch"; cat $L/surge.log; exit 1; }
           # 3c. a normal quit must stay quit
-          osascript -e 'tell application "Surge" to quit' || pkill -x Surge; sleep 8
+          kill -TERM $P3; sleep 8
           pgrep -f "/Applications/Surge.app/Contents/MacOS/Surge" >/dev/null && { echo "✗ Surge came back after a normal quit"; exit 1; } || echo "✓ normal quit stays quit"
           # 4. required files made it into the bundle
           npx --yes @electron/asar list "$APP/Contents/Resources/app.asar" | grep -q "assets/tray/bolt.png" && echo "✓ tray assets bundled"
