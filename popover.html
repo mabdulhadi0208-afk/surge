@@ -3,6 +3,7 @@
 <style>
   :root{--a:#00FF85;--b:#39FF14;--ink:#f2f2f6;--muted:#9a9aa6;--line:rgba(255,255,255,.09);--spring:cubic-bezier(.34,1.56,.64,1);--ease:cubic-bezier(.22,1,.36,1)}
   *{box-sizing:border-box} html,body{margin:0;height:100%;background:transparent;font:13px/1.4 -apple-system,"SF Pro Text",Inter,system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased;-webkit-user-select:none;overflow:hidden}
+  body.bottom .arrow{top:auto;bottom:2px;transform:translateX(-50%) rotate(225deg)} body.bottom .panel{transform-origin:50% 100%}
   .arrow{position:absolute;top:2px;left:50%;width:16px;height:16px;background:rgba(18,18,24,.92);transform:translateX(-50%) rotate(45deg);border-radius:3px;border-left:1px solid var(--line);border-top:1px solid var(--line)}
   .panel{position:absolute;left:8px;right:8px;top:10px;bottom:8px;border-radius:20px;background:rgba(18,18,24,.92);border:1px solid var(--line);box-shadow:0 30px 80px -20px rgba(0,0,0,.8),0 0 0 .5px rgba(255,255,255,.04) inset;overflow:hidden;display:flex;flex-direction:column;transform-origin:50% 0;animation:pop .45s var(--spring) both}
   @keyframes pop{from{opacity:0;transform:scale(.92) translateY(-10px)}}
@@ -94,7 +95,7 @@ $('#axBtn').onclick=()=>api?.openAccessibility();
 $('#updBtn').onclick=async()=>{ const u=await api?.action('updater','state'); if(u?.status==='ready'){ api?.action('updater','install'); toast('Restarting…'); } else { api?.action('updater','download'); toast('Downloading…'); } };
 $('#ver').onclick=async()=>{ toast('Checking…'); const u=await api?.action('updater','check'); toast(u?.status==='available'?`${u.latest} available`:u?.status==='uptodate'?'Up to date':'Check failed'); state(); };
 (async()=>{ MODS=await api?.listModules()||[]; S=await api?.getSettings()||S; hook=await api?.hookState()||hook; build(); paint(); batt(); state();
-  api?.on('settings:update',s=>{S=s;paint();}); api?.on('popover:show',()=>{ hook=''; api?.hookState().then(h=>{hook=h;}); batt(); state(); document.querySelector('.panel').style.animation='none'; void document.querySelector('.panel').offsetWidth; document.querySelector('.panel').style.animation=''; });
+  api?.on('settings:update',s=>{S=s;paint();}); api?.on('popover:edge',e=>document.body.classList.toggle('bottom',e==='bottom')); api?.on('popover:show',()=>{ hook=''; api?.hookState().then(h=>{hook=h;}); batt(); state(); document.querySelector('.panel').style.animation='none'; void document.querySelector('.panel').offsetWidth; document.querySelector('.panel').style.animation=''; });
   setInterval(()=>{ batt(); state(); },2000); })();
 addEventListener('keydown',e=>{ if(e.key==='Escape') api?.hide(); });
 </script>

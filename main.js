@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const { execFile } = require('child_process');
+const IS_MAC = process.platform === 'darwin', IS_WIN = process.platform === 'win32';
 
 /* ------------------------------------------------------------------ logging (~/Library/Logs/Surge/surge.log) */
 let logStream = null;
@@ -127,12 +128,21 @@ function ensureAudio() {
   return audioWin;
 }
 function play(sound, opts = {}) { if (settings.muted && !opts.force) return; const w = ensureAudio(); if (!w || w.isDestroyed()) return; const send = () => { try { w.webContents.send('audio:play', { sound, master: settings.masterVolume ?? 1, ...opts }); } catch {} }; w.webContents.isLoading() ? w.webContents.once('did-finish-load', send) : send(); }
-function sysSound(name) { if (process.platform === 'darwin') execFile('afplay', [`/System/Library/Sounds/${name}.aiff`], () => {}); }
+function sysSound(name) { if (IS_MAC) execFile('afplay', [`/System/Library/Sounds/${name}.aiff`], () => {}); else play('chime', { name, volume: .6 }); }
 
 /* ------------------------------------------------------------------ battery (shared by modules) */
 let battery = null;
 function readBattery(cb) {
-  if (process.platform !== 'darwin') return cb(null);
+  if (IS_WIN) {
+    // WMI: EstimatedChargeRemaining (%), BatteryStatus 1=discharging 2=on AC 3=fully charged (6-9 = charging states); EstimatedRunTime in minutes
+    return execFile('powershell', ['-NoProfile', '-NonInteractive', '-Command', '$b=Get-CimInstance Win32_Battery | Select-Object -First 1; if($b){"$($b.EstimatedChargeRemaining)|$($b.BatteryStatus)|$($b.EstimatedRunTime)"}'], { timeout: 5000, windowsHide: true }, (err, out) => {
+      const m = /^(\d+)\|(\d+)\|(-?\d+)?/.exec((out || '').trim()); if (err || !m) return cb(null);
+      const level = Math.min(100, +m[1]), st = +m[2]; const { powerMonitor } = require('electron'); let ac = st !== 1; try { ac = !powerMonitor.isOnBatteryPower(); } catch {}
+      const mins = +m[3]; const remaining = !ac && mins > 0 && mins < 71582 ? `${Math.floor(mins / 60)}:${String(mins % 60).padStart(2, '0')}` : null;
+      cb({ level, charging: ac, holding: false, remaining, charged: ac && (st === 3 || level >= 100) });
+    });
+  }
+  if (!IS_MAC) return cb(null);
   execFile('pmset', ['-g', 'batt'], { timeout: 3000 }, (err, out) => {
     if (err || !out) return cb(null);
     const src = /'(AC|Battery) Power'/.exec(out), lvl = /(\d{1,3})%/.exec(out);
@@ -149,7 +159,7 @@ function openSettings(pane) {
   if (settingsWin && !settingsWin.isDestroyed()) { settingsWin.show(); settingsWin.focus(); if (pane) settingsWin.webContents.send('nav', pane); return; }
   settingsWin = new BrowserWindow({
     width: 980, height: 660, minWidth: 820, minHeight: 540, show: false, frame: false, transparent: true, hasShadow: true,
-    titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 16, y: 16 }, vibrancy: 'under-window', visualEffectState: 'active', backgroundColor: '#00000000',
+    ...(IS_MAC ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 16, y: 16 }, vibrancy: 'under-window', visualEffectState: 'active' } : {}), backgroundColor: '#00000000',
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true },
   });
   settingsWin.loadFile(path.join(__dirname, 'settings.html'));
@@ -262,8 +272,10 @@ function togglePopover() {
   if (Date.now() - popHidAt < 250) return;
   const b = tray.getBounds(); const d = screen.getDisplayNearestPoint({ x: b.x, y: b.y });
   const [pw, ph] = w.getSize();
-  let x = Math.round(b.x + b.width / 2 - pw / 2); const y = Math.round(b.y + b.height + 4);
-  x = Math.max(d.workArea.x + 6, Math.min(x, d.workArea.x + d.workArea.width - pw - 6));
+  let x = Math.round(b.x + b.width / 2 - pw / 2); const below = b.y < d.workArea.y + d.workArea.height / 2; let y = below ? Math.round(b.y + b.height + 4) : Math.round(b.y - ph - 8);
+  if (!b.width && !b.height) { x = d.workArea.x + d.workArea.width - pw - 12; y = d.workArea.y + d.workArea.height - ph - 12; }   // some Windows trays report no bounds
+  x = Math.max(d.workArea.x + 6, Math.min(x, d.workArea.x + d.workArea.width - pw - 6)); y = Math.max(d.workArea.y + 6, Math.min(y, d.workArea.y + d.workArea.height - ph - 6));
+  w.webContents.send('popover:edge', below ? 'top' : 'bottom');
   w.setPosition(x, y, false); w.show(); w.focus(); w.webContents.send('popover:show');
   try { if (running.has('updater')) MODULES.updater._check(ctx, false); } catch {}
 }
@@ -271,6 +283,10 @@ function togglePopover() {
 /* ------------------------------------------------------------------ tray */
 let tray = null, trayMenu = null, trayExtras = {};           // module id → { title?: string, menu?: MenuItem[] }
 function trayIcon(b) {
+  if (!IS_MAC) {
+    const name = (!b || b.level == null) ? 'bolt' : `b${Math.round(Math.max(0, Math.min(100, b.level)) / 10) * 10}${b.charging ? 'c' : ''}`;
+    try { return nativeImage.createFromPath(path.join(__dirname, 'assets', 'tray', name + '.png')); } catch { return nativeImage.createEmpty(); }
+  }
   // Menu-bar battery: live fill level, bolt while charging, hollow + warning tick when low. Template image → follows light/dark menu bar.
   if (!b || b.level == null) {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24"><path fill="black" d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>`;
@@ -301,7 +317,7 @@ const trayKeys = {};
 function updateTray() {
   if (!tray) return;
   const titles = Object.values(trayExtras).map(e => e?.title).filter(Boolean);
-  tray.setTitle(titles.length ? ' ' + titles.join('  ') : '');
+  if (IS_MAC) tray.setTitle(titles.length ? ' ' + titles.join('  ') : ''); else tray.setToolTip(['Surge', ...titles].join('  '));
   const items = [];
   for (const [id, e] of Object.entries(trayExtras)) if (e?.menu?.length) { items.push(...e.menu); items.push({ type: 'separator' }); }
   trayMenu = Menu.buildFromTemplate([
@@ -337,7 +353,7 @@ function reconcile() {
 function applyPatch(patch) {
   if ('masterVolume' in patch) settings.masterVolume = Math.max(0, Math.min(1, +patch.masterVolume));
   if ('muted' in patch) settings.muted = !!patch.muted;
-  if ('launchAtLogin' in patch) { settings.launchAtLogin = !!patch.launchAtLogin; if (process.platform === 'darwin') app.setLoginItemSettings({ openAtLogin: settings.launchAtLogin, openAsHidden: true }); }
+  if ('launchAtLogin' in patch) { settings.launchAtLogin = !!patch.launchAtLogin; if (IS_MAC || IS_WIN) app.setLoginItemSettings({ openAtLogin: settings.launchAtLogin, openAsHidden: true }); }
   if (patch.modules) for (const id in patch.modules) settings.modules[id] = { ...settings.modules[id], ...patch.modules[id] };
   saveSettings(); reconcile(); ctx.broadcast('settings:update', settings); updateTray();
 }
@@ -377,7 +393,7 @@ app.on('second-instance', () => { if (gotLock) openSettings(); });
 app.whenReady().then(async () => {
   if (!gotLock) return;
   log('boot', app.getVersion(), process.platform, process.arch, 'electron', process.versions.electron, process.execPath);
-  try { require('child_process').execFile('codesign', ['-d', '-r-', app.getAppPath().replace(/\/Contents\/Resources\/app(\.asar)?$/, '')], (e, o, er) => log('codesign', ((o || '') + (er || '')).replace(/\s+/g, ' '))); } catch {}
+  if (IS_MAC) try { require('child_process').execFile('codesign', ['-d', '-r-', app.getAppPath().replace(/\/Contents\/Resources\/app(\.asar)?$/, '')], (e, o, er) => log('codesign', ((o || '') + (er || '')).replace(/\s+/g, ' '))); } catch {}
   if (process.platform === 'darwin' && app.isPackaged) {
     const translocated = process.execPath.includes('/AppTranslocation/');
     if (translocated || !app.isInApplicationsFolder()) {
@@ -390,12 +406,12 @@ app.whenReady().then(async () => {
     }
   }
   for (const f of fs.readdirSync(path.join(__dirname, 'modules')).filter(f => f.endsWith('.js')).sort()) {
-    try { const m = require(path.join(__dirname, 'modules', f)); MODULES[m.id] = m; } catch (e) { console.error('module load', f, e); }
+    try { const m = require(path.join(__dirname, 'modules', f)); if (m.platforms && !m.platforms.includes(process.platform)) continue; MODULES[m.id] = m; } catch (e) { console.error('module load', f, e); }
   }
   log('modules', Object.keys(MODULES).join(','), 'hook', hookState);
   const firstRun = !fs.existsSync(settingsPath());
   loadSettings(); if (firstRun) settings.launchAtLogin = true; saveSettings();
-  if (process.platform === 'darwin' && app.isPackaged) { try { if (app.getLoginItemSettings().openAtLogin !== settings.launchAtLogin) app.setLoginItemSettings({ openAtLogin: settings.launchAtLogin, openAsHidden: true }); } catch {} }
+  if ((IS_MAC || IS_WIN) && app.isPackaged) { try { if (app.getLoginItemSettings().openAtLogin !== settings.launchAtLogin) app.setLoginItemSettings({ openAtLogin: settings.launchAtLogin, openAsHidden: true }); } catch {} }
   Menu.setApplicationMenu(Menu.buildFromTemplate([{ label: 'Surge', submenu: [
     { label: 'Settings…', accelerator: 'Cmd+,', click: () => openSettings() },
     { label: 'Quick Notes', accelerator: 'Cmd+Shift+N', click: toggleNotes },
@@ -403,15 +419,16 @@ app.whenReady().then(async () => {
     { type: 'separator' }, { role: 'close' }, { role: 'minimize' }, { role: 'quit' } ]}, { role: 'editMenu' }]));
   if (process.platform === 'darwin') app.dock?.hide();
   createOverlays(); ensureAudio();
-  tray = new Tray(trayIcon()); tray.setIgnoreDoubleClickEvents(true);
+  tray = new Tray(trayIcon()); tray.setIgnoreDoubleClickEvents(true); tray.setToolTip('Surge');
   tray.on('click', togglePopover);
   tray.on('right-click', () => trayMenu && tray.popUpContextMenu(trayMenu));
+  if (IS_WIN) app.setAppUserModelId('app.surge.glow');
   updateTray(); ensurePopover();
   let dispT; const rebuild = () => { clearTimeout(dispT); dispT = setTimeout(() => { createOverlays(); running.forEach(id => MODULES[id].onSettings?.(ctx)); }, 600); };
   screen.on('display-added', rebuild); screen.on('display-removed', rebuild); screen.on('display-metrics-changed', rebuild);
   try { globalShortcut.register('CommandOrControl+Shift+N', toggleNotes); } catch {}
   reconcile();
-  if (firstRun) setTimeout(() => { fireGlow('preview'); openSettings(); }, 900);
+  if (firstRun) setTimeout(() => { fireGlow('preview'); openSettings('welcome'); }, 900);
 });
 app.on('window-all-closed', () => {});
 app.on('will-quit', () => { try { globalShortcut.unregisterAll(); hook?.stop(); const dk = MODULES.dock; if (dk && running.has('dock')) dk.stop(ctx); } catch {} });

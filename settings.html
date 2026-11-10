@@ -10,6 +10,15 @@
   html,body{margin:0;height:100%;background:transparent;color:var(--text);font:14px/1.45 -apple-system,"SF Pro Text",Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden;-webkit-user-select:none}
   .win{height:100%;display:grid;grid-template-columns:220px minmax(0,1fr);grid-template-rows:100%;background:var(--bg);border-radius:14px;overflow:hidden;position:relative;animation:pop .6s var(--spring) both}
   @keyframes pop{from{opacity:0;transform:scale(.96) translateY(10px)}}
+  body.winos .win{background:#0f0f14;border:1px solid var(--line)} body.winos aside{padding-top:14px}
+  .wc{display:none;gap:4px;-webkit-app-region:no-drag} body.winos .wc{display:flex}
+  .wc button{all:unset;cursor:pointer;width:34px;height:28px;border-radius:8px;display:grid;place-items:center;color:var(--muted);transition:background .2s,color .2s} .wc button:hover{background:rgba(255,255,255,.1);color:var(--text)} .wc button.x:hover{background:#e0443e;color:#fff}
+  .wc svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round}
+  /* welcome */
+  .steps{display:grid;gap:12px} .step{display:flex;gap:14px;align-items:flex-start;padding:16px;border-radius:16px;background:var(--panel);border:1px solid var(--line);transition:border-color .3s,background .3s} .step.done{border-color:rgba(0,255,133,.4);background:rgba(0,255,133,.06)}
+  .step .num{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.08);display:grid;place-items:center;font-weight:700;flex:none;font-size:13px} .step.done .num{background:var(--accent);color:#06110a}
+  .step h4{margin:2px 0 4px;font-size:14px} .step p{margin:0 0 10px;color:var(--muted);font-size:12.5px;line-height:1.5} .step .b{flex:1;min-width:0}
+  .step .btn.primary{background:var(--accent);color:#06110a;border-color:transparent}
   .drag{-webkit-app-region:drag}
   .aura{position:absolute;inset:-40%;pointer-events:none;filter:blur(110px);opacity:.12;z-index:0;background:conic-gradient(from 0deg,var(--accent),var(--accent2),#7A5CFF,var(--accent));animation:spin 28s linear infinite;mix-blend-mode:screen}
   @keyframes spin{to{transform:rotate(1turn)}}
@@ -109,7 +118,7 @@
     <div class="status"><span class="led" id="led"></span><span id="batt"><b>—</b> reading…</span></div>
   </aside>
   <main>
-    <header class="drag"><h1 id="title">Modules</h1><div class="grow"></div><button class="btn" id="qGlow">⚡ Preview glow</button></header>
+    <header class="drag"><h1 id="title">Modules</h1><div class="grow"></div><button class="btn" id="qGlow">⚡ Preview glow</button><div class="wc"><button id="wMin" title="Minimise"><svg viewBox="0 0 12 12"><path d="M2 6h8"/></svg></button><button class="x" id="wClose" title="Close"><svg viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8"/></svg></button></div></header>
     <div class="panes" id="panes"></div>
     <div class="toast" id="toast">Saved</div>
   </main>
@@ -140,7 +149,7 @@ function set(id, patch){ S.modules[id] = { ...S.modules[id], ...patch }; pending
 /* ---------- build UI ---------- */
 function build(){
   const groups = ['Glow','Sound','Screen','Productivity','System'];
-  let nav = `<button data-p="all" class="on"><span class="ic">${ic('grid')}</span>All modules</button>`;
+  let nav = `<button data-p="welcome"><span class="ic">${ic('bolt')}</span>Welcome</button><button data-p="all" class="on"><span class="ic">${ic('grid')}</span>All modules</button>`;
   for (const g of groups){ const ms = MODS.filter(m=>m.group===g); if(!ms.length) continue; nav += `<div class="grp">${g}</div>` + ms.map(m=>`<button data-p="${m.id}"><span class="ic">${ic(m.icon)}</span>${m.name}<span class="led"></span></button>`).join(''); }
   nav += `<div class="grp">App</div><button data-p="about"><span class="ic">${ic('info')}</span>About</button>`;
   $('#nav').innerHTML = nav;
@@ -149,6 +158,13 @@ function build(){
     <div class="note" id="hookNote"></div>
     <div class="grid">${MODS.map((m,i)=>`<div class="mod ${m.needsHook?'needs':''}" data-m="${m.id}" style="animation-delay:${i*40}ms"><div class="top"><div class="ic">${ic(m.icon)}</div><h4>${m.name}</h4></div><p>${m.desc}</p><div class="need">Needs Accessibility permission</div><div class="tg" data-m="${m.id}"></div></div>`).join('')}</div></section>`;
   for (const m of MODS) panes += `<section class="pane" id="pane-${m.id}"><div class="card"><h3>${m.name}</h3><div class="row"><div class="l">Enabled<small>${m.desc}</small></div><div class="tg" data-m="${m.id}"></div></div>${m.needsHook?'<div class="row"><div class="l"><small id="hook-'+m.id+'"></small></div></div>':''}</div>${m.id==='glow'?'<div class="card"><h3>Live preview</h3><div class="preview" id="preview"><canvas id="pc"></canvas></div></div>':''}${m.schema.length?'<div class="card"><h3>Options</h3>'+m.schema.map(f=>field(m,f)).join('')+'</div>':''}</section>`;
+  const mac = !document.body.classList.contains('winos');
+  panes += `<section class="pane" id="pane-welcome"><div class="hero"><div><h2>Welcome to Surge ⚡</h2><p>Four quick things and you're set. Everything here can be changed later.</p></div></div><div class="steps">
+    ${mac ? `<div class="step" id="st-ax"><div class="num">1</div><div class="b"><h4>Allow keyboard &amp; mouse</h4><p>Key sounds, click ripples and the Caps Lock pill need macOS Accessibility permission — one click on Allow, no data leaves your Mac.</p><button class="btn primary" id="stAx">Allow in System Settings</button> <span id="stAxT" style="font-size:12px;color:var(--muted);margin-left:8px"></span></div></div>` : ''}
+    <div class="step" id="st-key"><div class="num">${mac ? 2 : 1}</div><div class="b"><h4>Pick your keyboard sound</h4><p>145 switches, all synthesised live. Holy Panda is the default — try Box Jade if you like clicky, Topre if you like thock.</p><button class="btn" data-go="keys">Browse sounds</button> <button class="btn" id="stRand">🎲 Surprise me</button></div></div>
+    <div class="step" id="st-mods"><div class="num">${mac ? 3 : 2}</div><div class="b"><h4>Turn things on</h4><p>Charge Glow is on. Popular extras:</p><div class="chips" id="stMods"></div></div></div>
+    <div class="step" id="st-login"><div class="num">${mac ? 4 : 3}</div><div class="b"><h4>Start with your ${mac ? 'Mac' : 'PC'}</h4><p>Surge lives in the ${mac ? 'menu bar' : 'system tray'} and uses almost nothing. Click the ⚡ up there any time.</p><button class="btn" id="stLogin"></button></div></div>
+  </div></section>`;
   panes += `<section class="pane" id="pane-about"><div class="about"><div class="logo"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></div><h2>Surge</h2><p>${MODS.length} modules and counting. Every sound is synthesised, every glow is drawn live, nothing phones home.</p><p style="font-size:12px"><span id="aboutVer">v…</span> · <span id="reset" style="cursor:pointer;text-decoration:underline">reset all settings</span></p></div></section>`;
   $('#panes').innerHTML = panes;
   // wire
@@ -161,6 +177,13 @@ function build(){
   $('#mute').onclick = () => { S.muted = !S.muted; api?.setSettings({ muted: S.muted }); paint(); };
   $('#qGlow').onclick = () => api?.preview('preview');
   $('#reset').onclick = async () => { S = await api?.resetSettings() || S; paint(); toast('Reset'); };
+  $('#wMin').onclick = () => api?.minimize(); $('#wClose').onclick = () => api?.close();
+  document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => go(b.dataset.go));
+  const stAx = $('#stAx'); if (stAx) stAx.onclick = () => api?.openAccessibility();
+  $('#stRand').onclick = () => { const all = SurgeSounds.all; const p = all[Math.floor(Math.random()*all.length)]; set('keys', { preset: p.id, enabled: true }); audition('keyboard', p.id); toast(p.name); };
+  $('#stMods').innerHTML = ['keys','mouse','dock','caps','clip','focus'].filter(id => MODS.some(m => m.id === id)).map(id => `<button class="chip" data-st="${id}" style="--c:var(--accent)"><i></i>${MODS.find(m=>m.id===id).name}</button>`).join('');
+  $('#stMods').querySelectorAll('[data-st]').forEach(b => b.onclick = () => set(b.dataset.st, { enabled: !S.modules[b.dataset.st].enabled }));
+  $('#stLogin').onclick = () => { S.launchAtLogin = !S.launchAtLogin; api?.setSettings({ launchAtLogin: S.launchAtLogin }); paint(); };
   const pc = $('#pc'); if (pc) { mini = SurgeEngine.create(pc, { loop:true, gap:1400, refWidth:1440, capsuleScale:1.6 }); $('#preview').onclick = () => replay(); }
 }
 function field(m, f){
@@ -233,7 +256,7 @@ function buildWidgets(el, mid, k){
 }
 function syncRange(r){ r.style.setProperty('--p', (r.value-r.min)/(r.max-r.min)*100+'%'); r.nextElementSibling.value = fmt(r.dataset.fmt, +r.value); }
 function go(p){ cur = p; document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on', b.dataset.p===p)); document.querySelectorAll('.pane').forEach(x=>x.classList.toggle('on', x.id===`pane-${p}`));
-  $('#title').textContent = p==='all' ? 'Modules' : p==='about' ? 'About' : MODS.find(m=>m.id===p)?.name || ''; if (p==='glow') replay(); }
+  $('#title').textContent = p==='all' ? 'Modules' : p==='about' ? 'About' : p==='welcome' ? 'Welcome' : MODS.find(m=>m.id===p)?.name || ''; if (p==='glow') replay(); }
 function paint(){
   let on = 0;
   for (const m of MODS){ const s = S.modules[m.id] || {}; if (s.enabled) on++;
@@ -256,12 +279,17 @@ function paint(){
   $('#vol').classList.toggle('muted', !!S.muted); $('#mute').textContent = S.muted ? '🔇' : '🔊';
   const note = $('#hookNote'); note.classList.toggle('show', hook==='error' || hook==='unavailable' || hook==='needs-accessibility'); note.innerHTML = hook==='needs-accessibility' ? 'Keyboard &amp; mouse modules need <b>Accessibility</b> permission. <a id="axBtn" style="color:#FFD37A;text-decoration:underline;cursor:pointer">Open Accessibility settings</a> → turn on Surge. They start automatically once granted.' : hook==='error' ? 'Hook failed to start. Enable Surge under Privacy &amp; Security → <a id="axBtn" style="color:#FFD37A;text-decoration:underline;cursor:pointer">Accessibility</a> and <a id="imBtn" style="color:#FFD37A;text-decoration:underline;cursor:pointer">Input Monitoring</a>, then relaunch.' : hook==='unavailable' ? 'Keyboard/mouse modules are unavailable in this build (native hook missing).' : '';
   const ax=$('#axBtn'); if(ax) ax.onclick=()=>api?.openAccessibility(); const im=$('#imBtn'); if(im) im.onclick=()=>api?.openInputMonitoring();
+  $('#st-ax')?.classList.toggle('done', hook === 'running'); const axT = $('#stAxT'); if (axT) axT.textContent = hook === 'running' ? '✓ allowed' : hook === 'needs-accessibility' ? 'waiting…' : '';
+  $('#st-key')?.classList.toggle('done', !!S.modules.keys?.enabled); $('#stMods')?.querySelectorAll('[data-st]').forEach(b => b.classList.toggle('on', !!S.modules[b.dataset.st]?.enabled));
+  $('#st-mods')?.classList.toggle('done', ['mouse','dock','caps','clip','focus'].some(id => S.modules[id]?.enabled));
+  const sl = $('#stLogin'); if (sl) { sl.textContent = S.launchAtLogin ? '✓ Starts at login' : 'Start at login'; $('#st-login').classList.toggle('done', !!S.launchAtLogin); }
   const g = S.modules.glow || {}; document.documentElement.style.setProperty('--accent', g.theme==='ember' ? '#FF9500' : g.theme==='ice' ? '#7DF9FF' : g.theme==='solid' ? g.color : '#00FF85');
   mini?.assign(g);
 }
 function replay(kind){ if (kind) pkind = kind; if (!mini) return; mini.assign(S.modules.glow||{}); mini.fire(pkind, pkind==='low'?12:pkind==='full'?100:67); }
 
 (async()=>{
+  if (!/Mac/.test(navigator.platform)) document.body.classList.add('winos');
   MODS = await api?.listModules() || []; S = await api?.getSettings() || { modules:{} }; hook = await api?.hookState() || 'unavailable';
   build(); paint(); replay();
   api?.action('updater','state').then(u=>{ const v=document.getElementById('aboutVer'); if(v&&u?.current) v.textContent='v'+u.current; });

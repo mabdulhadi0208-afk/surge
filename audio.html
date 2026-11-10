@@ -56,6 +56,13 @@ function play(p) {
     case 'scroll': playPreset(SurgeSounds.findScroll(p.preset), v, 'key', .08); break;
     case 'capsOn': tone({ f: 660, f2: 990, dur: .12, vol: v * .5 }); break;
     case 'capsOff': tone({ f: 990, f2: 660, dur: .12, vol: v * .5 }); break;
+    case 'chime': { const t = AC.currentTime, n = p.name;
+      if (n === 'Glass') { tone({ f: 1046, dur: .5, vol: v * .5, t, attack: .003 }); tone({ f: 1568, dur: .7, vol: v * .3, t: t + .06, attack: .003 }); }
+      else if (n === 'Pop') tone({ f: 420, f2: 180, dur: .12, vol: v * .6, t });
+      else if (n === 'Hero') [523, 659, 784, 1046].forEach((f, i) => tone({ f, dur: .9 - i * .1, vol: v * .35, t: t + i * .07, attack: .004 }));
+      else if (n === 'Basso') tone({ f: 110, f2: 70, dur: .45, vol: v * .8, t });
+      else if (n === 'Blow') noise({ dur: .5, vol: v * .35, t, f: 1200, q: .7, type: 'bandpass', attack: .05 });
+      else tone({ f: 880, dur: .25, vol: v * .4, t }); break; }
     case 'bell': { const t = AC.currentTime; [1, 2.4, 3.9].forEach((m, i) => tone({ f: 523 * m, dur: 1.6 - i * .3, vol: v * (.4 / (i + 1)), t, attack: .004 })); break; }
     default: tone({ f: 440, dur: .1, vol: v * .3 });
   }

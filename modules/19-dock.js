@@ -9,7 +9,7 @@ function osa(script) { return new Promise(res => execFile('osascript', ['-e', sc
 function cpu(os) { const c = os.cpus(); let idle = 0, total = 0; for (const k of c) { for (const t in k.times) total += k.times[t]; idle += k.times.idle; } const r = prevCpu ? 1 - (idle - prevCpu.idle) / Math.max(1, total - prevCpu.total) : 0; prevCpu = { idle, total }; return Math.max(0, Math.min(1, r)); }
 
 module.exports = {
-  id: 'dock', name: 'Surge Dock', icon: 'dock', group: 'Screen',
+  id: 'dock', name: 'Surge Dock', icon: 'dock', group: 'Screen', platforms: ['darwin'],
   desc: 'A full Dock replacement: your apps (pinned + running, macOS-style magnification) plus widgets — clock, battery, CPU, now playing, volume, focus, caffeine. Can hide the macOS Dock for good.',
   defaults: { edge: 'bottom', offset: 10, size: 1, autohide: false, hideMacDock: false, macDockConfirmed: false, magnify: true, pinned: DEFAULT_PINS, widgets: ['apps', 'launchpad', 'clock', 'battery', 'volume', 'focus', 'caffeine'] },
   schema: [

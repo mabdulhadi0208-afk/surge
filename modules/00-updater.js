@@ -3,7 +3,8 @@
 const { execFile, spawn } = require('child_process');
 const { BrowserWindow, screen } = require('electron');
 const fs = require('fs'); const path = require('path');
-const REPO = 'mabdulhadi0208-afk/surge', ZIP = 'Surge-mac-arm64.zip', DMG = 'Surge-mac-arm64.dmg';
+const REPO = 'mabdulhadi0208-afk/surge', ZIP = 'Surge-mac-arm64.zip', DMG = 'Surge-mac-arm64.dmg', EXE = 'Surge-win-x64.exe';
+const IS_WIN = process.platform === 'win32';
 let timer = null, popup = null, snoozedUntil = 0, skipVersion = null, polling = false, misses = 0, lastTag = null, lastCheck = 0, dlProc = null;
 const state = { status: 'idle', latest: null, url: null, size: 0, progress: 0, bytes: 0, speed: 0, eta: 0, error: null, staged: null, isZip: true };
 
@@ -47,8 +48,8 @@ async function check(manual) {
     // staged copy must be exactly this version, otherwise it's stale
     if (state.staged) { const sv = stagedVersion(state.staged); if (!sv || !same(sv, latest)) { log('discard stale staged', sv); clearStaged(); } }
     if (state.staged) { set({ status: 'ready', latest }); showCardIfAllowed(manual); return state; }
-    let url = `https://github.com/${REPO}/releases/download/${latest}/${ZIP}`, isZip = true, p = await probe(url);
-    if (!p.ok) { url = `https://github.com/${REPO}/releases/download/${latest}/${DMG}`; isZip = false; p = await probe(url); }
+    let url = `https://github.com/${REPO}/releases/download/${latest}/${IS_WIN ? EXE : ZIP}`, isZip = !IS_WIN, p = await probe(url);
+    if (!p.ok && !IS_WIN) { url = `https://github.com/${REPO}/releases/download/${latest}/${DMG}`; isZip = false; p = await probe(url); }
     if (!p.ok) throw new Error(`${latest} is published but the file isn't ready yet`);
     set({ status: 'available', latest, url, isZip, size: p.size, progress: 0, bytes: 0 });
     log('available', latest, isZip ? 'zip' : 'dmg', fmtMB(p.size));
@@ -64,7 +65,7 @@ async function download() {
   if (!state.url || ['downloading', 'unpacking', 'installing'].includes(state.status)) return;
   if (state.staged) { const sv = stagedVersion(state.staged); if (sv && same(sv, state.latest)) { set({ status: 'ready' }); return; } clearStaged(); }
   const dir = updDir(); fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
-  const file = path.join(dir, state.isZip ? ZIP : DMG), mnt = path.join(dir, 'mnt');
+  const file = path.join(dir, IS_WIN ? EXE : state.isZip ? ZIP : DMG), mnt = path.join(dir, 'mnt');
   let prog = null;
   try {
     set({ status: 'downloading', progress: 0, bytes: 0, speed: 0, eta: 0 });
@@ -78,6 +79,7 @@ async function download() {
     clearInterval(prog); prog = null;
     if (state.size && fs.statSync(file).size !== state.size) throw new Error('download incomplete');
     set({ progress: 100, status: 'unpacking' });
+    if (IS_WIN) { set({ staged: file, status: 'ready' }); log('staged installer', state.latest); C.setTray('updater', { title: '↑', menu: [{ label: `Restart to update to ${state.latest}`, click: () => install() }] }); showCardIfAllowed(false); C.notify('Surge update ready', `${state.latest} is downloaded. Click Restart on the card.`); return; }
     if (state.isZip) { await sh('ditto', ['-x', '-k', file, dir]); const app = fs.readdirSync(dir).find(f => f.endsWith('.app')); if (!app) throw new Error('No .app in zip'); if (app !== 'Surge.app') fs.renameSync(path.join(dir, app), path.join(dir, 'Surge.app')); }
     else { fs.mkdirSync(mnt, { recursive: true }); await sh('hdiutil', ['attach', '-nobrowse', '-quiet', '-mountpoint', mnt, file]); const app = fs.readdirSync(mnt).find(f => f.endsWith('.app')); if (!app) throw new Error('No .app in DMG'); await sh('ditto', [path.join(mnt, app), path.join(dir, 'Surge.app')]); await sh('hdiutil', ['detach', '-quiet', mnt]).catch(() => {}); }
     fs.rmSync(file, { force: true });
@@ -92,6 +94,14 @@ async function download() {
 
 async function install() {
   if (!state.staged) { if (state.status !== 'downloading' && state.status !== 'unpacking') await download(); if (!state.staged) return state; }
+  if (IS_WIN) {
+    // NSIS one-click installer: /S = silent; it replaces the app in place and relaunches it. Marker makes the new build show the "Updated" glow.
+    try { fs.writeFileSync(path.join(C.app.getPath('userData'), 'just-updated'), ''); } catch {}
+    set({ status: 'installing' }); log('installing (windows)', state.latest);
+    const child = spawn(state.staged, ['/S', '--force-run'], { detached: true, stdio: 'ignore', windowsHide: true }); child.unref();
+    setTimeout(() => C.app.exit(0), 400);
+    return state;
+  }
   const sv = stagedVersion(state.staged); if (!sv || !newer(sv, C.app.getVersion())) { clearStaged(); set({ status: 'error', error: 'staged copy was not newer — fetching again' }); return check(true); }
   const target = bundlePath(); if (!target) { set({ status: 'error', error: 'Not running from an .app bundle' }); return state; }
   const logf = path.join(C.app.getPath('logs'), 'update.log'); const script = path.join(updDir(), 'swap.sh');

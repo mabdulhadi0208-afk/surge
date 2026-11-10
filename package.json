@@ -1,7 +1,7 @@
 {
   "name": "surge",
   "productName": "Surge",
-  "version": "2.9.15",
+  "version": "2.9.16",
   "description": "Surge \u2014 a 17-in-1 Mac toolbox: charge glow, keyboard & mouse sounds, click ripple, spotlight, night tint, caffeine, clipboard, focus timer and more.",
   "main": "main.js",
   "author": "Surge",
@@ -46,7 +46,8 @@
       "launchpad.html",
       "update.html",
       "modules/**",
-      "package.json"
+      "package.json",
+      "assets/**"
     ],
     "dmg": {
       "title": "Surge",
@@ -69,7 +70,22 @@
       "icon": "build/icon.png"
     },
     "npmRebuild": false,
-    "artifactName": "${productName}-mac-${arch}.${ext}"
+    "artifactName": "${productName}-mac-${arch}.${ext}",
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build/icon.png",
+      "artifactName": "${productName}-win-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "${productName}-win-${arch}.${ext}"
+    }
   },
   "dependencies": {
     "uiohook-napi": "^1.5.5"
