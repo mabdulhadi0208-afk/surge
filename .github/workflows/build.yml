@@ -105,6 +105,8 @@ jobs:
           grep -i "UNCAUGHT\|module load\|UNHANDLED" $L/surge.log && { echo "✗ errors in log"; exit 1; } || echo "✓ no errors in log"
           [ "$(grep -c "hook started (worker)" $L/surge.log)" -ge 2 ] && echo "✓ hook runs INSIDE Surge (worker thread) on both launches — uses Surge's own permission" || { echo "✗ hook did not start as an in-app worker on both launches"; cat $L/surge.log; exit 1; }
           [ "$(grep -c "hook started" $L/surge.log)" -ge 2 ] && echo "✓ keyboard/mouse hook started before AND after the update (permission granted, like a real Mac)" || { echo "✗ hook did not start on both launches"; cat $L/surge.log; exit 1; }
+          grep -q "tray chip selftest pass" $L/surge.log && echo "✓ menu-bar charge chip renders ($(grep -m1 "tray chip ok" $L/surge.log))" || { echo "✗ charge chip did not render"; grep "tray chip" $L/surge.log; exit 1; }
+          grep -q "fallback ok, bolt ok" $L/surge.log && echo "✓ menu-bar icon is never blank" || { echo "✗ menu-bar icon can be BLANK"; grep "tray" $L/surge.log; exit 1; }
           [ "$(grep -c "start dock" $L/surge.log)" -ge 2 ] && echo "✓ startup ran to the end both times (no freeze)" || { echo "✗ startup did not finish (FROZEN)"; cat $L/surge.log; exit 1; }
           osascript -e 'with timeout of 5 seconds' -e 'tell application "System Events" to key code 49' -e 'end timeout' >/dev/null 2>&1 || true; sleep 2
           grep -q "hook first event" $L/surge.log && echo "✓ a real key press reached Surge through the hook" || echo "! could not send a synthetic key on this runner (event delivery not verified)"
@@ -119,7 +121,7 @@ jobs:
           # 4. required files made it into the bundle
           npx --yes @electron/asar list "$APP/Contents/Resources/app.asar" | grep -q "assets/tray/bolt.png" && echo "✓ tray assets bundled"
           npx --yes @electron/asar list "$APP/Contents/Resources/app.asar" | grep -q "launchpad.html" && echo "✓ launchpad bundled"
-          for f in clip.html hookworker.js modules/18-snap.js; do npx --yes @electron/asar list "$APP/Contents/Resources/app.asar" | grep -q "$f" && echo "✓ $f bundled" || { echo "✗ $f missing from the app"; exit 1; }; done
+          for f in clip.html hookworker.js traychip.js modules/18-snap.js; do npx --yes @electron/asar list "$APP/Contents/Resources/app.asar" | grep -q "$f" && echo "✓ $f bundled" || { echo "✗ $f missing from the app"; exit 1; }; done
           # 5. sizes sane
           for f in dist/Surge-mac-arm64.dmg dist/Surge-mac-arm64.zip; do s=$(stat -f%z "$f"); [ "$s" -gt 60000000 ] && echo "✓ $f $s bytes" || { echo "✗ $f too small ($s)"; exit 1; }; done
         env: { CSC_IDENTITY_AUTO_DISCOVERY: "false" }

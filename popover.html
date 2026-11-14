@@ -42,13 +42,48 @@
   footer{margin-top:auto;display:flex;align-items:center;gap:8px;padding:10px 16px 14px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
   footer a{cursor:pointer;padding:6px 10px;border-radius:9px;transition:background .2s} footer a:hover{background:rgba(255,255,255,.08);color:var(--ink)}
   .toast{position:absolute;left:50%;bottom:58px;transform:translate(-50%,20px);background:rgba(30,30,38,.95);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:11px;opacity:0;transition:all .4s var(--spring);pointer-events:none} .toast.show{opacity:1;transform:translate(-50%,0)}
+
+  /* ───────── Surge look v3: "live current". One loud thing (the charge tank), everything else quiet tonal surfaces. ───────── */
+  :root{--bg0:#0b0e15;--bg1:#131824;--bg2:#1b2232;--bg3:#252e42;--ink:#eef1f7;--muted:#8b94a7;--line:rgba(255,255,255,.07)}
+  .arrow{background:var(--bg1);border-color:transparent}
+  .panel{background:linear-gradient(180deg,var(--bg1),var(--bg0) 60%);border:0;border-radius:26px;box-shadow:0 34px 90px -24px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.08),inset 0 0 0 1px rgba(255,255,255,.04);animation:pop .55s var(--flow) both}
+  @keyframes pop{from{opacity:0;transform:scale(.86) translateY(-18px)}}
+  .aura{display:none}
+  .panel>*{flex:none}
+  /* the charge tank */
+  header{position:relative;margin:12px 12px 4px;padding:16px 14px 16px 18px;border-radius:20px;background:var(--bg2);overflow:hidden;--lv:50%;--tc:var(--a);gap:10px;isolation:isolate}
+  .liq{position:absolute!important;left:0;top:0;bottom:0;width:var(--lv);background:linear-gradient(90deg,color-mix(in srgb,var(--tc) 16%,transparent),color-mix(in srgb,var(--tc) 46%,transparent));transition:width 1.4s var(--flow),background .6s;z-index:-1}
+  .liq .wave{position:absolute;left:100%;top:0;width:14px;height:400%;fill:color-mix(in srgb,var(--tc) 46%,transparent);animation:slosh 3.2s linear infinite;transition:fill .6s}
+  @keyframes slosh{to{transform:translateY(-25%)}}
+  .liq .bub{position:absolute;bottom:-8px;width:5px;height:5px;border-radius:50%;background:color-mix(in srgb,var(--tc) 70%,#fff);opacity:0}
+  header.chg .bub{animation:bub 2.6s ease-in infinite} .bub:nth-child(2){left:18%} .bub:nth-child(3){left:42%;animation-delay:.7s!important;width:4px;height:4px} .bub:nth-child(4){left:66%;animation-delay:1.3s!important} .bub:nth-child(5){left:86%;animation-delay:1.9s!important;width:3px;height:3px}
+  @keyframes bub{0%{transform:translateY(0);opacity:0}15%{opacity:.8}100%{transform:translateY(-92px);opacity:0}}
+  .ht b{font-size:34px;line-height:1;font-weight:750;letter-spacing:-1.4px;font-variant-numeric:tabular-nums} .ht small{font-size:12.5px;color:color-mix(in srgb,var(--ink) 78%,transparent);margin-top:3px}
+  .ht .pill{color:var(--ink);opacity:.75;font-size:11px} .ht .pill i{background:var(--tc);box-shadow:0 0 8px var(--tc)}
+  .ib{border:0;background:rgba(10,13,20,.42);border-radius:50%;width:36px;height:36px;backdrop-filter:blur(6px)} .ib:hover{background:rgba(10,13,20,.7);transform:translateY(-2px) scale(1.06)}
+  /* quiet labels */
+  .sec{text-transform:none;letter-spacing:0;font-size:12px;font-weight:650;color:var(--muted);padding:10px 18px 0}
+  /* module tiles: icon in a disc, colour only when it is on */
+  .grid{gap:6px;padding:8px 12px 2px}
+  .m{border:0;background:transparent;border-radius:16px;padding:7px 2px 6px;gap:6px}
+  .m svg{width:38px;height:38px;padding:10px;border-radius:50%;background:var(--bg2);stroke:var(--muted);transition:background .35s var(--flow),stroke .25s,box-shadow .4s,transform .45s var(--spring)}
+  .m:hover{background:transparent;transform:none} .m:hover svg{transform:translateY(-3px) scale(1.08);background:var(--bg3)} .m:active svg{transform:scale(.88)}
+  .m.on{background:transparent;border:0;box-shadow:none} .m.on svg{background:var(--a);stroke:#04140c;box-shadow:0 8px 20px -8px var(--a)}
+  .m span{font-size:10px} .m.need::after{top:4px;right:9px;width:7px;height:7px;box-shadow:0 0 0 2px var(--bg0)}
+  .vol{padding:12px 18px 6px} input[type=range]{height:8px;border-radius:4px;background:linear-gradient(90deg,var(--a) var(--p,50%),var(--bg2) var(--p,50%))} input[type=range]::-webkit-slider-thumb{width:18px;height:18px}
+  #chk{background:var(--bg1)!important;border:0!important;border-radius:14px!important;margin:4px 12px 0!important} #chkBtn{border-radius:999px!important;background:var(--bg3)!important}
+  .quick{gap:6px;padding:8px 12px 12px} .q{border:0;background:var(--bg1);border-radius:16px;padding:12px 4px;transition:transform .45s var(--spring),background .3s} .q:hover{background:var(--bg2);transform:translateY(-3px)} .q.hot{background:color-mix(in srgb,var(--a) 20%,var(--bg1));border:0}
+  .upd{border:0!important;border-radius:16px;margin:6px 12px 0;padding:11px 12px 11px 14px}
+  footer{border-top:0;background:rgba(0,0,0,.22);padding:9px 14px 11px}
+  .toast{background:var(--bg3);border:0}
+  @media (prefers-reduced-motion:reduce){ .liq .wave,.bub,.panel.show .m,.panel.show .q{animation:none!important} }
 </style></head>
 <body>
 <div class="arrow"></div>
 <div class="panel">
   <div class="aura"></div>
   <header>
-    <div class="ring"><svg viewBox="0 0 52 52"><circle class="bg" cx="26" cy="26" r="22" fill="none" stroke-width="4"/><circle class="fg" id="ringFg" cx="26" cy="26" r="22" fill="none" stroke-width="4" stroke-dasharray="138.2" stroke-dashoffset="138.2"/></svg><div class="bolt"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></div></div>
+    <div class="liq" id="liq"><svg class="wave" viewBox="0 0 20 200" preserveAspectRatio="none"><path d="M0 0H10Q20 12.5 10 25T10 50T10 75T10 100T10 125T10 150T10 175T10 200H0Z"/></svg><i class="bub"></i><i class="bub"></i><i class="bub"></i><i class="bub"></i></div>
     <div class="ht"><b id="pct">—</b><small id="status">Reading battery…</small><span class="pill" id="live"><i></i><span id="liveT">0 modules on</span></span></div>
     <div class="grow"></div>
     <button class="ib" id="glowBtn" title="Preview glow"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></button>
@@ -61,7 +96,7 @@
   <div class="grid" id="grid"></div>
   <div class="vol"><svg id="mute" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4z"/><path id="waves" d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg><input type="range" id="master" min="0" max="1" step=".01"><output id="mout">100%</output></div>
   <div id="chk" style="display:flex;align-items:center;gap:8px;margin:2px 16px 0;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid var(--line);font-size:11.5px;color:var(--muted)"><span id="chkT" style="flex:1;line-height:1.35"></span><button id="chkBtn" style="all:unset;cursor:pointer;padding:5px 10px;border-radius:8px;background:rgba(255,255,255,.1);color:var(--ink);font-weight:600;font-size:11.5px">Test sound</button></div>
-  <div class="sec">Quick</div>
+  <div class="sec">Quick actions</div>
   <div class="quick">
     <button class="q" id="qCaf"><svg viewBox="0 0 24 24"><path d="M4 8h12v6a5 5 0 0 1-10 0z"/><path d="M16 9h2a2 2 0 1 1 0 4h-2M6 20h10"/></svg>Caffeine</button>
     <button class="q" id="qFocus"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/></svg>Focus</button>
@@ -83,7 +118,7 @@ function paint(){ let n=0; for(const m of MODS){ const on=!!S.modules[m.id]?.ena
   const mv=$('#master'); if(document.activeElement!==mv){ mv.value=S.masterVolume??1; mv.style.setProperty('--p',(S.masterVolume??1)*100+'%'); $('#mout').textContent=Math.round((S.masterVolume??1)*100)+'%'; }
   $('#waves').style.opacity=S.muted?.2:1; $('#mute').style.stroke=S.muted?'#FF5C5C':'';
   $('#qCaf').classList.toggle('on',!!S.modules.caffeine?.enabled); $('#qFocus').classList.toggle('on',!!S.modules.focus?.enabled); $('#qSpot').classList.toggle('on',!!S.modules.spotlight?.enabled); }
-async function batt(){ const b=await api?.getBattery(); if(!b) return; $('#pct').textContent=b.level+'%'; $('#status').textContent=b.charged?'Fully charged':b.holding?'Plugged in · charging on hold':b.charging?`Charging${b.remaining?' · '+b.remaining+' to full':''}`:`On battery${b.remaining?' · '+b.remaining+' left':''}`; $('#ringFg').style.strokeDashoffset=138.2*(1-b.level/100); $('#ringFg').style.stroke=b.charging?'var(--a)':b.level<=20?'#FF5C5C':'#FFB300'; }
+async function batt(){ const b=await api?.getBattery(); if(!b) return; $('#pct').textContent=b.level+'%'; $('#status').textContent=b.charged?'Fully charged':b.holding?'Plugged in · charging on hold':b.charging?`Charging${b.remaining?' · '+b.remaining+' to full':''}`:`On battery${b.remaining?' · '+b.remaining+' left':''}`; const hd=document.querySelector('header'); hd.style.setProperty('--lv',Math.max(6,b.level)+'%'); hd.style.setProperty('--tc',b.charging?'var(--a)':b.level<=20?'#FF5C5C':'#6FA8FF'); hd.classList.toggle('chg',!!b.charging&&!b.charged); }
 async function state(){ const st=await api?.action('caffeine','state'); $('#qCaf').classList.toggle('live',!!st?.on); $('#qCaf').lastChild.textContent=st?.on?(st.left!=null?`☕ ${st.left}m`:'☕ Awake'):'Caffeine';
   const f=await api?.action('focus','state'); $('#qFocus').classList.toggle('live',!!f&&f.phase!=='idle'); $('#qFocus').lastChild.textContent=f&&f.phase!=='idle'?`${f.mm}:${f.ss}`:'Focus';
   const sp=await api?.action('spotlight','state'); $('#qSpot').classList.toggle('live',!!sp?.on);
