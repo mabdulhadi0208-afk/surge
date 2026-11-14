@@ -26,10 +26,18 @@
   .it{border-radius:14px;transition:background .25s,transform .7s var(--spring),box-shadow .3s;animation:row .8s var(--spring-soft) backwards;animation-delay:calc(var(--i)*22ms)} @keyframes row{from{opacity:0;transform:translateX(-26px) scale(.94)}}
   .it:hover{transform:translateX(5px)} .it.sel{background:color-mix(in srgb,var(--a) 16%,transparent);box-shadow:inset 3px 0 0 var(--a);transform:translateX(5px)}
   .foot{border-top:0;background:rgba(0,0,0,.22)}
+
+  /* balanced pass */
+  .list{position:relative} .selbar{position:absolute;left:8px;right:8px;top:0;height:0;border-radius:14px;background:color-mix(in srgb,var(--a) 15%,transparent);box-shadow:inset 3px 0 0 var(--a);pointer-events:none;transition:transform .55s var(--spring),height .4s var(--spring-soft);z-index:0}
+  .it{position:relative;z-index:1} .it.sel,.it:hover{background:transparent!important;box-shadow:none!important}
+  .kd{width:26px;height:26px;border-radius:9px;display:grid;place-items:center;flex:none;background:color-mix(in srgb,var(--kc) 18%,transparent);transition:scale .6s var(--spring),rotate .6s var(--spring)} .kd svg{width:14px;height:14px;stroke:var(--kc);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .kd[title=Colour]{background:var(--kc);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35),0 6px 14px -6px var(--kc);border-radius:50%} .it.sel .kd{scale:1.15;rotate:-6deg}
+  .it .t.mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:12px}
+  kbd{font:inherit;font-size:10.5px;padding:2px 6px;border-radius:6px;background:rgba(255,255,255,.09);box-shadow:inset 0 -1px 0 rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.1);color:var(--ink);margin:0 3px 0 8px}
 </style><script>window.FLUID={blobs:1,magnet:'.none'}</script><link rel="stylesheet" href="fluid.css"><script defer src="fluid.js"></script><link rel="stylesheet" href="fx.css"><script defer src="fx.js"></script>
 </head>
 <body><div class="box" id="box">
-  <div class="top"><input id="q" placeholder="Search your clipboard…" autofocus><span class="k">↵ paste · esc close</span></div>
+  <div class="top"><input id="q" placeholder="Search your clipboard…" autofocus><span class="k"><kbd>↵</kbd> paste <kbd>⌘1–9</kbd> quick <kbd>esc</kbd> close</span></div>
   <div class="list" id="list"></div>
   <div class="foot"><span id="cnt"></span><a id="clear">Clear history</a></div>
 </div>
@@ -37,15 +45,20 @@
 const api=window.surge, $=s=>document.querySelector(s); let ALL=[], shown=[], sel=0;
 const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function mark(t,q){ const flat=t.replace(/\s+/g,' ').trim().slice(0,160); if(!q) return esc(flat); const i=flat.toLowerCase().indexOf(q); return i<0?esc(flat):esc(flat.slice(0,i))+'<b>'+esc(flat.slice(i,i+q.length))+'</b>'+esc(flat.slice(i+q.length)); }
+const KIND={link:['Link','<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>','#5AB0FF'],mail:['Email','<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>','#FFB300'],color:['Colour','<circle cx="12" cy="12" r="8"/>','#fff'],num:['Number','<path d="M5 9h14M5 15h14M10 4 8 20M16 4l-2 16"/>','#B48CFF'],code:['Code','<path d="m8 8-4 4 4 4M16 8l4 4-4 4M13 5l-2 14"/>','#00E5A0'],text:['Text','<path d="M5 7h14M5 12h14M5 17h9"/>','#8b94a7']};
+function kindOf(t){ const s=t.trim(); if(/^(https?:\/\/|www\.)\S+$/i.test(s)) return 'link'; if(/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(s)) return 'mail'; if(/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(s)||/^(rgb|hsl)a?\([^)]+\)$/i.test(s)) return 'color'; if(/^[-+]?[\d\s.,]+%?$/.test(s)&&/\d/.test(s)) return 'num'; if(/[{};]|=>|\b(function|const|let|import|def|class|return)\b|<\/?[a-z][^>]*>/.test(s)) return 'code'; return 'text'; }
+function badge(t){ const k=kindOf(t), K=KIND[k]; return `<span class="kd" style="--kc:${k==='color'?t.trim():K[2]}" title="${K[0]}">${k==='color'?'':`<svg viewBox="0 0 24 24">${K[1]}</svg>`}</span>`; }
+function glide(){ const l=$('#list'), s=l.querySelector('.it.sel'); let g=l.querySelector('.selbar'); if(!s){ g&&g.remove(); return; } if(!g){ g=document.createElement('i'); g.className='selbar'; l.prepend(g); g.style.transition='none'; requestAnimationFrame(()=>requestAnimationFrame(()=>g.style.transition='')); } g.style.transform=`translateY(${s.offsetTop}px)`; g.style.height=s.offsetHeight+'px'; }
 function render(){ const q=$('#q').value.trim().toLowerCase(); shown=q?ALL.filter(t=>t.toLowerCase().includes(q)):ALL.slice(); sel=Math.min(sel,Math.max(0,shown.length-1));
-  $('#list').innerHTML=shown.length?shown.map((t,i)=>`<div class="it ${i===sel?'sel':''}" data-i="${i}" style="--i:${Math.min(i,14)}"><span class="n">${i<9?i+1:''}</span><span class="t">${mark(t,q)}</span><span class="m">${t.length>160?t.length+' chars':''}</span><button class="x" data-x="${i}" title="Remove">×</button></div>`).join(''):`<div class="empty">${ALL.length?'Nothing matches':'Copy something and it shows up here'}</div>`;
-  $('#cnt').textContent=ALL.length+(ALL.length===1?' item':' items')+' · kept in memory only'; }
+  $('#list').innerHTML=shown.length?shown.map((t,i)=>`<div class="it ${i===sel?'sel':''}" data-i="${i}" style="--i:${Math.min(i,14)}"><span class="n">${i<9?i+1:''}</span>${badge(t)}<span class="t ${kindOf(t)==='code'?'mono':''}">${mark(t,q)}</span><span class="m">${t.length>160?t.length+' chars':''}</span><button class="x" data-x="${i}" title="Remove">×</button></div>`).join(''):`<div class="empty">${ALL.length?'Nothing matches':'Copy something and it shows up here'}</div>`;
+  $('#cnt').textContent=ALL.length+(ALL.length===1?' item':' items')+' · kept in memory only'; glide(); }
 function paste(t){ if(t) api?.action('clip','paste',t); }
 $('#list').onclick=async e=>{ const x=e.target.closest('[data-x]'); if(x){ ALL=await api?.action('clip','remove',shown[+x.dataset.x])||[]; render(); return; } const it=e.target.closest('.it'); if(it) paste(shown[+it.dataset.i]); };
 $('#q').oninput=()=>{ sel=0; render(); }; $('#clear').onclick=async()=>{ await api?.action('clip','clear'); ALL=[]; render(); };
 addEventListener('keydown',e=>{ if(e.key==='Escape'){ api?.hide(); return; } if(e.key==='Enter'){ paste(shown[sel]); return; }
   if((e.metaKey||e.ctrlKey)&&/^[1-9]$/.test(e.key)){ e.preventDefault(); paste(shown[+e.key-1]); return; }
-  if(e.key==='ArrowDown'||e.key==='ArrowUp'){ e.preventDefault(); sel=Math.max(0,Math.min(shown.length-1,sel+(e.key==='ArrowDown'?1:-1))); document.querySelectorAll('.it').forEach((el,i)=>el.classList.toggle('sel',i===sel)); document.querySelector('.it.sel')?.scrollIntoView({block:'nearest'}); } });
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){ e.preventDefault(); sel=Math.max(0,Math.min(shown.length-1,sel+(e.key==='ArrowDown'?1:-1))); document.querySelectorAll('.it').forEach((el,i)=>el.classList.toggle('sel',i===sel)); document.querySelector('.it.sel')?.scrollIntoView({block:'nearest'}); glide(); } });
+$('#list').addEventListener('mouseover',e=>{ const it=e.target.closest('.it'); if(!it||+it.dataset.i===sel) return; sel=+it.dataset.i; document.querySelectorAll('.it').forEach((el,i)=>el.classList.toggle('sel',i===sel)); glide(); });
 async function open(){ ALL=await api?.action('clip','list')||[]; sel=0; $('#q').value=''; render(); $('#q').focus(); const b=$('#box'); b.classList.remove('in'); void b.offsetWidth; b.classList.add('in'); }
 api?.on('clip:show',open); open();
 </script></body></html>

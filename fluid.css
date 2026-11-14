@@ -44,3 +44,4 @@ input[type=range]:hover::-webkit-slider-thumb{transform:scale(1.2)} input[type=r
 *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
 @media (prefers-reduced-motion:reduce){ .fl-light,.fl-blob,.fl-rip{display:none!important} .fl-in,.fl-pop{animation:none!important} .seg .fl-ind{transition:none} }
 html.fl-idle *,html.fl-idle *::before,html.fl-idle *::after{animation-play-state:paused!important}
+.top input:focus::placeholder{opacity:.6!important}

@@ -25,10 +25,17 @@
   .top input{border:0;border-radius:16px;transition:box-shadow .4s,transform .7s var(--spring)} .top input:focus{box-shadow:0 0 0 3px color-mix(in srgb,var(--a) 26%,transparent)}
   .a{border-radius:20px;transition:background .25s,transform .75s var(--spring);animation:aIn .85s var(--spring-soft) backwards;animation-delay:calc(min(var(--i,0),40)*14ms)} @keyframes aIn{from{opacity:0;transform:translateY(30px) scale(.6)}}
   .a:hover,.a.sel{transform:translateY(-6px) scale(1.08);background:rgba(255,255,255,.07)} .a .ic{transition:transform .75s var(--spring),box-shadow .4s} .a:hover .ic,.a.sel .ic{box-shadow:0 20px 30px -12px #000,0 0 30px -10px var(--a)}
+
+  /* balanced pass */
+  .a{--c:120,170,255;position:relative} .a::before{content:"";position:absolute;left:50%;top:14px;width:86px;height:70px;translate:-50% 0;border-radius:50%;background:radial-gradient(closest-side,rgba(var(--c),.6),transparent);opacity:0;transition:opacity .4s;pointer-events:none;z-index:0}
+  .a:hover::before,.a.sel::before{opacity:1} .a>*{position:relative;z-index:1}
+  .a:hover,.a.sel{background:rgba(var(--c),.1)!important;box-shadow:inset 0 0 0 1px rgba(var(--c),.28)}
+  .a:hover .ic,.a.sel .ic{box-shadow:0 20px 30px -12px #000,0 0 34px -8px rgb(var(--c))!important}
+  kbd{font:inherit;font-size:10.5px;padding:2px 6px;border-radius:6px;background:rgba(255,255,255,.09);box-shadow:inset 0 -1px 0 rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.1);color:var(--ink);margin:0 3px 0 8px} #cnt{font-weight:600;color:var(--ink);margin-right:4px}
 </style><script>window.FLUID={host:'.pad',blobs:1,magnet:'.none',press:'.a,button',ripple:'.none'}</script><link rel="stylesheet" href="fluid.css"><script defer src="fluid.js"></script><link rel="stylesheet" href="fx.css"><script defer src="fx.js"></script>
 </head>
 <body><div class="pad">
-  <div class="top"><input id="q" placeholder="Search apps…" autofocus><span class="k">↵ open · esc close</span></div>
+  <div class="top"><input id="q" placeholder="Search apps…" autofocus><span class="k"><b id="cnt"></b><kbd>↵</kbd> open <kbd>esc</kbd> close</span></div>
   <div class="grid" id="grid"></div>
 </div>
 <script>
@@ -39,9 +46,15 @@ function score(a,q){ const n=a.name.toLowerCase(); if(!q) return 1; if(n.startsW
 function render(){ const q=$('#q').value.trim().toLowerCase(); shown=ALL.map(a=>[score(a,q),a]).filter(x=>x[0]>0).sort((x,y)=>y[0]-x[0]||x[1].name.localeCompare(y[1].name)).map(x=>x[1]); sel=0;
   const g=$('#grid'); g.innerHTML=shown.length?shown.map((a,i)=>`<div class="a ${i===0&&q?'sel':''}" data-i="${i}" style="--i:${i}"><div class="ic" data-p="${esc(a.path)}">${icons[a.path]?`<img src="${icons[a.path]}">`:esc(a.name[0].toUpperCase())}</div><div class="n">${mark(a.name,q)}</div></div>`).join(''):'<div class="empty">No apps match</div>';
   g.querySelectorAll('.a').forEach(el=>el.onclick=()=>open(shown[+el.dataset.i]));
+  g.querySelectorAll('.a').forEach(el=>{ const p=el.querySelector('.ic').dataset.p; if(colCache[p]) el.style.setProperty('--c',colCache[p]); else if(icons[p]) tint(p,icons[p],el); });
+  const k=document.getElementById('cnt'); if(k) k.textContent=shown.length+(shown.length===1?' app':' apps');
   lazyIcons(); }
+const colCache={};
+function tint(path, src, tile){ if(colCache[path]){ tile.style.setProperty('--c',colCache[path]); return; } const im=new Image(); im.onload=()=>{ try{ const c=document.createElement('canvas'); c.width=c.height=24; const x=c.getContext('2d',{willReadFrequently:true}); x.drawImage(im,0,0,24,24); const d=x.getImageData(0,0,24,24).data; let r=0,g=0,b=0,w=0;
+  for(let i=0;i<d.length;i+=4){ const a=d[i+3]/255; if(a<.5) continue; const mx=Math.max(d[i],d[i+1],d[i+2]), mn=Math.min(d[i],d[i+1],d[i+2]); const sat=mx?(mx-mn)/mx:0; const k=a*(sat*sat+.02)*(mx/255); r+=d[i]*k; g+=d[i+1]*k; b+=d[i+2]*k; w+=k; }
+  if(w<.01) return; r/=w; g/=w; b/=w; const f=Math.min(2.2,235/Math.max(r,g,b,1)); colCache[path]=[r*f,g*f,b*f].map(v=>Math.round(Math.min(255,v))).join(','); if(tile.isConnected) tile.style.setProperty('--c',colCache[path]); }catch{} }; im.src=src; }
 let io=null;
-function lazyIcons(){ io&&io.disconnect(); io=new IntersectionObserver(es=>{ for(const e of es){ if(!e.isIntersecting) continue; const d=e.target; const p=d.dataset.p; io.unobserve(d); if(icons[p]) continue; api?.appIcon(p).then(s=>{ if(s){ icons[p]=s; d.innerHTML=`<img src="${s}">`; } }); } },{root:$('#grid'),rootMargin:'200px'}); document.querySelectorAll('.ic').forEach(d=>io.observe(d)); }
+function lazyIcons(){ io&&io.disconnect(); io=new IntersectionObserver(es=>{ for(const e of es){ if(!e.isIntersecting) continue; const d=e.target; const p=d.dataset.p; io.unobserve(d); if(icons[p]) continue; api?.appIcon(p).then(s=>{ if(s){ icons[p]=s; d.innerHTML=`<img src="${s}">`; tint(p,s,d.parentElement); } }); } },{root:$('#grid'),rootMargin:'200px'}); document.querySelectorAll('.ic').forEach(d=>io.observe(d)); }
 function open(a){ if(!a) return; api?.appOpen(a.path); api?.hide(); }
 $('#q').oninput=render;
 addEventListener('keydown',e=>{ if(e.key==='Escape'){ api?.hide(); return; } if(e.key==='Enter'){ open(shown[sel]); return; }
