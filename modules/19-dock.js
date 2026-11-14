@@ -4,7 +4,7 @@ const path = require('path'); const { execFile } = require('child_process');
 const IS_WIN = process.platform === 'win32';
 let pill = null, pillHover = false;
 let win = null, poll = null, prevCpu = null, macDockHidden = false, edgePoll = null, revealed = true, animT = null, hideT = null, H = 150;
-const WIDGETS = IS_WIN ? ['apps', 'launchpad', 'clock', 'battery', 'stats', 'focus', 'caffeine', 'glow', 'notes', 'spotlight'] : ['apps', 'launchpad', 'clock', 'battery', 'stats', 'media', 'volume', 'focus', 'caffeine', 'glow', 'notes', 'spotlight'];
+const WIDGETS = IS_WIN ? ['apps', 'launchpad', 'clock', 'battery', 'stats', 'focus', 'caffeine', 'glow', 'notes', 'spotlight', 'date'] : ['apps', 'launchpad', 'clock', 'battery', 'stats', 'media', 'volume', 'focus', 'caffeine', 'glow', 'notes', 'spotlight', 'date'];
 let pad = null;
 const DEFAULT_PINS = IS_WIN ? ['c:\\windows\\explorer.exe', 'c:\\program files (x86)\\microsoft\\edge\\application\\msedge.exe'] : ['/System/Library/CoreServices/Finder.app', '/Applications/Safari.app', '/System/Applications/Messages.app', '/System/Applications/Mail.app', '/System/Applications/Music.app', '/System/Applications/Notes.app', '/System/Applications/System Settings.app'];
 function osa(script) { return new Promise(res => execFile('osascript', ['-e', script], { timeout: 2500 }, (e, out) => res(e ? null : out.trim()))); }
@@ -13,13 +13,17 @@ function cpu(os) { const c = os.cpus(); let idle = 0, total = 0; for (const k of
 module.exports = {
   id: 'dock', name: 'Surge Dock', icon: 'dock', group: 'Screen', platforms: ['darwin', 'win32'],
   desc: IS_WIN ? 'A floating Dock for Windows: your apps (pinned + running, with magnification), Launchpad search, plus widgets — clock, battery, CPU, focus, caffeine.' : 'A full Dock replacement: your apps (pinned + running, macOS-style magnification) plus widgets — clock, battery, CPU, now playing, volume, focus, caffeine. Can hide the macOS Dock for good.',
-  defaults: { edge: 'bottom', offset: 10, size: 1, autohide: false, hideMacDock: false, macDockConfirmed: false, fullscreen: false, magnify: true, pinned: DEFAULT_PINS, widgets: IS_WIN ? ['apps', 'launchpad', 'clock', 'battery', 'focus', 'caffeine'] : ['apps', 'launchpad', 'clock', 'battery', 'volume', 'focus', 'caffeine'] },
+  defaults: { edge: 'bottom', offset: 10, size: 1, autohide: false, hideMacDock: false, macDockConfirmed: false, fullscreen: false, magnify: true, look: 'islands', aura: true, reflect: true, labels: true, pinned: DEFAULT_PINS, widgets: IS_WIN ? ['apps', 'launchpad', 'clock', 'battery', 'focus', 'caffeine'] : ['apps', 'launchpad', 'clock', 'battery', 'volume', 'focus', 'caffeine'] },
   schema: [
     { k: 'edge', t: 'seg', label: 'Edge', opts: [['bottom', 'Bottom'], ['top', 'Top']] },
+    { k: 'look', t: 'seg', label: 'Style', opts: [['islands', 'Islands'], ['pill', 'Pill'], ['float', 'Floating icons']] },
     { k: 'offset', t: 'range', label: 'Distance from edge', min: 0, max: 120, step: 2, fmt: 'px' },
     { k: 'size', t: 'range', label: 'Size', min: .8, max: 1.4, step: .05, fmt: 'x' },
     { k: 'hideMacDock', t: 'toggle', label: 'Replace the macOS Dock', hint: 'Asks for confirmation. Apple\'s Dock comes back the moment you turn this off, disable the module, or quit Surge.' },
     { k: 'magnify', t: 'toggle', label: 'Magnify icons on hover' },
+    { k: 'aura', t: 'toggle', label: 'Colour glow under icons', hint: 'Each app lights the dock with its own colour as you hover it' },
+    { k: 'reflect', t: 'toggle', label: 'Icon reflections' },
+    { k: 'labels', t: 'toggle', label: 'Widget labels' },
     { k: 'autohide', t: 'toggle', label: 'Auto-hide', hint: 'Drops away the instant the cursor leaves it; touch the screen edge to bring it back' },
     { k: 'fullscreen', t: 'toggle', label: 'Show over fullscreen apps', hint: 'Off: the dock stays out of fullscreen videos, games and apps' },
     { k: 'pinned', t: 'apps', label: 'Pinned apps' },
