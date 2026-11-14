@@ -59,6 +59,16 @@
   new MutationObserver(scan).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
   addEventListener('resize', () => document.querySelectorAll('.seg').forEach(s => segSync(s, true)));
   addEventListener('load', scan); scan(); setTimeout(() => document.querySelectorAll('.seg').forEach(s => segSync(s, true)), 600);
+  /* rubber-band: push past the end of a list and it stretches, then springs back */
+  { let el = null, off = 0, v = 0, rb = 0, lastW = 0; const RB = C.rubber || '.pane.on,.list,.grid,.sp .list';
+    const tick = () => { rb = 0; if (!el) return; if (performance.now() - lastW > 70) { v = (v + (0 - off) * .14) * .7; off += v; } if (Math.abs(off) < .3 && Math.abs(v) < .3 && performance.now() - lastW > 70) { el.style.translate = ''; el = null; off = v = 0; return; } el.style.translate = `0 ${off.toFixed(1)}px`; rb = requestAnimationFrame(tick); };
+    addEventListener('wheel', e => { if (e.ctrlKey || Math.abs(e.deltaY) < Math.abs(e.deltaX)) return; let s = closest(e.target, RB); while (s && s.scrollHeight <= s.clientHeight + 2) s = closest(s.parentElement, RB); if (!s) return;
+      const top = s.scrollTop <= 0 && e.deltaY < 0, bot = s.scrollTop + s.clientHeight >= s.scrollHeight - 1 && e.deltaY > 0; if (!top && !bot) { if (el === s && off) lastW = 0; return; }
+      if (el && el !== s) { el.style.translate = ''; off = v = 0; } el = s; lastW = performance.now(); off += -e.deltaY * .22 * (1 - Math.min(1, Math.abs(off) / 70)); off = Math.max(-70, Math.min(70, off)); v = 0; if (!rb) rb = requestAnimationFrame(tick); }, { passive: true, capture: true }); }
+
+  /* a thin rim of light around the glass (static: painted once) */
+  if (C.rim !== false && host !== document.body) { const r = document.createElement('i'); r.className = 'fl-rim'; (host.querySelector(':scope > .fl-layer.top') || layer('top')).appendChild(r); }
+
   /* a window nobody is using should cost nothing: ambient loops stop when it loses focus (the dock opts out: it is never focused) */
   if (!C.keepAlive) { const idle = v => document.documentElement.classList.toggle('fl-idle', v); addEventListener('blur', () => idle(true)); addEventListener('focus', () => idle(false)); document.addEventListener('visibilitychange', () => idle(document.hidden)); }
   window.SurgeFluid = { scan, segSync };

@@ -95,7 +95,11 @@
   .ib{transition:transform .7s var(--spring),background .3s} .ib:hover{transform:translateY(-3px) scale(1.12) rotate(8deg)}
   .upd,.toast{animation:slideIn .8s var(--spring-soft) backwards} @keyframes slideIn{from{opacity:0;transform:translateY(-14px) scale(.94)}}
   .sec{position:relative;transition:color .3s}
-</style><script>window.FLUID={blobs:1}</script><link rel="stylesheet" href="fluid.css"><script defer src="fluid.js"></script><link rel="stylesheet" href="fx.css"><script defer src="fx.js"></script>
+
+  /* tiles fill like liquid when switched on */
+  .m svg{background-image:linear-gradient(145deg,var(--a),color-mix(in srgb,var(--a) 72%,#00d4ff));background-repeat:no-repeat;background-position:50% 100%;background-size:100% 0%;transition:background-size .7s var(--spring-soft),background-color .5s var(--flow),stroke .3s,box-shadow .5s,transform .7s var(--spring)}
+  .m.on svg{background-image:linear-gradient(145deg,var(--a),color-mix(in srgb,var(--a) 72%,#00d4ff));background-size:100% 100%;background-color:var(--bg2)}
+</style><script>window.FLUID={blobs:1,pop:'#mout'}</script><link rel="stylesheet" href="fluid.css"><script defer src="fluid.js"></script><link rel="stylesheet" href="fx.css"><script defer src="fx.js"></script>
 </head>
 <body>
 <div class="arrow"></div>
@@ -168,7 +172,10 @@ sndCheck(); setInterval(sndCheck,1000); addEventListener('focus',sndCheck);
 // the window grows/shrinks to fit its content — nothing (alerts, footer) may ever be cut off
 let lastH=0; function fitH(){ const q=document.querySelector('.quick'), f=document.querySelector('footer'); if(!q||!f) return; const h=Math.min(860,Math.ceil(q.offsetTop+q.offsetHeight+f.offsetHeight+44)); if(Math.abs(h-lastH)>1){ lastH=h; api?.popoverHeight?.(h); } }
 new MutationObserver(rs=>{ /* only layout-changing mutations matter; cursor effects restyle things every frame */ if(rs.some(r=>r.type==='childList'?!(r.target.closest&&r.target.closest('.fl-layer,.grid .m,.q,header')):(r.attributeName==='style'&&(r.target.classList.contains('upd')||r.target.id==='chk'||r.target.id==='grid'))||(r.attributeName==='class'&&r.target.classList.contains('panel')))) requestAnimationFrame(fitH); }).observe(document.querySelector('.panel'),{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']}); setInterval(fitH,1000); requestAnimationFrame(fitH); function restage(){ document.querySelectorAll('.m').forEach((el,i)=>el.style.setProperty('--i',i)); document.querySelectorAll('.q').forEach((el,i)=>el.style.setProperty('--i',i)); const p=document.querySelector('.panel'); p.classList.remove('show'); void p.offsetWidth; p.classList.add('show'); }
-api?.on('popover:show',restage); setTimeout(restage,60);
+api?.on('popover:show',()=>{ restage(); pour(); });
+function pour(){ const hd=document.querySelector('header'), liq=document.getElementById('liq'), p=document.getElementById('pct'); if(!hd||!liq||matchMedia('(prefers-reduced-motion: reduce)').matches) return; liq.style.transition='none'; liq.style.width='0px'; void liq.offsetWidth; liq.style.transition=''; liq.style.width='';
+  const to=parseInt(p.textContent)||0; if(!to) return; const t0=performance.now(); cancelAnimationFrame(pour.r); const step=n=>{ const k=Math.min(1,(n-t0)/900), e=1-Math.pow(1-k,3); p.textContent=Math.round(to*e)+'%'; if(k<1) pour.r=requestAnimationFrame(step); }; pour.r=requestAnimationFrame(step); }
+setTimeout(pour,400); setTimeout(restage,60);
 api?.on('popover:edge',e=>document.body.classList.toggle('bottom',e==='bottom')); api?.on('popover:show',()=>{ hook=''; api?.hookState().then(h=>{hook=h;}); batt(); state(); document.querySelector('.panel').style.animation='none'; void document.querySelector('.panel').offsetWidth; document.querySelector('.panel').style.animation=''; });
   setInterval(()=>{ batt(); state(); },2000); })();
 addEventListener('keydown',e=>{ if(e.key==='Escape') api?.hide(); });

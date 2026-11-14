@@ -137,6 +137,24 @@
   .w .v{font-weight:750;letter-spacing:-.7px} .clock .v{font-size:26px} .clock .d{font-size:11px}
   .media .art{border-radius:14px;box-shadow:0 10px 20px -10px #000} .media .t b{font-size:13px} .media .c button{border-radius:50%;width:30px;height:30px}
   @media (prefers-reduced-motion:reduce){ .ap.front::after,.ap.launch::after,body.look-islands .w{animation:none!important} }
+
+  /* ───────── dock v5: more life ───────── */
+  .ap .ic{rotate:var(--tilt,0deg)}                                                   /* icons lean toward the cursor */
+  .dock>.w{transition:transform .75s var(--spring),background .35s,box-shadow .4s,translate .8s var(--spring)}
+  .dock>.w:has(+.w:hover){translate:-6px 0} .dock>.w:hover+.w{translate:6px 0}       /* neighbours make room */
+  .dock>.w{flex:none} .w .l{white-space:nowrap}
+  .ap.fresh{animation:apFresh .9s var(--spring) backwards} @keyframes apFresh{from{scale:0;opacity:0}}
+  /* analog dial beside the time: hands tick with a quartz overshoot */
+  .clock{flex-direction:row!important;gap:11px;padding:8px 16px 8px 12px!important} .clock .ct{display:flex;flex-direction:column;align-items:flex-start;gap:2px}
+  .dial{position:relative;width:42px;height:42px;border-radius:50%;background:radial-gradient(circle at 50% 35%,#2a3550,#0d111a);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.14),inset 0 2px 5px rgba(0,0,0,.6),0 6px 14px -8px #000;flex:none}
+  .dial::before{content:"";position:absolute;inset:3px;border-radius:50%;background:conic-gradient(from -1.5deg,rgba(255,255,255,.55) 0 3deg,transparent 3deg 90deg,rgba(255,255,255,.55) 90deg 93deg,transparent 93deg 180deg,rgba(255,255,255,.55) 180deg 183deg,transparent 183deg 270deg,rgba(255,255,255,.55) 270deg 273deg,transparent 273deg);-webkit-mask:radial-gradient(closest-side,transparent 78%,#000 80%);mask:radial-gradient(closest-side,transparent 78%,#000 80%)}
+  .dial::after{content:"";position:absolute;left:50%;top:50%;width:5px;height:5px;margin:-2.5px;border-radius:50%;background:var(--a);box-shadow:0 0 6px var(--a);z-index:3}
+  .dial i{position:absolute;left:50%;bottom:50%;transform-origin:50% 100%;border-radius:2px;transition:transform .55s var(--spring);will-change:transform}
+  .dial .hh{width:3px;height:10px;margin-left:-1.5px;background:#fff} .dial .mh{width:2px;height:15px;margin-left:-1px;background:rgba(255,255,255,.85)} .dial .sh{width:1px;height:17px;margin-left:-.5px;background:var(--a)}
+  /* volume: a chunky pill with a bar handle */
+  .vol input[type=range]{height:10px;border-radius:6px;width:96px} .vol input[type=range]::-webkit-slider-thumb{width:6px;height:20px;border-radius:3px;box-shadow:0 2px 8px rgba(0,0,0,.6)}
+  .vol #volv{transition:color .3s,scale .5s var(--spring)}
+  @media (prefers-reduced-motion:reduce){ .dial i{transition:none} .ap.fresh{animation:none} }
 </style><script>window.FLUID={keepAlive:true,light:false,magnet:'.none',press:'.w:not(.apps),.ap .ic,#ctx .it',ripple:'.w:not(.apps)',pop:'#clk,#bpct'}</script><link rel="stylesheet" href="fluid.css"><script defer src="fluid.js"></script><link rel="stylesheet" href="fx.css"><script defer src="fx.js"></script>
 </head>
 <body>
@@ -169,8 +187,9 @@ async function refreshApps(){ const box=$('#apps'); if(!box||dragging) return; r
   const key=items.map(i=>i.path+(i.run?1:0)+(i.front?1:0)+(i.pid||'')+(launching.has(i.path)?'L':'')).join(); if(key===lastAppsKey) return; lastAppsKey=key; APPS=items;
   const sepAt=items.findIndex(i=>!i.pinned);
   if(!box.dataset.seen){ box.dataset.seen=1; box.classList.add('first'); setTimeout(()=>box.classList.remove('first'),1400); }
+  const had=window.__paths; window.__paths=new Set(items.map(i=>i.path));
   box.innerHTML='<i id="floor"></i>'; items.forEach((it,i)=>{ if(i===sepAt&&i>0){ const s=document.createElement('div'); s.className='apsep'; box.appendChild(s); }
-    const el=document.createElement('div'); el.className='ap'+(it.run?' run':'')+(it.front?' front':'')+(launching.has(it.path)?' launch':''); el.dataset.i=i; el.style.setProperty('--n',i); el.dataset.name=it.name; el.dataset.path=it.path; el.appendChild(iconNode(it)); if(colCache[it.path]) el.style.setProperty('--c',colCache[it.path]); else if(iconCache[it.path]) iconColor(it.path,iconCache[it.path],el); else icon(it.path).then(s=>s&&iconColor(it.path,s,el)); const dot=document.createElement('div'); dot.className='dot'; el.appendChild(dot);
+    const el=document.createElement('div'); el.className='ap'+(it.run?' run':'')+(it.front?' front':'')+(launching.has(it.path)?' launch':''); if(had&&!had.has(it.path)) el.classList.add('fresh'); el.dataset.i=i; el.style.setProperty('--n',i); el.dataset.name=it.name; el.dataset.path=it.path; el.appendChild(iconNode(it)); if(colCache[it.path]) el.style.setProperty('--c',colCache[it.path]); else if(iconCache[it.path]) iconColor(it.path,iconCache[it.path],el); else icon(it.path).then(s=>s&&iconColor(it.path,s,el)); const dot=document.createElement('div'); dot.className='dot'; el.appendChild(dot);
     el.onclick=()=>{ if(suppressClick) return; if(it.run) api?.appActivate(it.bundleId, it.path); else { launching.set(it.path,Date.now()); el.classList.add('launch'); api?.appOpen(it.path); } };
     el.oncontextmenu=e=>{ e.preventDefault(); openCtx(e,it,el); };
     el.ondragover=e=>{ e.preventDefault(); el.classList.add('over'); }; el.ondragleave=()=>el.classList.remove('over');
@@ -183,10 +202,10 @@ function magLoop(){ const els=[...document.querySelectorAll('.ap')]; if(!els.len
   // read every position first, then write: one layout per frame instead of one per icon
   const on=d.magnify&&mx!=null&&!dragging, cx=on?els.map(x=>{ const r=x.getBoundingClientRect(); return r.left+r.width/2; }):null;
   let any=false; els.forEach((x,i)=>{ const cur=+(x.dataset.s||1); let v=+(x.dataset.v||0), target=1;
-    if(on){ const dx=mx-cx[i]; target=1+.62*Math.exp(-(dx*dx)/(2*62*62)); }
+    let tilt=0; if(on){ const dx=mx-cx[i]; target=1+.62*Math.exp(-(dx*dx)/(2*62*62)); tilt=Math.max(-1,Math.min(1,dx/70))*(Math.max(1,cur)-1)*12; }
     v=(v+(target-cur)*.2)*.66; let nxt=cur+v;                       // a damped spring: icons swell with a touch of overshoot and settle
-    if(Math.abs(nxt-target)<.003&&Math.abs(v)<.003){ if(cur===target&&!v) return; nxt=target; v=0; } else any=true;
-    x.dataset.s=nxt; x.dataset.v=v; x.style.setProperty('--s',nxt.toFixed(3)); x.style.setProperty('--lift',(-(nxt-1)*10).toFixed(2)+'px'); x.style.width=Math.round(base*(1+(Math.max(1,nxt)-1)*.78))+'px'; });
+    if(Math.abs(nxt-target)<.003&&Math.abs(v)<.003){ if(cur===target&&!v){ if(!on&&x.style.getPropertyValue('--tilt')!=='0.00deg') x.style.setProperty('--tilt','0.00deg'); return; } nxt=target; v=0; } else any=true;
+    x.dataset.s=nxt; x.dataset.v=v; x.style.setProperty('--s',nxt.toFixed(3)); x.style.setProperty('--lift',(-(nxt-1)*10).toFixed(2)+'px'); x.style.setProperty('--tilt',tilt.toFixed(2)+'deg'); x.style.width=Math.round(base*(1+(Math.max(1,nxt)-1)*.78))+'px'; });
   if(any) magT=requestAnimationFrame(magLoop); else magT=null; }
 function kick(){ if(!magT) magT=requestAnimationFrame(magLoop); }
 addEventListener('mousemove',e=>{ const box=$('#apps'); if(!box) return; const r=box.getBoundingClientRect(); const inside=e.clientY>r.top-40&&e.clientY<r.bottom+6&&e.clientX>r.left-30&&e.clientX<r.right+30; mx=inside?e.clientX:null; my=e.clientY; kick(); const fl=document.getElementById('floor'); if(fl&&inside) fl.style.transform=`translateX(${(e.clientX-r.left)/(+$('#dock').style.zoom||1)}px)`; if(dragging) dragMove(e); });
@@ -194,8 +213,9 @@ addEventListener('mouseleave',()=>{ mx=null; kick(); });
 /* ---------- reorder by drag */
 let dragging=null, dragStart=null, suppressClick=false;
 document.addEventListener('mousedown',e=>{ if(e.button!==0) return; const a=e.target.closest('.ap'); if(!a) return; dragStart={x:e.clientX,y:e.clientY,el:a}; });
-function dragMove(e){ const box=$('#apps'); const el=dragging; const others=[...box.querySelectorAll('.ap')].filter(x=>x!==el); let before=null; for(const o of others){ const r=o.getBoundingClientRect(); if(e.clientX<r.left+r.width/2){ before=o; break; } }
-  if(before){ if(el.nextSibling!==before) box.insertBefore(el,before); } else if(box.lastElementChild!==el) box.appendChild(el); }
+function dragMove(e){ const box=$('#apps'); const el=dragging; const others=[...box.querySelectorAll('.ap')].filter(x=>x!==el); const was=new Map(others.map(o=>[o,o.getBoundingClientRect().left])); let before=null, moved=false; for(const o of others){ const r=o.getBoundingClientRect(); if(e.clientX<r.left+r.width/2){ before=o; break; } }
+  if(before){ if(el.nextSibling!==before){ box.insertBefore(el,before); moved=true; } } else if(box.lastElementChild!==el){ box.appendChild(el); moved=true; }
+  if(moved) for(const o of others){ const dx=was.get(o)-o.getBoundingClientRect().left; if(Math.abs(dx)>1) o.animate({translate:[dx+'px 0','0 0']},{duration:520,easing:getComputedStyle(document.documentElement).getPropertyValue('--spring').trim()||'ease-out'}); } }
 document.addEventListener('mousemove',e=>{ if(dragStart&&!dragging&&Math.hypot(e.clientX-dragStart.x,e.clientY-dragStart.y)>8){ dragging=dragStart.el; dragging.classList.add('drag'); hideTip(); } });
 document.addEventListener('mouseup',async()=>{ if(dragging){ const el=dragging; dragging=null; el.classList.remove('drag'); suppressClick=true; setTimeout(()=>suppressClick=false,250);
     const box=$('#apps'); const seq=[...box.querySelectorAll('.ap')].map(x=>x.dataset.path); const oldPins=S.modules?.dock?.pinned||[]; const me=el.dataset.path;
@@ -224,7 +244,7 @@ document.addEventListener('mouseleave',()=>{ if(!dragging) setOver(false); });
 function tpl(id){
   switch(id){
     case 'apps': return `<div class="w apps" data-w="apps" id="apps"></div>`;
-    case 'clock': return `<div class="w clock" data-w="clock" id="wclock" data-tip="Open Calendar"><div class="v" id="clk">--:--</div><div class="d" id="date"></div></div>`;
+    case 'clock': return `<div class="w clock" data-w="clock" id="wclock" data-tip="Open Calendar"><div class="dial"><i class="hh" id="hh"></i><i class="mh" id="mh"></i><i class="sh" id="sh"></i></div><div class="ct"><div class="v" id="clk">--:--</div><div class="d" id="date"></div></div></div>`;
     case 'date': return `<div class="w datew" data-w="date" id="wdate" data-tip="Open Calendar"><div class="dw" id="dwk"></div><div class="dn" id="dnum"></div><div class="dm" id="dmon"></div></div>`;
     case 'battery': return `<div class="w bat" data-w="battery"><div class="cell" id="cell"><i id="cfill"><svg viewBox="0 0 200 20" preserveAspectRatio="none"><path d="M0 20V10Q12.5 0 25 10T50 10T75 10T100 10T125 10T150 10T175 10T200 10V20Z"/></svg></i><b id="bpct">—</b><em class="cbolt"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></em></div><div class="l" id="bst">Battery</div></div>`;
     case 'stats': return `<div class="w stats" data-w="stats"><canvas id="sc" width="140" height="80"></canvas><div class="n"><span>CPU <b id="cpu">—</b></span><span>MEM <b id="mem">—</b></span></div></div>`;
@@ -252,7 +272,7 @@ function build(){ const ws=(S.modules?.dock?.widgets)||[]; order=ws; $('#dock').
   refreshApps(); requestAnimationFrame(fit); }
 function fit(){ const r=$('#dock').getBoundingClientRect(); api?.action('dock','rect',{l:r.left,t:r.top,w:r.width,h:r.height}); const n=document.querySelectorAll('.ap').length; const need=Math.ceil(r.width+40+(n?140:0)); if(Math.abs(need-innerWidth)>60||need>innerWidth) api?.action('dock','resize',need); }
 function paintSettings(){ const d=S.modules?.dock||{}; const look=d.look||'islands'; for(const k of ['islands','pill','float']) document.body.classList.toggle('look-'+k,look===k); document.body.classList.toggle('no-aura',d.aura===false); document.body.classList.toggle('reflect',d.reflect!==false); document.body.classList.toggle('no-labels',d.labels===false); requestAnimationFrame(fit); document.body.classList.toggle('top',d.edge==='top'); document.body.style.alignItems=d.edge==='top'?'flex-start':'flex-end'; document.body.style.padding=d.edge==='top'?'6px 12px 0':'0 12px 6px'; $('#dock').style.zoom=d.size||1; }
-function clock(){ const n=new Date(); if($('#dnum')){ const dn=String(n.getDate()); if($('#dnum').textContent!==dn){ $('#dnum').textContent=dn; $('#dwk').textContent=n.toLocaleDateString([], {weekday:'short'}).toUpperCase(); $('#dmon').textContent=n.toLocaleDateString([], {month:'long'}); } } const c=$('#clk'); if(c){ const t=n.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}); c.innerHTML=t.replace(':','<i>:</i>'); $('#date').textContent=n.toLocaleDateString([], {weekday:'short',day:'numeric',month:'short'}); } }
+function clock(){ const n=new Date(); if($('#dnum')){ const dn=String(n.getDate()); if($('#dnum').textContent!==dn){ $('#dnum').textContent=dn; $('#dwk').textContent=n.toLocaleDateString([], {weekday:'short'}).toUpperCase(); $('#dmon').textContent=n.toLocaleDateString([], {month:'long'}); } } const c=$('#clk'); if(c){ const t=n.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}); if(c.dataset.t!==t){ c.dataset.t=t; c.innerHTML=t.replace(':','<i>:</i>'); $('#date').textContent=n.toLocaleDateString([], {weekday:'short',day:'numeric',month:'short'}); } if($('#sh')&&!document.hidden){ if(!clock.base){ const m=new Date(n); m.setHours(0,0,0,0); clock.base=m.getTime(); } const s=Math.floor((n.getTime()-clock.base)/1000), hs=[$('#sh'),$('#mh'),$('#hh')], first=!hs[0].dataset.on; if(first) hs.forEach(h=>{ h.style.transition='none'; h.dataset.on=1; }); hs[0].style.transform=`rotate(${s*6}deg)`; hs[1].style.transform=`rotate(${(s/60)*6}deg)`; hs[2].style.transform=`rotate(${(s/3600)*30}deg)`; if(first){ void hs[0].offsetWidth; hs.forEach(h=>h.style.transition=''); } } } }
 function paint(){
   const b=D.battery; if(b&&$('#bpct')){ $('#bpct').textContent=b.level; $('#cfill').style.height=Math.max(8,b.level)+'%'; $('#cell').style.setProperty('--tc',b.charging?'var(--a)':b.level<=20?'#FF5C5C':'#6FA8FF'); $('#cell').classList.toggle('chg',!!b.charging); $('#bst').textContent=b.charged?'Full':b.holding?'On hold':b.charging?(b.remaining?b.remaining+' to full':'Charging'):b.remaining?b.remaining+' left':'Battery'; }
   if(b) $('#dock').classList.toggle('charging',!!b.charging&&!b.charged);

@@ -162,7 +162,7 @@
 
   /* ───────── fluid max ───────── */
   .win{animation:pop .95s var(--spring-soft) both} @keyframes pop{from{opacity:0;transform:scale(.88) translateY(26px)}}
-  .pane{transition:opacity .4s var(--flow),transform .9s var(--spring-soft);transform:translateY(34px) scale(.97)}
+  .pane{transition:opacity .35s var(--flow),transform .9s var(--spring-soft);transform:translateY(calc(var(--dir,1)*60px)) scale(.96)}
   .pane.enter .mod,.pane.enter .card,.pane.enter .step,.pane.enter .theme,.pane.enter .hero{animation:stage .95s var(--spring-soft) backwards;animation-delay:calc(var(--i,0)*34ms)}
   @keyframes stage{from{opacity:0;transform:translateY(40px) scale(.9)}}
   #navInd{transition:transform .75s var(--spring),opacity .3s;background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 16%,var(--bg3)),var(--bg3));box-shadow:inset 3px 0 0 var(--accent),0 10px 24px -16px var(--accent)}
@@ -355,7 +355,8 @@ function syncRange(r){ r.style.setProperty('--p', (r.value-r.min)/(r.max-r.min)*
 function stage(p){ const el=document.getElementById('pane-'+p); if(!el) return; let i=0; el.querySelectorAll('.hero,.theme,.mod,.card,.step').forEach(x=>x.style.setProperty('--i',Math.min(i++,22))); el.classList.remove('enter'); void el.offsetWidth; el.classList.add('enter'); }
 function navInd(){ const b=document.querySelector('#nav button.on'), a=document.querySelector('aside'); if(!b||!a) return; let ind=document.getElementById('navInd'); if(!ind){ ind=document.createElement('div'); ind.id='navInd'; a.appendChild(ind); } const r=b.getBoundingClientRect(), ar=a.getBoundingClientRect(); ind.style.transform=`translateY(${Math.round(r.top-ar.top+a.scrollTop)}px)`; ind.style.opacity=1; }
 addEventListener('resize',()=>navInd()); setTimeout(navInd,400); setTimeout(navInd,1200);
-function go(p){ stage(p); setTimeout(navInd,0); cur = p; document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on', b.dataset.p===p)); document.querySelectorAll('.pane').forEach(x=>x.classList.toggle('on', x.id===`pane-${p}`));
+function go(p){ { const order=[...document.querySelectorAll('#nav button')].map(b=>b.dataset.p), a=order.indexOf(cur), b=order.indexOf(p), dir=b>=a?1:-1; const out=document.getElementById('pane-'+cur), inn=document.getElementById('pane-'+p); if(out&&inn&&out!==inn){ out.style.setProperty('--dir',-dir); inn.style.transition='none'; inn.style.setProperty('--dir',dir); void inn.offsetWidth; inn.style.transition=''; } }
+  stage(p); setTimeout(navInd,0); cur = p; document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on', b.dataset.p===p)); document.querySelectorAll('.pane').forEach(x=>x.classList.toggle('on', x.id===`pane-${p}`));
   $('#title').textContent = p==='all' ? 'Modules' : p==='about' ? 'About' : p==='welcome' ? 'Welcome' : MODS.find(m=>m.id===p)?.name || ''; if (p==='glow') replay(); }
 function paint(){
   let on = 0;
