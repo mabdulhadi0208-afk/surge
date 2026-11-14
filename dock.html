@@ -58,6 +58,33 @@
   #ctx .it{padding:7px 10px;border-radius:9px;cursor:pointer;font-size:12.5px;display:flex;justify-content:space-between;gap:16px;white-space:nowrap} #ctx .it:hover{background:rgba(255,255,255,.12)} #ctx .it.red:hover{background:rgba(255,80,80,.25)} #ctx .it kbd{color:var(--muted);font:inherit;font-size:11px}
   #ctx .sep{height:1px;background:var(--line);margin:4px 6px}
   .empty{padding:10px 18px;color:var(--muted)}
+
+  /* ───────── Surge look v3 ───────── */
+  :root{--bg0:#0b0e15;--bg1:#131824;--bg2:#1b2232;--ink:#eef1f7;--muted:#8b94a7;--flow:cubic-bezier(.2,.8,.2,1)}
+  .dock{background:linear-gradient(180deg,rgba(30,38,56,.86),rgba(11,14,21,.93));border:0;border-radius:34px;padding:10px 12px 13px;gap:10px;box-shadow:0 34px 80px -26px rgba(0,0,0,.95),inset 0 1px 0 rgba(255,255,255,.16),inset 0 0 0 1px rgba(255,255,255,.05);animation:dockIn .8s var(--flow) backwards}
+  @keyframes dockIn{from{transform:translateY(60px) scale(.9);opacity:0}}
+  body.top .dock{animation-name:dockInTop} @keyframes dockInTop{from{transform:translateY(-60px) scale(.9);opacity:0}}
+  /* the current line: a thin stream of light under everything; it flows while charging */
+  .dock::before{inset:auto 30px 5px 30px;height:2.5px;padding:0;border-radius:3px;-webkit-mask:none;mask:none;background:linear-gradient(90deg,transparent,var(--a),#00D4FF,var(--a),transparent);background-size:200% 100%;opacity:.22;animation:none}
+  .dock.charging::before{opacity:.95;animation:stream 2.4s linear infinite;box-shadow:0 0 12px var(--a)} @keyframes stream{to{background-position:-200% 0}}
+  .w{border:0;background:rgba(255,255,255,.055);border-radius:22px;height:74px;transition:transform .5s var(--flow),background .3s}
+  .w:hover{background:rgba(255,255,255,.11);border:0;transform:translateY(-7px) scale(1.05)} .w.on{border:0;background:color-mix(in srgb,var(--a) 20%,transparent);box-shadow:0 12px 26px -14px var(--a)}
+  .w .l{text-transform:none;letter-spacing:0;font-size:11px;font-weight:600}
+  .apps.apps,.apps.apps:hover{background:transparent;transform:none}
+  .ap .ic{border-radius:14px;box-shadow:0 14px 26px -10px rgba(0,0,0,.9)}
+  .ap .dot{width:5px;height:5px;margin-top:6px;background:#fff;box-shadow:0 0 8px #fff} .ap.front .dot{width:18px;height:4px;border-radius:3px;background:var(--a);box-shadow:0 0 12px var(--a)}
+  .apps.first .ap{animation:apIn .7s var(--flow) backwards;animation-delay:calc(.15s + var(--n,0)*45ms)} @keyframes apIn{from{opacity:0;transform:translateY(34px) scale(.5)}}
+  .apsep{background:linear-gradient(180deg,transparent,rgba(255,255,255,.22),transparent);height:46px}
+  #tip{border:0;background:var(--ink);color:#0b0e15;border-radius:999px;padding:5px 13px;font-weight:650;box-shadow:0 10px 24px -8px rgba(0,0,0,.8);opacity:0;transform:translate(-50%,8px) scale(.8);transition:opacity .18s,transform .4s var(--spring)} #tip.on{opacity:1;transform:translate(-50%,0) scale(1)}
+  #ctx{border:0;background:rgba(19,24,36,.96);border-radius:18px;padding:7px;box-shadow:0 26px 60px -16px rgba(0,0,0,.95),inset 0 1px 0 rgba(255,255,255,.1)} #ctx .it{border-radius:11px;padding:8px 11px}
+  .clock .v{font-size:25px;font-weight:750;letter-spacing:-.8px}
+  /* battery: a small tank */
+  .bat{min-width:78px;gap:5px} .cell{position:relative;width:46px;height:40px;border-radius:13px;background:rgba(0,0,0,.4);overflow:hidden;--tc:var(--a);display:grid;place-items:center;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+  .cell i{position:absolute;left:0;right:0;bottom:0;height:50%;background:linear-gradient(180deg,color-mix(in srgb,var(--tc) 85%,transparent),color-mix(in srgb,var(--tc) 55%,transparent));transition:height 1.2s var(--flow),background .5s}
+  .cell i svg{position:absolute;left:0;bottom:calc(100% - 1px);width:200%;height:7px;fill:color-mix(in srgb,var(--tc) 85%,transparent);animation:tide 2.8s linear infinite} @keyframes tide{to{transform:translateX(-50%)}}
+  .cell b{position:relative;font-size:15px;font-weight:750;font-variant-numeric:tabular-nums;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+  .cell .cbolt{position:absolute;top:3px;right:4px;display:none} .cell.chg .cbolt{display:block} .cbolt svg{width:9px;height:9px;fill:#fff}
+  @media (prefers-reduced-motion:reduce){ .dock,.apps.first .ap,.cell i svg,.dock.charging::before{animation:none!important} }
 </style></head>
 <body>
 <div class="dock" id="dock"></div><div id="tip"></div><div id="ctx"></div>
@@ -67,8 +94,8 @@ let S={}, D={}, order=[]; let volT=0, volDrag=false, lastVol=50;
 const ICON={glow:'<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',notes:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/>',spotlight:'<circle cx="12" cy="12" r="5"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/>',caffeine:'<path d="M4 8h12v6a5 5 0 0 1-10 0z"/><path d="M16 9h2a2 2 0 1 1 0 4h-2M6 20h10"/>',focus:'<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/>',vol:'<path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/>',mute:'<path d="M11 5 6 9H2v6h4l5 4z"/><path d="M22 9l-6 6M16 9l6 6"/>',music:'<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',grid:'<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>'};
 /* ---------- tooltip */
 const tipEl=()=>document.getElementById('tip'); let tipTarget=null;
-function showTip(el, text){ tipTarget=[el,text]; const t=tipEl(); const r=(el.querySelector('.ic')||el).getBoundingClientRect(); t.textContent=text; t.style.opacity=1; const w=t.offsetWidth; let x=r.left+r.width/2; x=Math.max(w/2+6, Math.min(innerWidth-w/2-6, x)); const top=document.body.classList.contains('top'); t.style.left=x+'px'; t.style.top=(top? Math.min(innerHeight-34, r.bottom+10) : Math.max(2, r.top-38))+'px'; }
-function hideTip(){ tipTarget=null; tipEl().style.opacity=0; }
+function showTip(el, text){ tipTarget=[el,text]; const t=tipEl(); const r=(el.querySelector('.ic')||el).getBoundingClientRect(); t.textContent=text; t.classList.add('on'); const w=t.offsetWidth; let x=r.left+r.width/2; x=Math.max(w/2+6, Math.min(innerWidth-w/2-6, x)); const top=document.body.classList.contains('top'); t.style.left=x+'px'; t.style.top=(top? Math.min(innerHeight-34, r.bottom+10) : Math.max(2, r.top-38))+'px'; }
+function hideTip(){ tipTarget=null; tipEl().classList.remove('on'); }
 setInterval(()=>{ if(tipTarget && tipTarget[0].isConnected && !dragging) showTip(tipTarget[0],tipTarget[1]); },40);
 document.addEventListener('mouseover',e=>{ if(dragging) return hideTip(); const a=e.target.closest('.ap'); if(a) return showTip(a,a.dataset.name); const w=e.target.closest('.w[data-tip]'); if(w) return showTip(w,w.dataset.tip); hideTip(); });
 document.addEventListener('mouseleave',hideTip);
@@ -83,8 +110,9 @@ async function refreshApps(){ const box=$('#apps'); if(!box||dragging) return; r
   for(const [p,t] of launching){ const it=items.find(i=>i.path===p); if((it&&it.run)||Date.now()-t>10000) launching.delete(p); }
   const key=items.map(i=>i.path+(i.run?1:0)+(i.front?1:0)+(i.pid||'')+(launching.has(i.path)?'L':'')).join(); if(key===lastAppsKey) return; lastAppsKey=key; APPS=items;
   const sepAt=items.findIndex(i=>!i.pinned);
+  if(!box.dataset.seen){ box.dataset.seen=1; box.classList.add('first'); setTimeout(()=>box.classList.remove('first'),1400); }
   box.innerHTML=''; items.forEach((it,i)=>{ if(i===sepAt&&i>0){ const s=document.createElement('div'); s.className='apsep'; box.appendChild(s); }
-    const el=document.createElement('div'); el.className='ap'+(it.run?' run':'')+(it.front?' front':'')+(launching.has(it.path)?' launch':''); el.dataset.i=i; el.dataset.name=it.name; el.dataset.path=it.path; el.appendChild(iconNode(it)); const dot=document.createElement('div'); dot.className='dot'; el.appendChild(dot);
+    const el=document.createElement('div'); el.className='ap'+(it.run?' run':'')+(it.front?' front':'')+(launching.has(it.path)?' launch':''); el.dataset.i=i; el.style.setProperty('--n',i); el.dataset.name=it.name; el.dataset.path=it.path; el.appendChild(iconNode(it)); const dot=document.createElement('div'); dot.className='dot'; el.appendChild(dot);
     el.onclick=()=>{ if(suppressClick) return; if(it.run) api?.appActivate(it.bundleId, it.path); else { launching.set(it.path,Date.now()); el.classList.add('launch'); api?.appOpen(it.path); } };
     el.oncontextmenu=e=>{ e.preventDefault(); openCtx(e,it,el); };
     el.ondragover=e=>{ e.preventDefault(); el.classList.add('over'); }; el.ondragleave=()=>el.classList.remove('over');
@@ -122,7 +150,7 @@ function openCtx(e,it,el){ const c=$('#ctx'); const pins=S.modules?.dock?.pinned
   if(it.run){ rows.push(['sep']); rows.push(['Quit',()=>api?.appQuit(it.bundleId,it.pid),'']); rows.push(['Force Quit',()=>api?.appForceQuit?.(it.pid),'red']); }
   c.innerHTML=rows.map(r=>r[0]==='h'?`<div class="h">${r[1]}</div>`:r[0]==='sep'?'<div class="sep"></div>':`<div class="it ${r[2]||''}">${r[0]}</div>`).join('');
   const acts=rows.filter(r=>r[0]!=='h'&&r[0]!=='sep'); c.querySelectorAll('.it').forEach((n,i)=>n.onclick=()=>{ closeCtx(); acts[i][1](); });
-  c.style.display='block'; const w=c.offsetWidth,h=c.offsetHeight; const r=el.getBoundingClientRect(); let x=r.left+r.width/2-w/2; x=Math.max(6,Math.min(innerWidth-w-6,x)); const top=document.body.classList.contains('top'); c.style.left=x+'px'; c.style.top=(top?r.bottom+8:Math.max(4,r.top-h-10))+'px'; }
+  c.style.display='block'; const w=c.offsetWidth,h=c.offsetHeight; const r=(el.querySelector('.ic')||el).getBoundingClientRect(); let x=r.left+r.width/2-w/2; x=Math.max(6,Math.min(innerWidth-w-6,x)); const top=document.body.classList.contains('top'); c.style.left=x+'px'; c.style.top=(top?r.bottom+8:Math.max(4,r.top-h-10))+'px'; }
 function closeCtx(){ $('#ctx').style.display='none'; }
 document.addEventListener('mousedown',e=>{ if(!e.target.closest('#ctx')) closeCtx(); });
 document.addEventListener('mouseleave',closeCtx);
@@ -136,7 +164,7 @@ function tpl(id){
   switch(id){
     case 'apps': return `<div class="w apps" data-w="apps" id="apps"></div>`;
     case 'clock': return `<div class="w clock" data-w="clock" id="wclock" data-tip="Open Calendar"><div class="v" id="clk">--:--</div><div class="d" id="date"></div></div>`;
-    case 'battery': return `<div class="w" data-w="battery"><div class="ring" id="ring"><svg viewBox="0 0 46 46"><circle class="bg" cx="23" cy="23" r="19" fill="none" stroke-width="4"/><circle class="fg" id="bfg" cx="23" cy="23" r="19" fill="none" stroke-width="4" stroke-dasharray="119.4" stroke-dashoffset="119.4"/></svg><b id="bpct">—</b><div class="bolt"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></div></div><div class="l" id="bst">Battery</div></div>`;
+    case 'battery': return `<div class="w bat" data-w="battery"><div class="cell" id="cell"><i id="cfill"><svg viewBox="0 0 200 20" preserveAspectRatio="none"><path d="M0 20V10Q12.5 0 25 10T50 10T75 10T100 10T125 10T150 10T175 10T200 10V20Z"/></svg></i><b id="bpct">—</b><em class="cbolt"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></em></div><div class="l" id="bst">Battery</div></div>`;
     case 'stats': return `<div class="w stats" data-w="stats"><canvas id="sc" width="140" height="80"></canvas><div class="n"><span>CPU <b id="cpu">—</b></span><span>MEM <b id="mem">—</b></span></div></div>`;
     case 'media': return `<div class="w media" data-w="media"><div class="art" id="art"><svg viewBox="0 0 24 24">${ICON.music}</svg></div><div class="t"><b id="mname">Nothing playing</b><small id="martist">Spotify / Music</small></div><div class="c"><button data-m="prev"><svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zM20 6 9 12l11 6z"/></svg></button><button data-m="play"><svg viewBox="0 0 24 24" id="playIc"><path d="M7 5l12 7-12 7z"/></svg></button><button data-m="next"><svg viewBox="0 0 24 24"><path d="M16 6h2v12h-2zM4 6l11 6-11 6z"/></svg></button></div></div>`;
     case 'volume': return `<div class="w vol" data-w="volume" id="wvol" data-tip="Scroll to adjust · click icon to mute"><svg class="i" id="volIc" viewBox="0 0 24 24">${ICON.vol}</svg><input type="range" id="vol" min="0" max="100" step="1"><span id="volv" style="width:28px;text-align:right;color:var(--muted);font-variant-numeric:tabular-nums">—</span></div>`;
@@ -164,7 +192,7 @@ function fit(){ const r=$('#dock').getBoundingClientRect(); api?.action('dock','
 function paintSettings(){ const d=S.modules?.dock||{}; document.body.classList.toggle('top',d.edge==='top'); document.body.style.alignItems=d.edge==='top'?'flex-start':'flex-end'; document.body.style.padding=d.edge==='top'?'6px 12px 0':'0 12px 6px'; $('#dock').style.zoom=d.size||1; }
 function clock(){ const n=new Date(); const c=$('#clk'); if(c){ const t=n.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}); c.innerHTML=t.replace(':','<i>:</i>'); $('#date').textContent=n.toLocaleDateString([], {weekday:'short',day:'numeric',month:'short'}); } }
 function paint(){
-  const b=D.battery; if(b&&$('#bpct')){ $('#bpct').textContent=b.level+'%'; $('#bfg').style.strokeDashoffset=119.4*(1-b.level/100); $('#bfg').style.stroke=b.charging?'var(--a)':b.level<=20?'#FF5C5C':'#FFB300'; $('#ring').classList.toggle('chg',!!b.charging); $('#bst').textContent=b.charged?'Full':b.holding?'On hold':b.charging?(b.remaining?b.remaining+' to full':'Charging'):b.remaining?b.remaining+' left':'Battery'; }
+  const b=D.battery; if(b&&$('#bpct')){ $('#bpct').textContent=b.level; $('#cfill').style.height=Math.max(8,b.level)+'%'; $('#cell').style.setProperty('--tc',b.charging?'var(--a)':b.level<=20?'#FF5C5C':'#6FA8FF'); $('#cell').classList.toggle('chg',!!b.charging); $('#bst').textContent=b.charged?'Full':b.holding?'On hold':b.charging?(b.remaining?b.remaining+' to full':'Charging'):b.remaining?b.remaining+' left':'Battery'; }
   if(b) $('#dock').classList.toggle('charging',!!b.charging&&!b.charged);
   if(D.stats&&$('#cpu')){ $('#cpu').textContent=Math.round(D.stats.cpu*100)+'%'; $('#mem').textContent=Math.round(D.stats.mem*100)+'%'; hist.push(D.stats.cpu); if(hist.length>30) hist.shift(); const c=$('#sc'), x=c.getContext('2d'); x.clearRect(0,0,140,80); x.beginPath(); hist.forEach((v,i)=>{ const px=i/(29)*140, py=80-v*72-4; i?x.lineTo(px,py):x.moveTo(px,py); }); x.strokeStyle='#00FF85'; x.lineWidth=3; x.lineJoin='round'; x.stroke(); x.lineTo(140,80); x.lineTo(0,80); x.closePath(); const g=x.createLinearGradient(0,0,0,80); g.addColorStop(0,'rgba(0,255,133,.35)'); g.addColorStop(1,'rgba(0,255,133,0)'); x.fillStyle=g; x.fill(); }
   if($('#mname')){ const m=D.media; $('#mname').textContent=m?m.name:'Nothing playing'; $('#martist').textContent=m?m.artist+' · '+m.app:'Spotify / Music'; $('#art').innerHTML=m&&m.playing?'<div class="bars"><i></i><i></i><i></i></div>':`<svg viewBox="0 0 24 24">${ICON.music}</svg>`; $('#playIc').innerHTML=m&&m.playing?'<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>':'<path d="M7 5l12 7-12 7z"/>'; }

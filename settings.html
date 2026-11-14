@@ -119,6 +119,44 @@
   .about{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;gap:10px}
   .about .logo{width:84px;height:84px;border-radius:26px;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 20px 60px -10px var(--accent);display:grid;place-items:center;animation:float 5s ease-in-out infinite} .about .logo svg{width:40px;fill:#06110a}
   @keyframes float{50%{transform:translateY(-8px) rotate(-3deg)}} .about h2{margin:8px 0 0;font-size:26px} .about p{margin:0;color:var(--muted);max-width:380px}
+
+  /* ───────── Surge look v3: tonal surfaces, one accent, the hero is a tank that fills as you switch things on ───────── */
+  :root{ --bg:#0b0e15; --bg1:#121722; --bg2:#19202f; --bg3:#232c40; --panel:#141a27; --line:rgba(255,255,255,.06); --text:#eef1f7; --muted:#8b94a7; }
+  .win{background:linear-gradient(160deg,#111724,var(--bg) 55%);border-radius:18px;animation:pop .7s var(--flow) both}
+  body.winos .win{background:linear-gradient(160deg,#111724,var(--bg) 55%);border:0}
+  .aura{display:none}
+  aside{border-right:0;background:rgba(0,0,0,.26)}
+  .grp,.sech,.card h3,.sp .cat{text-transform:none;letter-spacing:0;font-size:12px;font-weight:650}
+  .sech{font-size:13px;color:var(--text);margin:20px 2px 10px}
+  nav button{height:34px;border-radius:11px;position:relative;z-index:1} nav button.on{background:transparent} nav button:hover{background:rgba(255,255,255,.04)}
+  #navInd{position:absolute;left:12px;right:12px;height:34px;border-radius:11px;background:var(--bg3);box-shadow:inset 3px 0 0 var(--accent);transition:transform .55s var(--flow),opacity .3s;pointer-events:none;z-index:0;top:0;opacity:0}
+  .status,.vol{border:0;background:var(--bg2);border-radius:14px}
+  header h1{font-size:20px;font-weight:750;letter-spacing:-.4px}
+  .btn.btn{border:0;background:var(--bg2);border-radius:10px;height:32px} .btn.btn:hover{background:var(--bg3)} .btn.btn.primary{background:var(--accent);color:#04140c;box-shadow:0 8px 22px -8px var(--accent);border-radius:999px}
+  /* hero tank */
+  .hero{position:relative;overflow:hidden;isolation:isolate;border:0;border-radius:24px;padding:26px 26px;background:var(--bg2);margin-bottom:6px;--lv:0%}
+  .hero::before{content:"";position:absolute;left:0;top:0;bottom:0;width:var(--lv);background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 14%,transparent),color-mix(in srgb,var(--accent) 42%,transparent));transition:width 1.2s var(--flow);z-index:-1}
+  .pane:not(#pane-all) .hero::before,.pane:not(#pane-all) .hero::after{display:none}
+  .hero::after{content:"";position:absolute;top:-50%;bottom:-50%;left:calc(var(--lv) - 9px);width:18px;border-radius:50%;background:color-mix(in srgb,var(--accent) 42%,var(--bg2));transition:left 1.2s var(--flow);z-index:-1;animation:hsl 3.4s ease-in-out infinite}
+  @keyframes hsl{50%{transform:translateX(5px) scaleY(.96)}}
+  .hero h2{font-size:27px;font-weight:750;letter-spacing:-.8px;line-height:1.1;margin-bottom:6px} .hero p{font-size:13.5px;color:color-mix(in srgb,var(--text) 72%,transparent);max-width:46ch}
+  .hero .n{font-size:44px;font-weight:750;letter-spacing:-2px;color:var(--text);font-variant-numeric:tabular-nums}
+  /* cards */
+  .card,.step{border:0;background:var(--panel);border-radius:20px;padding:18px} .row{border-top:1px solid rgba(255,255,255,.05)}
+  .step.done{background:color-mix(in srgb,var(--accent) 9%,var(--panel));border:0}
+  .mod{border:0;background:var(--panel);border-radius:20px;padding:16px;transition:transform .5s var(--flow),background .3s,box-shadow .4s}
+  .mod:hover{background:var(--bg2);border:0;transform:translateY(-5px)}
+  .mod .ic{width:40px;height:40px;border-radius:50%;border:0;background:var(--bg3);transition:background .4s var(--flow),box-shadow .4s,transform .5s var(--spring)} .mod:hover .ic{transform:scale(1.1) rotate(-6deg)}
+  .mod.on{background:color-mix(in srgb,var(--accent) 8%,var(--panel));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 30%,transparent)}
+  .mod.on .ic{background:var(--accent);border:0;box-shadow:0 10px 22px -10px var(--accent)} .mod.on .ic svg{stroke:#04140c}
+  .mod h4{font-size:14.5px;font-weight:700;letter-spacing:-.1px} .mod .top{padding-right:56px}
+  .tg{width:46px;height:27px;border-radius:14px;background:var(--bg3)} .tg::after{width:21px;height:21px;transition:transform .5s var(--spring),width .25s} .tg:active::after{width:26px} .tg.on{box-shadow:0 6px 18px -6px var(--accent)} .tg.on::after{transform:translateX(19px)} .tg.on:active::after{transform:translateX(14px)}
+  input[type=range]{height:8px;border-radius:4px;background:linear-gradient(90deg,var(--accent) var(--p,50%),var(--bg3) var(--p,50%))}
+  .chip,.sp .tab,.sp .pr,.wi{border:0!important;background:var(--bg2)} .sp .pr.on{background:color-mix(in srgb,var(--accent) 22%,var(--bg2));box-shadow:inset 0 0 0 1px var(--accent)} .chip.on,.sp .tab.on{background:var(--bg3);box-shadow:inset 0 0 0 1.5px var(--c,var(--accent))}
+  .seg{border:0;background:var(--bg2);border-radius:11px} .sp input.q{border:0;background:var(--bg2)}
+  .theme{border:0;background:var(--panel);border-radius:20px} .theme i{height:44px;border-radius:14px} .theme.on{box-shadow:inset 0 0 0 2px var(--c1),0 16px 34px -20px var(--c1)}
+  #toast{border:0!important}
+  @media (prefers-reduced-motion:reduce){ .hero::after,.pane.enter *{animation:none!important} }
 </style>
 </head>
 <body>
@@ -285,7 +323,9 @@ function buildWidgets(el, mid, k){
 }
 function syncRange(r){ r.style.setProperty('--p', (r.value-r.min)/(r.max-r.min)*100+'%'); r.nextElementSibling.value = fmt(r.dataset.fmt, +r.value); }
 function stage(p){ const el=document.getElementById('pane-'+p); if(!el) return; let i=0; el.querySelectorAll('.hero,.theme,.mod,.card,.step').forEach(x=>x.style.setProperty('--i',Math.min(i++,22))); el.classList.remove('enter'); void el.offsetWidth; el.classList.add('enter'); }
-function go(p){ stage(p); cur = p; document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on', b.dataset.p===p)); document.querySelectorAll('.pane').forEach(x=>x.classList.toggle('on', x.id===`pane-${p}`));
+function navInd(){ const b=document.querySelector('#nav button.on'), a=document.querySelector('aside'); if(!b||!a) return; let ind=document.getElementById('navInd'); if(!ind){ ind=document.createElement('div'); ind.id='navInd'; a.appendChild(ind); } const r=b.getBoundingClientRect(), ar=a.getBoundingClientRect(); ind.style.transform=`translateY(${Math.round(r.top-ar.top+a.scrollTop)}px)`; ind.style.opacity=1; }
+addEventListener('resize',()=>navInd()); setTimeout(navInd,400); setTimeout(navInd,1200);
+function go(p){ stage(p); setTimeout(navInd,0); cur = p; document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on', b.dataset.p===p)); document.querySelectorAll('.pane').forEach(x=>x.classList.toggle('on', x.id===`pane-${p}`));
   $('#title').textContent = p==='all' ? 'Modules' : p==='about' ? 'About' : p==='welcome' ? 'Welcome' : MODS.find(m=>m.id===p)?.name || ''; if (p==='glow') replay(); }
 function paint(){
   let on = 0;
@@ -304,7 +344,7 @@ function paint(){
     }
     const h = document.getElementById('hook-'+m.id); if (h) h.textContent = hook==='running' ? 'Input monitoring: active' : hook==='ready' ? 'Turns on when enabled — macOS will ask for Accessibility permission once.' : hook==='needs-accessibility' ? 'Waiting for permission: System Settings → Privacy & Security → Accessibility → turn on Surge. Starts automatically once granted.' : hook==='error' ? 'Hook failed to start. Check Accessibility and Input Monitoring for Surge, then relaunch.' : 'Global input hook not installed in this build (uiohook-napi). Run npm install on a Mac.';
   }
-  $('#onCount').textContent = on;
+  $('#onCount').textContent = on; document.querySelector('#pane-all .hero')?.style.setProperty('--lv', Math.max(8, Math.round(on / Math.max(1, MODS.length) * 100)) + '%');
   const mv = $('#master'); if (document.activeElement !== mv) { mv.value = S.masterVolume ?? 1; mv.style.setProperty('--p', (S.masterVolume ?? 1)*100+'%'); }
   $('#vol').classList.toggle('muted', !!S.muted); $('#mute').textContent = S.muted ? '🔇' : '🔊';
   const note = $('#hookNote'); note.classList.toggle('show', hook==='error' || hook==='unavailable' || hook==='needs-accessibility' || hook==='stale'); note.innerHTML = hook==='stale' ? 'macOS shows Surge as allowed, but isn\'t delivering keyboard &amp; mouse events (a stuck permission entry). <a id="axFix" style="color:#FFD37A;text-decoration:underline;cursor:pointer">Repair it</a> — Surge restarts and asks once.' : hook==='needs-accessibility' ? 'Keyboard &amp; mouse modules need <b>Accessibility</b> permission. <a id="axBtn" style="color:#FFD37A;text-decoration:underline;cursor:pointer">Open Accessibility settings</a> → turn on Surge. They start automatically once granted.' : hook==='error' ? 'Hook failed to start. Enable Surge under Privacy &amp; Security → <a id="axBtn" style="color:#FFD37A;text-decoration:underline;cursor:pointer">Accessibility</a> and <a id="imBtn" style="color:#FFD37A;text-decoration:underline;cursor:pointer">Input Monitoring</a>, then relaunch.' : hook==='unavailable' ? 'Keyboard/mouse modules are unavailable in this build (native hook missing).' : '';

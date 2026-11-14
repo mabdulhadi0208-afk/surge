@@ -20,7 +20,10 @@ const settingsPath = () => path.join(app.getPath('userData'), 'settings.json');
 function defaultsFor(m) { return { enabled: !!m.defaultEnabled, ...(m.defaults || {}) }; }
 function loadSettings() {
   let raw = {}; try { raw = JSON.parse(fs.readFileSync(settingsPath(), 'utf8')); } catch {}
-  settings = { launchAtLogin: !!raw.launchAtLogin, masterVolume: raw.masterVolume ?? 1, muted: !!raw.muted, welcomed: raw.welcomed, soundFix: raw.soundFix, modules: {} };
+  settings = { launchAtLogin: !!raw.launchAtLogin, masterVolume: raw.masterVolume ?? 1, muted: !!raw.muted, welcomed: raw.welcomed, soundFix: raw.soundFix, chipFix: raw.chipFix, modules: {} };
+  // one-time: the menu-bar icon moves to the new charge chip (people who picked another style on purpose keep it)
+  if (!raw.chipFix) { setTimeout(() => { try { if (settings.modules.glow && (settings.modules.glow.trayStyle === 'both' || !settings.modules.glow.trayStyle)) { settings.modules.glow.trayStyle = 'chip'; } saveSettings(); } catch {} }, 0); }
+  settings.chipFix = 1;
   if (!settings.soundFix) { if (settings.muted || settings.masterVolume === 0) setTimeout(() => log('one-time sound reset: was muted =', settings.muted, 'master =', settings.masterVolume), 0); settings.muted = false; if (!(settings.masterVolume > 0.05)) settings.masterVolume = 1; settings.soundFix = 1; }
   for (const id in MODULES) settings.modules[id] = { ...defaultsFor(MODULES[id]), ...(raw.modules?.[id] || {}) };
 }
@@ -380,11 +383,20 @@ function trayIcon(b) {
   img.setTemplateImage(true); return img;
 }
 let trayIconKey = '';
-function setTrayBattery(b) {
+let chipLogged = false, chipBad = false;
+function trayChip(b) {
+  // the charge chip: a tiny tank in the menu bar (colour image, not a template, so it keeps its state colours)
+  try { const { chipSVG, W, H } = require('./traychip.js'); const g = mod('glow') || {};
+    const raw2 = nativeImage.createFromDataURL('data:image/svg+xml;base64,' + Buffer.from(chipSVG(b, { accent: g.theme === 'solid' ? g.color : '#00FF85', scale: 2 })).toString('base64'));
+    if (raw2.isEmpty()) return null; const img = nativeImage.createFromBuffer(raw2.toPNG(), { scaleFactor: 2 });   // keep the 2x pixels → crisp on Retina
+    if (img.isEmpty()) return null; if (!chipLogged) { chipLogged = true; const s = img.getSize(), bm = raw2.toBitmap(); let px = 0; for (let i = 3; i < bm.length; i += 4) if (bm[i] > 40) px++; log(`tray chip ok ${s.width}x${s.height} px=${px}`); if (px < 800) chipBad = true; } if (chipBad) return null; img.setTemplateImage(false); return img; } catch (e) { console.error('tray chip', e.message); return null; }
+}
+function setTrayBattery(b, style) {
   if (!tray) return;
-  const k = b ? `${Math.round(b.level)}|${b.charging ? 1 : 0}` : 'bolt';
+  const chip = IS_MAC && style === 'chip' && b && b.level != null;
+  const k = b ? `${Math.round(b.level)}|${b.charging ? 1 : 0}|${b.charged ? 1 : 0}|${chip ? 'chip' + (mod('glow')?.color || '') + (mod('glow')?.theme || '') : ''}` : 'bolt';
   if (k === trayIconKey) return; trayIconKey = k;
-  try { tray.setImage(trayIcon(b)); } catch (e) { console.error('tray icon', e); }
+  try { tray.setImage((chip && trayChip(b)) || trayIcon(b)); } catch (e) { console.error('tray icon', e); }
 }
 function setTray(id, extra) { const k = JSON.stringify(extra, (kk, v) => typeof v === 'function' ? undefined : v); if (trayKeys[id] === k) return; trayKeys[id] = k; trayExtras[id] = extra; updateTray(); }
 const trayKeys = {};
@@ -517,6 +529,7 @@ app.whenReady().then(async () => {
   if (process.platform === 'darwin') app.dock?.hide();
   createOverlays(); ensureAudio();
   tray = new Tray(trayIcon()); tray.setIgnoreDoubleClickEvents(true); tray.setToolTip('Surge');
+  if (IS_MAC && process.env.SURGE_SELFTEST) { try { const t = trayChip({ level: 67, charging: true }); log('tray chip selftest ' + (t ? 'pass' : 'FAIL')); } catch (e) { log('tray chip selftest FAIL ' + e.message); } }
   tray.on('click', togglePopover);
   tray.on('right-click', () => trayMenu && tray.popUpContextMenu(trayMenu));
   if (IS_WIN) app.setAppUserModelId('app.surge.glow');
