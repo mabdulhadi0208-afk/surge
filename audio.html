@@ -69,7 +69,7 @@ function play(p) {
   switch (p.sound) {
     case 'key': { const pr = SurgeSounds.findKey(p.preset); if (p.kind === 'up') playUp(pr, v); else playPreset(pr, v, p.kind, p.variance); break; }
     case 'click': { const pr = SurgeSounds.findMouse(p.preset); if (p.up) playUp(pr, v); else playPreset(pr, v, 'key', .05, p.pitch || 1); break; }
-    case 'scroll': playPreset(SurgeSounds.findScroll(p.preset), v, 'key', .08); break;
+    case 'scroll': playPreset(SurgeSounds.findScroll(p.preset), v, 'key', .08, Math.max(.5, Math.min(2, p.pitch || 1))); break;
     case 'capsOn': tone({ f: 660, f2: 990, dur: .12, vol: v * .5 }); break;
     case 'capsOff': tone({ f: 990, f2: 660, dur: .12, vol: v * .5 }); break;
     case 'chime': { const t = AC.currentTime, n = p.name;
