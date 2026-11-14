@@ -386,10 +386,14 @@ let trayIconKey = '';
 let chipLogged = false, chipBad = false;
 function trayChip(b) {
   // the charge chip: a tiny tank in the menu bar (colour image, not a template, so it keeps its state colours)
-  try { const { chipSVG, W, H } = require('./traychip.js'); const g = mod('glow') || {};
-    const raw2 = nativeImage.createFromDataURL('data:image/svg+xml;base64,' + Buffer.from(chipSVG(b, { accent: g.theme === 'solid' ? g.color : '#00FF85', scale: 2 })).toString('base64'));
-    if (raw2.isEmpty()) return null; const img = nativeImage.createFromBuffer(raw2.toPNG(), { scaleFactor: 2 });   // keep the 2x pixels → crisp on Retina
-    if (img.isEmpty()) return null; if (!chipLogged) { chipLogged = true; const s = img.getSize(), bm = raw2.toBitmap(); let px = 0; for (let i = 3; i < bm.length; i += 4) if (bm[i] > 40) px++; log(`tray chip ok ${s.width}x${s.height} px=${px}`); if (px < 800) chipBad = true; } if (chipBad) return null; img.setTemplateImage(false); return img; } catch (e) { console.error('tray chip', e.message); return null; }
+  try { const { chipPNG } = require('./traychip.js'); const g = mod('glow') || {};
+    if (chipBad) return null;
+    const png = chipPNG(b, { accent: g.theme === 'solid' ? g.color : '#00FF85', scale: 2 });
+    const img = nativeImage.createFromBuffer(png, { scaleFactor: 2 });                       // 80×36 pixels shown at 40×18 → crisp on Retina
+    const sz = img.isEmpty() ? { width: 0, height: 0 } : img.getSize();
+    if (!chipLogged) { chipLogged = true; log(`tray chip ok ${sz.width}x${sz.height} png=${png.length}`); }
+    if (sz.width !== 40 || sz.height !== 18) { chipBad = true; log('tray chip bad size'); return null; }
+    img.setTemplateImage(false); return img; } catch (e) { log('tray chip error ' + e.message); return null; }
 }
 function setTrayBattery(b, style) {
   if (!tray) return;
@@ -529,7 +533,7 @@ app.whenReady().then(async () => {
   if (process.platform === 'darwin') app.dock?.hide();
   createOverlays(); ensureAudio();
   tray = new Tray(trayIcon()); tray.setIgnoreDoubleClickEvents(true); tray.setToolTip('Surge');
-  if (IS_MAC && process.env.SURGE_SELFTEST) { try { const t = trayChip({ level: 67, charging: true }); log('tray chip selftest ' + (t ? 'pass' : 'FAIL')); } catch (e) { log('tray chip selftest FAIL ' + e.message); } }
+  if (IS_MAC && process.env.SURGE_SELFTEST) { try { const t = trayChip({ level: 67, charging: true }); log('tray chip selftest ' + (t ? 'pass' : 'FAIL')); log('tray svg icon ' + (trayIcon({ level: 50 }).isEmpty() ? 'EMPTY' : 'ok')); } catch (e) { log('tray chip selftest FAIL ' + e.message); } }
   tray.on('click', togglePopover);
   tray.on('right-click', () => trayMenu && tray.popUpContextMenu(trayMenu));
   if (IS_WIN) app.setAppUserModelId('app.surge.glow');
