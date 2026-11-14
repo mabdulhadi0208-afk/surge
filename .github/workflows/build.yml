@@ -163,7 +163,10 @@ jobs:
           if ($exe.Length -lt 50MB) { throw "installer too small: $($exe.Length)" }
           Start-Process -FilePath $exe.FullName -ArgumentList '/S' -Wait
           $app = "$env:LOCALAPPDATA\Programs\Surge\Surge.exe"
-          if (!(Test-Path $app)) { throw "silent install did not produce $app" }
+          # the one-click installer can hand off to a second process and return early — wait for the files instead of assuming
+          for ($i = 0; $i -lt 60 -and !(Test-Path $app); $i++) { Start-Sleep -Seconds 1 }
+          if (!(Test-Path $app)) { Get-ChildItem "$env:LOCALAPPDATA\Programs" -ErrorAction SilentlyContinue; throw "silent install did not produce $app after 60s" }
+          Start-Sleep -Seconds 3
           "✓ installed to $app"
           $p = Start-Process -FilePath $app -PassThru; Start-Sleep -Seconds 10
           $log = "$env:USERPROFILE\AppData\Roaming\Surge\logs\surge.log"
