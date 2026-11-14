@@ -31,6 +31,7 @@ function mod(id) { return settings.modules[id]; }
 let hookAvail = false, hookState = 'unavailable';
 try { require.resolve('uiohook-napi'); hookAvail = true; hookState = 'ready'; } catch (e) { setTimeout(() => log('uiohook-napi not available:', e.message), 0); }
 const hookListeners = { keydown: new Set(), keyup: new Set(), mousedown: new Set(), mouseup: new Set(), wheel: new Set(), mousemove: new Set() };
+let hookMode = 'worker';   // 'worker' = thread inside Surge (preferred); 'process' = separate helper (fallback)
 let hookStarted = false, hookStarting = false, hookProc = null, hookTries = 0, hookRetry = null, axPrompted = false, quitting = false;
 function accessibilityOK(prompt) { if (process.platform !== 'darwin') return true; try { return systemPreferences.isTrustedAccessibilityClient(!!prompt); } catch { return true; } }
 function ensureHook() {
@@ -42,19 +43,23 @@ function ensureHook() {
     return false;
   }
   // The native hook lives in a helper process (hookhost.js). If its start() blocks, only the helper is stuck: we kill it and try again.
-  hookStarting = true; let started = false; log('hook host starting, try', hookTries + 1);
-  let child; try { const { utilityProcess } = require('electron'); child = utilityProcess.fork(path.join(__dirname, 'hookhost.js'), [], { serviceName: 'Surge Input', stdio: 'ignore' }); } catch (e) { hookStarting = false; hookState = 'error'; console.error('hook host spawn failed', e.message); return false; }
+  hookStarting = true; let started = false; const mode = hookMode; log(`hook starting (${mode}), try`, hookTries + 1);
+  let child; try {
+    if (mode === 'worker') { const { Worker } = require('worker_threads'); child = new Worker(path.join(__dirname, 'hookworker.js')); child.kill = () => child.terminate(); child.on('error', (e) => log('hook worker error:', e && e.message)); }
+    else { const { utilityProcess } = require('electron'); child = utilityProcess.fork(path.join(__dirname, 'hookhost.js'), [], { serviceName: 'Surge Input', stdio: 'ignore' }); }
+  } catch (e) { hookStarting = false; log(`hook ${mode} could not be created:`, e.message); if (mode === 'worker') { hookMode = 'process'; setTimeout(ensureHook, 300); } else hookState = 'error'; return false; }
   hookProc = child;
-  const t = setTimeout(() => { if (!started) { log('hook host did not start within 4s (native start blocked) — killing it'); try { child.kill(); } catch {} } }, 4000);
+  const t = setTimeout(() => { if (!started) { log(`hook (${mode}) did not start within 5s — stopping it`); try { child.kill(); } catch {} } }, 5000);
   child.on('message', (m) => {
     if (m.ev) { lastInputAt = Date.now(); inputCount++; if (m.ev === 'keydown') keyCount++; if (!hookEvents++) log('hook first event'); hookListeners[m.ev]?.forEach(fn => { try { fn(m.e); } catch (err) { console.error(err); } }); return; }
-    if (m.started) { started = true; clearTimeout(t); hookStarting = false; hookStarted = true; hookState = 'running'; log('hook started'); setTimeout(() => { if (hookProc === child) hookTries = 0; }, 30000); watchHookAlive(); ctx.broadcast('settings:update', settings); }
+    if (m.started) { started = true; clearTimeout(t); hookStarting = false; hookStarted = true; hookState = 'running'; log(`hook started (${mode})`); setTimeout(() => { if (hookProc === child) hookTries = 0; }, 30000); watchHookAlive(); ctx.broadcast('settings:update', settings); }
     else if (m.error) log('hook host error:', m.error);
   });
   child.on('exit', (code) => {
     clearTimeout(t); if (hookProc !== child) return; hookProc = null; const was = hookStarted; hookStarted = false; hookStarting = false; if (quitting) return;
     log('hook host exited', code, was ? '(was running)' : '(never started)');
-    if (++hookTries < 4) setTimeout(ensureHook, 700 * hookTries);
+    if (++hookTries < 3) setTimeout(ensureHook, 700 * hookTries);
+    else if (mode === 'worker') { log('hook worker failed 3 times → trying the helper process instead'); hookMode = 'process'; hookTries = 0; setTimeout(ensureHook, 500); }
     else { hookState = accessibilityOK(false) ? 'stale' : 'needs-accessibility'; log('hook host gave up after 4 tries →', hookState); ctx.broadcast('settings:update', settings); }
   });
   return false;
@@ -79,7 +84,7 @@ function onHookDead() {
   stopHook();
   // NEVER reset the permission entry from a running Surge: macOS terminates the app whose entry is reset (that was the "updated and quit" bug).
   // Mark it stale instead; the popover/settings offer a one-click Repair that resets + relaunches on purpose.
-  if (deadFixes++ < 2) { log('restarting the hook helper (attempt', deadFixes, ')'); hookTries = 0; setTimeout(ensureHook, 500); return; }   // a fresh helper usually hears again
+  if (deadFixes++ < 2) { if (deadFixes === 2) hookMode = hookMode === 'worker' ? 'process' : 'worker'; log('hook went deaf → restarting it as', hookMode, '(attempt', deadFixes, ')'); hookTries = 0; setTimeout(ensureHook, 500); return; }   // a fresh helper usually hears again
   hookState = 'stale'; ctx.broadcast('settings:update', settings);
   if (deadFixes === 3) fireGlow('warn', { hud: { text: 'Keyboard & mouse permission needs a repair — click ⚡ → Repair', color: '#FFD60A' } });
 }
