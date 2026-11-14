@@ -29,7 +29,7 @@
   /* media */
   .media{min-width:220px;flex-direction:row;gap:12px;padding:8px 14px} .media .art{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#7A5CFF,#FF3DF0);display:grid;place-items:center;flex:none;overflow:hidden} .media .art svg{width:20px;height:20px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   .media .art .bars{display:flex;gap:2px;align-items:flex-end;height:18px} .media .art .bars i{width:3px;background:#fff;border-radius:2px;animation:eq .9s ease-in-out infinite} .media .art .bars i:nth-child(2){animation-delay:.2s} .media .art .bars i:nth-child(3){animation-delay:.4s}
-  @keyframes eq{0%,100%{height:5px}50%{height:18px}}
+  @keyframes eq{0%,100%{transform:scaleY(.28)}50%{transform:scaleY(1)}} .media .art .bars i{height:18px;transform-origin:50% 100%}
   .media .t{display:flex;flex-direction:column;min-width:0;flex:1} .media .t b{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px} .media .t small{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px}
   .media .c{display:flex;gap:4px} .media .c button{all:unset;cursor:pointer;width:28px;height:28px;border-radius:9px;display:grid;place-items:center;transition:background .2s,transform .3s var(--spring)} .media .c button:hover{background:rgba(255,255,255,.12)} .media .c button:active{transform:scale(.9)} .media .c svg{width:14px;height:14px;fill:#fff}
   /* volume */
@@ -66,7 +66,7 @@
   body.top .dock{animation-name:dockInTop} @keyframes dockInTop{from{transform:translateY(-60px) scale(.9);opacity:0}}
   /* the current line: a thin stream of light under everything; it flows while charging */
   .dock::before{inset:auto 30px 5px 30px;height:2.5px;padding:0;border-radius:3px;-webkit-mask:none;mask:none;background:linear-gradient(90deg,transparent,var(--a),#00D4FF,var(--a),transparent);background-size:200% 100%;opacity:.22;animation:none}
-  .dock.charging::before{opacity:.95;animation:stream 2.4s linear infinite;box-shadow:0 0 12px var(--a)} @keyframes stream{to{background-position:-200% 0}}
+  .dock.charging::before{opacity:.95;animation:stream 2.4s ease-in-out infinite;box-shadow:0 0 12px var(--a)} @keyframes stream{50%{opacity:.45;transform:scaleX(.92)}}
   .w{border:0;background:rgba(255,255,255,.055);border-radius:22px;height:74px;transition:transform .5s var(--flow),background .3s}
   .w:hover{background:rgba(255,255,255,.11);border:0;transform:translateY(-7px) scale(1.05)} .w.on{border:0;background:color-mix(in srgb,var(--a) 20%,transparent);box-shadow:0 12px 26px -14px var(--a)}
   .w .l{text-transform:none;letter-spacing:0;font-size:11px;font-weight:600}
@@ -95,7 +95,7 @@
   .ap .dot{transition:width .6s var(--spring),background .3s,box-shadow .3s}
   #ctx{animation:ctxIn .6s var(--spring) backwards;transform-origin:50% 100%} @keyframes ctxIn{from{opacity:0;transform:scale(.7) translateY(14px)}} #ctx .it{transition:background .2s,transform .5s var(--spring),padding .5s var(--spring)} #ctx .it:hover{transform:translateX(4px)}
   .cell i{transition:height 1.6s var(--spring-soft),background .5s}
-</style><script>window.FLUID={light:false,magnet:'.none',press:'.w:not(.apps),.ap .ic,#ctx .it',ripple:'.w:not(.apps)',pop:'#clk,#bpct'}</script><link rel="stylesheet" href="fluid.css"><script defer src="fluid.js"></script><link rel="stylesheet" href="fx.css"><script defer src="fx.js"></script>
+</style><script>window.FLUID={keepAlive:true,light:false,magnet:'.none',press:'.w:not(.apps),.ap .ic,#ctx .it',ripple:'.w:not(.apps)',pop:'#clk,#bpct'}</script><link rel="stylesheet" href="fluid.css"><script defer src="fluid.js"></script><link rel="stylesheet" href="fx.css"><script defer src="fx.js"></script>
 </head>
 <body>
 <div class="dock" id="dock"></div><div id="tip"></div><div id="ctx"></div>
@@ -132,11 +132,14 @@ async function refreshApps(){ const box=$('#apps'); if(!box||dragging) return; r
   requestAnimationFrame(fit); }
 /* ---------- magnification (macOS-style gaussian, lerped per frame) */
 let mx=null, my=null, magT=null;
-function magLoop(){ const els=document.querySelectorAll('.ap'); if(!els.length) return; const d=S.modules?.dock||{}; const base=52;
-  let any=false; els.forEach(x=>{ const cur=+(x.dataset.s||1); let target=1;
-    if(d.magnify&&mx!=null&&!dragging){ const r=x.getBoundingClientRect(); const dx=mx-(r.left+r.width/2); target=1+.62*Math.exp(-(dx*dx)/(2*62*62)); }
-    const nxt=cur+(target-cur)*.38; if(Math.abs(nxt-target)<.003){ if(cur===target) return; x.dataset.s=target; } else { x.dataset.s=nxt; any=true; }
-    const s=+x.dataset.s; x.style.setProperty('--s',s.toFixed(3)); x.style.setProperty('--lift',(-(s-1)*10).toFixed(2)+'px'); x.style.width=Math.round(base*(1+(s-1)*.78))+'px'; });
+function magLoop(){ const els=[...document.querySelectorAll('.ap')]; if(!els.length){ magT=null; return; } const d=S.modules?.dock||{}; const base=52;
+  // read every position first, then write: one layout per frame instead of one per icon
+  const on=d.magnify&&mx!=null&&!dragging, cx=on?els.map(x=>{ const r=x.getBoundingClientRect(); return r.left+r.width/2; }):null;
+  let any=false; els.forEach((x,i)=>{ const cur=+(x.dataset.s||1); let v=+(x.dataset.v||0), target=1;
+    if(on){ const dx=mx-cx[i]; target=1+.62*Math.exp(-(dx*dx)/(2*62*62)); }
+    v=(v+(target-cur)*.2)*.66; let nxt=cur+v;                       // a damped spring: icons swell with a touch of overshoot and settle
+    if(Math.abs(nxt-target)<.003&&Math.abs(v)<.003){ if(cur===target&&!v) return; nxt=target; v=0; } else any=true;
+    x.dataset.s=nxt; x.dataset.v=v; x.style.setProperty('--s',nxt.toFixed(3)); x.style.setProperty('--lift',(-(nxt-1)*10).toFixed(2)+'px'); x.style.width=Math.round(base*(1+(Math.max(1,nxt)-1)*.78))+'px'; });
   if(any) magT=requestAnimationFrame(magLoop); else magT=null; }
 function kick(){ if(!magT) magT=requestAnimationFrame(magLoop); }
 addEventListener('mousemove',e=>{ const box=$('#apps'); if(!box) return; const r=box.getBoundingClientRect(); const inside=e.clientY>r.top-40&&e.clientY<r.bottom+6&&e.clientX>r.left-30&&e.clientX<r.right+30; mx=inside?e.clientX:null; my=e.clientY; kick(); if(dragging) dragMove(e); });

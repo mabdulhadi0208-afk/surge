@@ -80,10 +80,10 @@
 
   /* ───────── fluid max ───────── */
   .panel{animation:pop .95s var(--spring-soft) both;box-shadow:0 40px 100px -24px rgba(0,0,0,.95),0 0 60px -30px var(--a),inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px rgba(255,255,255,.05)}
-  @keyframes pop{from{opacity:0;transform:scale(.7) translateY(-40px);filter:blur(10px)}}
+  @keyframes pop{from{opacity:0;transform:scale(.7) translateY(-40px)}}
   header{box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 18px 40px -26px var(--tc);transition:box-shadow .8s}
   .liq{transition:width 1.8s var(--spring-soft),background .6s}
-  .liq::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.16) 48%,transparent 62%);background-size:220% 100%;animation:sheen 4.2s ease-in-out infinite} @keyframes sheen{from{background-position:120% 0}to{background-position:-120% 0}}
+  .liq::after{content:"";position:absolute;top:0;bottom:0;left:0;width:60%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.16) 50%,transparent);will-change:transform;animation:sheen 4.2s ease-in-out infinite} @keyframes sheen{0%{transform:translateX(-110%);opacity:0}25%{opacity:1}70%{opacity:1}100%{transform:translateX(66%);opacity:0}}
   .ht b{display:inline-block;transform-origin:0 100%;background:linear-gradient(180deg,#fff,color-mix(in srgb,var(--tc) 35%,#fff));-webkit-background-clip:text;background-clip:text;color:transparent}
   .m{transition:transform .7s var(--spring)} .m svg{transition:background .5s var(--flow),stroke .3s,box-shadow .5s,transform .7s var(--spring)}
   .m:hover svg{transform:translateY(-5px) scale(1.14) rotate(-6deg)} .m:hover span{color:var(--ink)} .m span{transition:color .3s,transform .6s var(--spring)} .m:hover span{transform:translateY(-1px)}
@@ -167,7 +167,7 @@ $('#chkBtn').onclick=()=>{ api?.testSound('key',{preset:S.modules?.keys?.preset,
 sndCheck(); setInterval(sndCheck,1000); addEventListener('focus',sndCheck);
 // the window grows/shrinks to fit its content — nothing (alerts, footer) may ever be cut off
 let lastH=0; function fitH(){ const q=document.querySelector('.quick'), f=document.querySelector('footer'); if(!q||!f) return; const h=Math.min(860,Math.ceil(q.offsetTop+q.offsetHeight+f.offsetHeight+44)); if(Math.abs(h-lastH)>1){ lastH=h; api?.popoverHeight?.(h); } }
-new MutationObserver(()=>requestAnimationFrame(fitH)).observe(document.querySelector('.panel'),{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']}); setInterval(fitH,1000); requestAnimationFrame(fitH); function restage(){ document.querySelectorAll('.m').forEach((el,i)=>el.style.setProperty('--i',i)); document.querySelectorAll('.q').forEach((el,i)=>el.style.setProperty('--i',i)); const p=document.querySelector('.panel'); p.classList.remove('show'); void p.offsetWidth; p.classList.add('show'); }
+new MutationObserver(rs=>{ /* only layout-changing mutations matter; cursor effects restyle things every frame */ if(rs.some(r=>r.type==='childList'?!(r.target.closest&&r.target.closest('.fl-layer,.grid .m,.q,header')):(r.attributeName==='style'&&(r.target.classList.contains('upd')||r.target.id==='chk'||r.target.id==='grid'))||(r.attributeName==='class'&&r.target.classList.contains('panel')))) requestAnimationFrame(fitH); }).observe(document.querySelector('.panel'),{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']}); setInterval(fitH,1000); requestAnimationFrame(fitH); function restage(){ document.querySelectorAll('.m').forEach((el,i)=>el.style.setProperty('--i',i)); document.querySelectorAll('.q').forEach((el,i)=>el.style.setProperty('--i',i)); const p=document.querySelector('.panel'); p.classList.remove('show'); void p.offsetWidth; p.classList.add('show'); }
 api?.on('popover:show',restage); setTimeout(restage,60);
 api?.on('popover:edge',e=>document.body.classList.toggle('bottom',e==='bottom')); api?.on('popover:show',()=>{ hook=''; api?.hookState().then(h=>{hook=h;}); batt(); state(); document.querySelector('.panel').style.animation='none'; void document.querySelector('.panel').offsetWidth; document.querySelector('.panel').style.animation=''; });
   setInterval(()=>{ batt(); state(); },2000); })();

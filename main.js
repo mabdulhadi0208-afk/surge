@@ -424,7 +424,7 @@ function chipFlow(b) {
       if (!img) { img = nativeImage.createFromBuffer(C.chipFramePNG(flowL, flowI), { scaleFactor: 2 }); if (img.isEmpty()) return chipFlow(null); img.setTemplateImage(false); flowFrames[flowI] = img; }
       tray.setImage(img);
       if (!flowLogged && flowI === C.FRAMES - 1) { flowLogged = true; log('tray chip flow ok ' + C.FRAMES + ' frames'); }
-    } catch (e) { log('tray chip flow error ' + e.message); chipFlow(null); } }, b.charging ? 110 : 170);
+    } catch (e) { log('tray chip flow error ' + e.message); chipFlow(null); } }, b.charging ? 140 : 260);
   } catch (e) { log('tray chip flow error ' + e.message); }
 }
 function chipFlowPause(p) { flowPaused = p; if (p) chipFlow(null); else { trayIconKey = ''; try { MODULES.glow?.onSettings?.(ctx); } catch {} } }
