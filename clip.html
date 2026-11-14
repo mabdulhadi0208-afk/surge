@@ -18,7 +18,16 @@
   .it .m{color:var(--muted);font-size:10.5px;flex:none} .it .x{all:unset;cursor:pointer;width:20px;height:20px;border-radius:6px;display:grid;place-items:center;color:var(--muted);opacity:0} .it:hover .x{opacity:1} .it .x:hover{background:rgba(255,92,92,.25);color:#fff}
   .empty{padding:60px 20px;text-align:center;color:var(--muted)}
   .foot{display:flex;justify-content:space-between;padding:8px 16px 10px;border-top:1px solid var(--line);color:var(--muted);font-size:11px} .foot a{cursor:pointer} .foot a:hover{color:var(--ink)}
-</style></head>
+
+  /* fluid max */
+  .box{border:0;border-radius:26px;box-shadow:0 40px 100px -30px rgba(0,0,0,.95),0 0 70px -34px var(--a),inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px rgba(255,255,255,.05)}
+  .box.in{animation:in .9s var(--spring-soft)} @keyframes in{from{transform:translateY(30px) scale(.86);opacity:0;filter:blur(8px)}}
+  .top input{border:0;background:rgba(255,255,255,.07);border-radius:16px;transition:box-shadow .4s,background .3s,transform .7s var(--spring)} .top input:focus{box-shadow:0 0 0 3px color-mix(in srgb,var(--a) 26%,transparent);transform:scale(1.01)}
+  .it{border-radius:14px;transition:background .25s,transform .7s var(--spring),box-shadow .3s;animation:row .8s var(--spring-soft) backwards;animation-delay:calc(var(--i)*22ms)} @keyframes row{from{opacity:0;transform:translateX(-26px) scale(.94)}}
+  .it:hover{transform:translateX(5px)} .it.sel{background:color-mix(in srgb,var(--a) 16%,transparent);box-shadow:inset 3px 0 0 var(--a);transform:translateX(5px)}
+  .foot{border-top:0;background:rgba(0,0,0,.22)}
+</style><script>window.FLUID={blobs:1,magnet:'.none'}</script><link rel="stylesheet" href="fluid.css"><script defer src="fluid.js"></script>
+</head>
 <body><div class="box" id="box">
   <div class="top"><input id="q" placeholder="Search your clipboard…" autofocus><span class="k">↵ paste · esc close</span></div>
   <div class="list" id="list"></div>

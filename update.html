@@ -21,7 +21,15 @@
   .lnk{all:unset;cursor:pointer;color:var(--muted);font-size:12px;padding:7px 10px;border-radius:9px} .lnk:hover{background:rgba(255,255,255,.08);color:#fff}
   .error .btn{background:linear-gradient(135deg,#FFB300,#FF7A00);box-shadow:0 10px 30px -8px #FFB300}
   .ok{position:absolute;inset:0;display:none;align-items:center;justify-content:center;gap:12px;font-size:16px;font-weight:700;background:rgba(14,14,20,.96)} .ok svg{width:26px;height:26px;stroke:var(--a);fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round} .installing .ok{display:flex}
-</style></head><body>
+
+  /* fluid max */
+  .card{border:0;border-radius:28px;background:linear-gradient(180deg,#131824,#0b0e15);box-shadow:0 30px 80px -20px rgba(0,0,0,.95),0 0 70px -30px var(--a),inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px rgba(255,255,255,.05);animation:pop .95s var(--spring-soft) both!important}
+  @keyframes pop{from{opacity:0;transform:translateY(-40px) scale(.8);filter:blur(8px)}}
+  .ic{border:0;border-radius:50%;background:color-mix(in srgb,var(--a) 16%,transparent);transition:transform .8s var(--spring)} .ic .ring{border-radius:50%} .card:hover .ic{transform:scale(1.08) rotate(-6deg)}
+  .btn{transition:transform .7s var(--spring),box-shadow .4s} .btn:hover{transform:translateY(-3px) scale(1.06)} .lnk{transition:transform .7s var(--spring),background .3s,color .3s} .lnk:hover{transform:translateY(-2px)}
+  .bar{height:8px;border-radius:4px} .bar i{border-radius:4px;transition:width .8s var(--spring-soft)}
+</style><script>window.FLUID={host:'.card',magnet:'.btn'}</script><link rel="stylesheet" href="fluid.css"><script defer src="fluid.js"></script>
+</head><body>
 <div class="card" id="card">
   <div class="aura"></div>
   <div class="in">

@@ -18,7 +18,15 @@
   .a .n{font-size:11.5px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
   .a .n b{color:var(--a);font-weight:700}
   .empty{grid-column:1/-1;padding:40px;text-align:center;color:var(--muted)}
-</style></head>
+
+  /* fluid max */
+  .pad{border:0;border-radius:30px;box-shadow:0 40px 100px -30px rgba(0,0,0,.95),0 0 80px -36px var(--a),inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px rgba(255,255,255,.05);animation:in .95s var(--spring-soft)!important}
+  @keyframes in{from{transform:scale(.8) translateY(30px);opacity:0;filter:blur(10px)}}
+  .top input{border:0;border-radius:16px;transition:box-shadow .4s,transform .7s var(--spring)} .top input:focus{box-shadow:0 0 0 3px color-mix(in srgb,var(--a) 26%,transparent)}
+  .a{border-radius:20px;transition:background .25s,transform .75s var(--spring);animation:aIn .85s var(--spring-soft) backwards;animation-delay:calc(min(var(--i,0),40)*14ms)} @keyframes aIn{from{opacity:0;transform:translateY(30px) scale(.6)}}
+  .a:hover,.a.sel{transform:translateY(-6px) scale(1.08);background:rgba(255,255,255,.07)} .a .ic{transition:transform .75s var(--spring),box-shadow .4s} .a:hover .ic,.a.sel .ic{box-shadow:0 20px 30px -12px #000,0 0 30px -10px var(--a)}
+</style><script>window.FLUID={host:'.pad',blobs:1,magnet:'.none',press:'.a,button',ripple:'.none'}</script><link rel="stylesheet" href="fluid.css"><script defer src="fluid.js"></script>
+</head>
 <body><div class="pad">
   <div class="top"><input id="q" placeholder="Search apps…" autofocus><span class="k">↵ open · esc close</span></div>
   <div class="grid" id="grid"></div>
@@ -29,7 +37,7 @@ function esc(s){ return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt
 function mark(name,q){ if(!q) return esc(name); const i=name.toLowerCase().indexOf(q.toLowerCase()); return i<0?esc(name):esc(name.slice(0,i))+'<b>'+esc(name.slice(i,i+q.length))+'</b>'+esc(name.slice(i+q.length)); }
 function score(a,q){ const n=a.name.toLowerCase(); if(!q) return 1; if(n.startsWith(q)) return 3; if(n.split(/\s+/).some(w=>w.startsWith(q))) return 2; if(n.includes(q)) return 1; return 0; }
 function render(){ const q=$('#q').value.trim().toLowerCase(); shown=ALL.map(a=>[score(a,q),a]).filter(x=>x[0]>0).sort((x,y)=>y[0]-x[0]||x[1].name.localeCompare(y[1].name)).map(x=>x[1]); sel=0;
-  const g=$('#grid'); g.innerHTML=shown.length?shown.map((a,i)=>`<div class="a ${i===0&&q?'sel':''}" data-i="${i}"><div class="ic" data-p="${esc(a.path)}">${icons[a.path]?`<img src="${icons[a.path]}">`:esc(a.name[0].toUpperCase())}</div><div class="n">${mark(a.name,q)}</div></div>`).join(''):'<div class="empty">No apps match</div>';
+  const g=$('#grid'); g.innerHTML=shown.length?shown.map((a,i)=>`<div class="a ${i===0&&q?'sel':''}" data-i="${i}" style="--i:${i}"><div class="ic" data-p="${esc(a.path)}">${icons[a.path]?`<img src="${icons[a.path]}">`:esc(a.name[0].toUpperCase())}</div><div class="n">${mark(a.name,q)}</div></div>`).join(''):'<div class="empty">No apps match</div>';
   g.querySelectorAll('.a').forEach(el=>el.onclick=()=>open(shown[+el.dataset.i]));
   lazyIcons(); }
 let io=null;
