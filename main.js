@@ -47,7 +47,7 @@ function ensureHook() {
   hookProc = child;
   const t = setTimeout(() => { if (!started) { log('hook host did not start within 4s (native start blocked) — killing it'); try { child.kill(); } catch {} } }, 4000);
   child.on('message', (m) => {
-    if (m.ev) { lastInputAt = Date.now(); if (!hookEvents++) log('hook first event'); hookListeners[m.ev]?.forEach(fn => { try { fn(m.e); } catch (err) { console.error(err); } }); return; }
+    if (m.ev) { lastInputAt = Date.now(); inputCount++; if (m.ev === 'keydown') keyCount++; if (!hookEvents++) log('hook first event'); hookListeners[m.ev]?.forEach(fn => { try { fn(m.e); } catch (err) { console.error(err); } }); return; }
     if (m.started) { started = true; clearTimeout(t); hookStarting = false; hookStarted = true; hookState = 'running'; log('hook started'); setTimeout(() => { if (hookProc === child) hookTries = 0; }, 30000); watchHookAlive(); ctx.broadcast('settings:update', settings); }
     else if (m.error) log('hook host error:', m.error);
   });
@@ -65,11 +65,13 @@ function stopHook() { const c = hookProc; hookProc = null; hookStarted = false; 
 let hookEvents = 0, deadFixes = 0, aliveT = null;
 function watchHookAlive() {
   if (process.platform !== 'darwin' || aliveT) return;
-  hookEvents = 0; let moves = 0, last = null, ticks = 0;
+  // runs for as long as the hook does (not just at startup): the cursor moving ~5 s with zero hook events since = the hook went deaf
+  let moves = 0, last = null, seen = hookEvents;
   aliveT = setInterval(() => {
-    ticks++; const c = screen.getCursorScreenPoint(); if (last && (c.x !== last.x || c.y !== last.y)) moves++; last = c;
-    if (hookEvents > 0) { clearInterval(aliveT); aliveT = null; return; }                         // alive
-    if (moves >= 10 || ticks > 150) { clearInterval(aliveT); aliveT = null; if (moves >= 10) onHookDead(); }
+    if (!hookStarted) { clearInterval(aliveT); aliveT = null; return; }
+    if (hookEvents !== seen) { seen = hookEvents; moves = 0; }
+    const c = screen.getCursorScreenPoint(); if (last && (c.x !== last.x || c.y !== last.y)) moves++; last = c;
+    if (moves >= 12) { clearInterval(aliveT); aliveT = null; onHookDead(); }
   }, 400);
 }
 function onHookDead() {
@@ -77,8 +79,9 @@ function onHookDead() {
   stopHook();
   // NEVER reset the permission entry from a running Surge: macOS terminates the app whose entry is reset (that was the "updated and quit" bug).
   // Mark it stale instead; the popover/settings offer a one-click Repair that resets + relaunches on purpose.
+  if (deadFixes++ < 2) { log('restarting the hook helper (attempt', deadFixes, ')'); hookTries = 0; setTimeout(ensureHook, 500); return; }   // a fresh helper usually hears again
   hookState = 'stale'; ctx.broadcast('settings:update', settings);
-  if (deadFixes++ === 0) fireGlow('warn', { hud: { text: 'Keyboard & mouse permission needs a repair — click ⚡ → Repair', color: '#FFD60A' } });
+  if (deadFixes === 3) fireGlow('warn', { hud: { text: 'Keyboard & mouse permission needs a repair — click ⚡ → Repair', color: '#FFD60A' } });
 }
 /* ---- clean-exit marker + watchdog: if Surge dies without meaning to (crash, killed by macOS), it comes back by itself */
 const cleanExitPath = () => path.join(app.getPath('userData'), 'clean-exit');
@@ -159,7 +162,7 @@ function ensureAudio() {
   audioWin.webContents.on('console-message', (_e, lvl, msg) => lvl >= 2 && log('audio', msg));
   return audioWin;
 }
-function play(sound, opts = {}) { if (settings.muted && !opts.force) return; lastSoundAt = Date.now(); const w = ensureAudio(); if (!w || w.isDestroyed()) return; const send = () => { try { w.webContents.send('audio:play', { sound, master: settings.masterVolume ?? 1, ...opts }); } catch {} }; w.webContents.isLoading() ? w.webContents.once('did-finish-load', send) : send(); }
+function play(sound, opts = {}) { if (settings.muted && !opts.force) return; lastSoundAt = Date.now(); soundCount++; const w = ensureAudio(); if (!w || w.isDestroyed()) return; const send = () => { try { w.webContents.send('audio:play', { sound, master: settings.masterVolume ?? 1, ...opts }); } catch {} }; w.webContents.isLoading() ? w.webContents.once('did-finish-load', send) : send(); }
 function sysSound(name) { if (IS_MAC) execFile('afplay', [`/System/Library/Sounds/${name}.aiff`], () => {}); else play('chime', { name, volume: .6 }); }
 
 /* ------------------------------------------------------------------ battery (shared by modules) */
@@ -328,7 +331,7 @@ function ensurePopover() {
   return popWin;
 }
 let popBelow = true;
-ipcMain.on('popover:height', (_e, h) => { const w = popWin; if (!w || w.isDestroyed() || !(h > 200)) return; h = Math.round(Math.min(h, 820)); const b = w.getBounds(); if (b.height === h) return;
+ipcMain.on('popover:height', (_e, h) => { const w = popWin; if (!w || w.isDestroyed() || !(h > 200)) return; h = Math.round(Math.min(h, 860)); const b = w.getBounds(); if (b.height === h) return;
   const d = screen.getDisplayNearestPoint({ x: b.x, y: b.y }); const maxH = d.workArea.height - 16; h = Math.min(h, maxH);
   let y = popBelow ? b.y : b.y + b.height - h; y = Math.max(d.workArea.y + 6, Math.min(y, d.workArea.y + d.workArea.height - h - 6));
   w.setBounds({ x: b.x, y, width: b.width, height: h }, false); });
@@ -431,7 +434,7 @@ ipcMain.handle('settings:reset', () => { settings = { launchAtLogin: settings.la
 ipcMain.handle('modules:list', () => Object.values(MODULES).map(m => ({ id: m.id, name: m.name, icon: m.icon, group: m.group, desc: m.desc, needsHook: !!m.needsHook, schema: m.schema || [] })));
 ipcMain.handle('battery:get', () => battery);
 ipcMain.handle('hook:state', () => hookState);
-let lastInputAt = 0, lastSoundAt = 0, audioState = '';
+let lastInputAt = 0, lastSoundAt = 0, audioState = '', inputCount = 0, keyCount = 0, soundCount = 0;
 // one plain-language answer to "why is there no sound?", shown in the popover
 ipcMain.handle('sound:diag', () => {
   const k = mod('keys') || {}, m = mod('mouse') || {};
@@ -445,9 +448,9 @@ ipcMain.handle('sound:diag', () => {
   else if (hookState !== 'running') { code = 'starting'; text = 'Starting the keyboard & mouse listener…'; }
   else if ((k.enabled && !(k.volume > 0.02)) && (!m.enabled || !(m.volume > 0.02))) { code = 'modvol'; text = 'Keyboard sound volume is at zero'; }
   else if (!lastInputAt) { code = 'waiting'; text = 'Listening — press any key to test'; }
-  return { code, text, hookState, lastInputAt, lastSoundAt, audioState, keys: !!k.enabled, mouse: !!m.enabled };
+  return { code, text, hookState, lastInputAt, lastSoundAt, audioState, keys: !!k.enabled, mouse: !!m.enabled, inputCount, keyCount, soundCount, preset: k.preset, keyVol: k.volume };
 });
-ipcMain.on('audio:ack', (_e, st) => { if (!audioState) log('audio ok — first sound played, context', st); audioState = String(st); });
+ipcMain.on('audio:ack', (_e, st) => { if (!audioState) log('audio ok — first sound played, context', st); else log('audio:', st); audioState = String(st); });
 ipcMain.handle('module:action', (_e, id, action, arg) => { try { return MODULES[id]?.actions?.[action]?.(ctx, arg); } catch (e) { console.error(e); } });
 ipcMain.on('glow:preview', (_e, kind) => fireGlow(kind || 'preview', kind === 'low' ? { level: 12 } : kind === 'full' ? { level: 100 } : {}));
 ipcMain.on('audio:test', (_e, sound, opts) => play(sound, { ...(opts || {}), force: true }));

@@ -3,10 +3,23 @@
 <script src="sounds.js"></script>
 <script>
 /* Surge synth — every sound is generated with WebAudio. No samples, no licensing, tiny app. */
-const AC = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
-const master = AC.createGain(); master.gain.value = 1; master.connect(AC.destination);
-const comp = AC.createDynamicsCompressor(); comp.threshold.value = -6; comp.ratio.value = 2; comp.knee.value = 10; comp.connect(master);
-const noiseBuf = (() => { const b = AC.createBuffer(1, AC.sampleRate * 0.5, AC.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return b; })();
+let AC, master, comp, noiseBuf, builds = 0;
+// The whole audio graph can be rebuilt at any time: when the output device changes (headphones, Bluetooth, display speakers)
+// or when the engine stalls (reports "running" but its clock has stopped), the old context is silent forever. A fresh one is not.
+function build(reason) {
+  try { AC?.close(); } catch {}
+  AC = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+  master = AC.createGain(); master.gain.value = 1; master.connect(AC.destination);
+  comp = AC.createDynamicsCompressor(); comp.threshold.value = -6; comp.ratio.value = 2; comp.knee.value = 10; comp.connect(master);
+  const b = AC.createBuffer(1, AC.sampleRate * 0.5, AC.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; noiseBuf = b;
+  builds++; if (reason) window.surge?.audioAck?.(`rebuilt (${reason}) → ${AC.state}`);
+}
+build();
+try { navigator.mediaDevices.addEventListener('devicechange', () => { clearTimeout(build.t); build.t = setTimeout(() => build('output device changed'), 600); }); } catch {}
+let ctAt = 0, ctVal = 0;
+function healthy() { const now = performance.now(); if (AC.state === 'closed') return build('context closed');
+  if (ctAt && now - ctAt > 1500 && AC.state === 'running' && AC.currentTime - ctVal < 0.05) build('engine stalled');
+  ctAt = performance.now(); ctVal = AC.currentTime; }
 const rnd = (a, b) => a + Math.random() * (b - a);
 
 function chain(node, t, dur, hp) { if (!hp) return node.connect(comp); const h = AC.createBiquadFilter(); h.type = 'highpass'; h.frequency.value = hp; node.connect(h).connect(comp); return h; }
@@ -48,6 +61,7 @@ function playUp(p, v){ const u = p.up; if (!u) return; v *= p.gain ?? 1; if (u.t
 
 let acked = false;
 function play(p) {
+  healthy();
   if (AC.state !== 'running') AC.resume();
   if (!acked) { acked = true; setTimeout(() => window.surge?.audioAck?.(AC.state), 150); }
   const v = Math.max(0, Math.min(1, (p.volume ?? .5) * (p.master ?? 1)));

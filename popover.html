@@ -54,6 +54,7 @@
   <div class="sec">Modules</div>
   <div class="grid" id="grid"></div>
   <div class="vol"><svg id="mute" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4z"/><path id="waves" d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></svg><input type="range" id="master" min="0" max="1" step=".01"><output id="mout">100%</output></div>
+  <div id="chk" style="display:flex;align-items:center;gap:8px;margin:2px 16px 0;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid var(--line);font-size:11.5px;color:var(--muted)"><span id="chkT" style="flex:1;line-height:1.35"></span><button id="chkBtn" style="all:unset;cursor:pointer;padding:5px 10px;border-radius:8px;background:rgba(255,255,255,.1);color:var(--ink);font-weight:600;font-size:11.5px">Test sound</button></div>
   <div class="sec">Quick</div>
   <div class="quick">
     <button class="q" id="qCaf"><svg viewBox="0 0 24 24"><path d="M4 8h12v6a5 5 0 0 1-10 0z"/><path d="M16 9h2a2 2 0 1 1 0 4h-2M6 20h10"/></svg>Caffeine</button>
@@ -100,10 +101,12 @@ $('#ver').onclick=async()=>{ toast('Checking…'); const u=await api?.action('up
 // "why is there no sound?" — one line, one button
 const SND={muted:['Unmute',()=>api?.setSettings({muted:false})],volume:['Turn up',()=>api?.setSettings({masterVolume:1})],off:['Turn on',()=>api?.setSettings({modules:{keys:{enabled:true}}})],permission:['Allow',()=>api?.openAccessibility()],stale:['Repair',()=>api?.repairAccessibility()],error:['Settings',()=>api?.openSettings('keys')],modvol:['Fix',()=>api?.setSettings({modules:{keys:{volume:.6}}})]};
 async function sndCheck(){ const d=await api?.soundDiag?.(); if(!d) return; const f=SND[d.code]; const ax=$('#ax'); const dup=(d.code==='permission'||d.code==='stale')&&ax&&ax.style.display!=='none';
+  $('#chkT').innerHTML=`Keys heard <b style="color:var(--ink)">${d.keyCount}</b> · sounds sent <b style="color:var(--ink)">${d.soundCount}</b> · engine <b style="color:var(--ink)">${(d.audioState||'idle').replace(/^rebuilt.*→ /,'')}</b>${d.code==='waiting'?' · press a key':''}`;
   $('#snd').style.display=f&&!dup?'flex':'none'; if(f){ $('#sndT').textContent='No sound: '+d.text; $('#sndBtn').textContent=f[0]; $('#sndBtn').onclick=async()=>{ await f[1](); setTimeout(sndCheck,400); }; } }
-sndCheck(); setInterval(sndCheck,2000); addEventListener('focus',sndCheck);
+$('#chkBtn').onclick=()=>{ api?.testSound('key',{preset:S.modules?.keys?.preset,volume:.9,kind:'key'}); setTimeout(()=>api?.testSound('key',{preset:S.modules?.keys?.preset,volume:.9,kind:'space'}),160); setTimeout(()=>api?.testSound('bell',{volume:.8}),380); setTimeout(sndCheck,600); };
+sndCheck(); setInterval(sndCheck,1000); addEventListener('focus',sndCheck);
 // the window grows/shrinks to fit its content — nothing (alerts, footer) may ever be cut off
-let lastH=0; function fitH(){ const q=document.querySelector('.quick'), f=document.querySelector('footer'); if(!q||!f) return; const h=Math.min(820,Math.ceil(q.offsetTop+q.offsetHeight+f.offsetHeight+44)); if(Math.abs(h-lastH)>1){ lastH=h; api?.popoverHeight?.(h); } }
+let lastH=0; function fitH(){ const q=document.querySelector('.quick'), f=document.querySelector('footer'); if(!q||!f) return; const h=Math.min(860,Math.ceil(q.offsetTop+q.offsetHeight+f.offsetHeight+44)); if(Math.abs(h-lastH)>1){ lastH=h; api?.popoverHeight?.(h); } }
 new MutationObserver(()=>requestAnimationFrame(fitH)).observe(document.querySelector('.panel'),{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']}); setInterval(fitH,1000); requestAnimationFrame(fitH); api?.on('popover:edge',e=>document.body.classList.toggle('bottom',e==='bottom')); api?.on('popover:show',()=>{ hook=''; api?.hookState().then(h=>{hook=h;}); batt(); state(); document.querySelector('.panel').style.animation='none'; void document.querySelector('.panel').offsetWidth; document.querySelector('.panel').style.animation=''; });
   setInterval(()=>{ batt(); state(); },2000); })();
 addEventListener('keydown',e=>{ if(e.key==='Escape') api?.hide(); });
