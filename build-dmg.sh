@@ -14,6 +14,6 @@ codesign --verify --deep --strict "$APP" && echo "✓ signed"
 # 3. wrap the signed app in a DMG
 npx electron-builder --mac dmg --arm64 --publish never --prepackaged "$APP"
 xattr -cr dist/*.dmg 2>/dev/null || true
-echo; echo "✅ Done →"; ls -1 dist/*.dmg
+echo; echo "Done →"; ls -1 dist/*.dmg
 echo "Install: open the DMG, drag Surge to Applications. First launch: right-click → Open."
 echo "Logs: ~/Library/Logs/Surge/surge.log"

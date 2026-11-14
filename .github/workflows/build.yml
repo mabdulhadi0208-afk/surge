@@ -106,6 +106,7 @@ jobs:
           [ "$(grep -c "hook started (worker)" $L/surge.log)" -ge 2 ] && echo "✓ hook runs INSIDE Surge (worker thread) on both launches — uses Surge's own permission" || { echo "✗ hook did not start as an in-app worker on both launches"; cat $L/surge.log; exit 1; }
           [ "$(grep -c "hook started" $L/surge.log)" -ge 2 ] && echo "✓ keyboard/mouse hook started before AND after the update (permission granted, like a real Mac)" || { echo "✗ hook did not start on both launches"; cat $L/surge.log; exit 1; }
           grep -q "tray chip selftest pass" $L/surge.log && echo "✓ menu-bar charge chip renders ($(grep -m1 "tray chip ok" $L/surge.log))" || { echo "✗ charge chip did not render"; grep "tray chip" $L/surge.log; exit 1; }
+          grep -q "tray chip flow ok" $L/surge.log && echo "✓ charge chip animates (all frames painted and shown)" || { echo "✗ chip animation did not run"; grep "tray" $L/surge.log; exit 1; }
           grep -q "fallback ok, bolt ok" $L/surge.log && echo "✓ menu-bar icon is never blank" || { echo "✗ menu-bar icon can be BLANK"; grep "tray" $L/surge.log; exit 1; }
           [ "$(grep -c "start dock" $L/surge.log)" -ge 2 ] && echo "✓ startup ran to the end both times (no freeze)" || { echo "✗ startup did not finish (FROZEN)"; cat $L/surge.log; exit 1; }
           osascript -e 'with timeout of 5 seconds' -e 'tell application "System Events" to key code 49' -e 'end timeout' >/dev/null 2>&1 || true; sleep 2
@@ -136,7 +137,7 @@ jobs:
             dist/*.dmg
             dist/*.zip
           body: |
-            ⚡ Surge ${{ steps.v.outputs.version }}
+            Surge ${{ steps.v.outputs.version }}
             Mac: download **Surge-mac-arm64.dmg**, drag to Applications, right-click → Open on first launch.
             Windows: run **Surge-win-x64.exe** (SmartScreen: More info → Run anyway).
 
