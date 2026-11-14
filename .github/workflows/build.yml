@@ -162,7 +162,14 @@ jobs:
         run: |
           $exe = Get-ChildItem dist\*.exe | Select-Object -First 1
           if ($exe.Length -lt 50MB) { throw "installer too small: $($exe.Length)" }
-          Start-Process -FilePath $exe.FullName -ArgumentList '/S' -Wait
+          $app = "$env:LOCALAPPDATA\Programs\Surge\Surge.exe"
+          foreach ($try in 1..3) {
+            $pr = Start-Process -FilePath $exe.FullName -ArgumentList '/S' -Wait -PassThru
+            "installer attempt $try exit code: $($pr.ExitCode)"
+            for ($i = 0; $i -lt 40 -and !(Test-Path $app); $i++) { Start-Sleep -Seconds 1 }
+            if (Test-Path $app) { break }
+            Get-Process | Where-Object { $_.ProcessName -match 'Surge|nsis|Un_' } | Select-Object ProcessName, Id | Format-Table | Out-String
+          }
           $app = "$env:LOCALAPPDATA\Programs\Surge\Surge.exe"
           # the one-click installer can hand off to a second process and return early — wait for the files instead of assuming
           for ($i = 0; $i -lt 60 -and !(Test-Path $app); $i++) { Start-Sleep -Seconds 1 }
