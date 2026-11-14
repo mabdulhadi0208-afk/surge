@@ -157,6 +157,8 @@
   .theme{border:0;background:var(--panel);border-radius:20px} .theme i{height:44px;border-radius:14px} .theme.on{box-shadow:inset 0 0 0 2px var(--c1),0 16px 34px -20px var(--c1)}
   #toast{border:0!important}
   @media (prefers-reduced-motion:reduce){ .hero::after,.pane.enter *{animation:none!important} }
+  .ebolt{width:13px;height:13px;fill:var(--accent);flex:none}
+  #mute svg{width:16px;height:16px;fill:currentColor;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;fill-opacity:1;display:block} #mute svg path:not(:first-child){fill:none} #mute .x{display:none} .vol.muted #mute .x{display:block} .vol.muted #mute .w1,.vol.muted #mute .w2{display:none}
 </style>
 </head>
 <body>
@@ -166,11 +168,11 @@
     <div class="brand drag"><div class="dot"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></div>Surge</div>
     <nav id="nav"></nav>
     <div class="spacer"></div>
-    <div class="vol" id="vol"><div class="vt"><span>Master volume</span><span id="mute" title="Mute all (⌘⇧M)">🔊</span></div><input type="range" min="0" max="1" step=".01" id="master"></div>
+    <div class="vol" id="vol"><div class="vt"><span>Master volume</span><span id="mute" title="Mute all (⌘⇧M)"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path class="w1" d="M16.5 8.5a5 5 0 0 1 0 7"/><path class="w2" d="M19 6a9 9 0 0 1 0 12"/><path class="x" d="M17 9l5 6M22 9l-5 6"/></svg></span></div><input type="range" min="0" max="1" step=".01" id="master"></div>
     <div class="status"><span class="led" id="led"></span><span id="batt"><b>—</b> reading…</span></div>
   </aside>
   <main>
-    <header class="drag"><h1 id="title">Modules</h1><div class="grow"></div><button class="btn" id="qGlow">⚡ Preview glow</button><div class="wc"><button id="wMin" title="Minimise"><svg viewBox="0 0 12 12"><path d="M2 6h8"/></svg></button><button class="x" id="wClose" title="Close"><svg viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8"/></svg></button></div></header>
+    <header class="drag"><h1 id="title">Modules</h1><div class="grow"></div><button class="btn" id="qGlow"><svg class="ebolt" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>Preview glow</button><div class="wc"><button id="wMin" title="Minimise"><svg viewBox="0 0 12 12"><path d="M2 6h8"/></svg></button><button class="x" id="wClose" title="Close"><svg viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8"/></svg></button></div></header>
     <div class="panes" id="panes"></div>
     <div class="toast" id="toast">Saved</div>
   </main>
@@ -211,12 +213,12 @@ function build(){
     <div class="sech">Themes</div>${themeHTML()}<div class="sech">Modules</div><div class="grid">${MODS.map((m,i)=>`<div class="mod ${m.needsHook?'needs':''}" data-m="${m.id}" style="animation-delay:${i*40}ms"><div class="top"><div class="ic">${ic(m.icon)}</div><h4>${m.name}</h4></div><p>${m.desc}</p><div class="need">Needs Accessibility permission</div><div class="tg" data-m="${m.id}"></div></div>`).join('')}</div></section>`;
   for (const m of MODS) panes += `<section class="pane" id="pane-${m.id}"><div class="card"><h3>${m.name}</h3><div class="row"><div class="l">Enabled<small>${m.desc}</small></div><div class="tg" data-m="${m.id}"></div></div>${m.needsHook?'<div class="row"><div class="l"><small id="hook-'+m.id+'"></small></div></div>':''}</div>${m.id==='glow'?'<div class="card"><h3>Live preview</h3><div class="preview" id="preview"><canvas id="pc"></canvas></div></div>':''}${m.schema.length?'<div class="card"><h3>Options</h3>'+m.schema.map(f=>field(m,f)).join('')+'</div>':''}</section>`;
   const mac = !document.body.classList.contains('winos');
-  panes += `<section class="pane" id="pane-welcome"><div class="hero"><div><h2>Welcome to Surge ⚡</h2><p>Four quick things and you're set. Everything here can be changed later.</p></div></div><div class="steps">
+  panes += `<section class="pane" id="pane-welcome"><div class="hero"><div><h2>Welcome to Surge</h2><p>Four quick things and you're set. Everything here can be changed later.</p></div></div><div class="steps">
     ${mac ? `<div class="step" id="st-ax"><div class="num">1</div><div class="b"><h4>Allow keyboard &amp; mouse</h4><p>Key sounds, click ripples and the Caps Lock pill need macOS Accessibility permission — one click on Allow, no data leaves your Mac.</p><button class="btn primary" id="stAx">Allow in System Settings</button> <span id="stAxT" style="font-size:12px;color:var(--muted);margin-left:8px"></span></div></div>` : ''}
     <div class="step" id="st-vibe"><div class="num">★</div><div class="b"><h4>Pick a vibe</h4><p>One click sets the glow, the key sounds and the click ripple. Try a few — you'll hear each one.</p>${themeHTML()}</div></div>
-    <div class="step" id="st-key"><div class="num">${mac ? 2 : 1}</div><div class="b"><h4>Pick your keyboard sound</h4><p>145 switches, all synthesised live. Holy Panda is the default — try Box Jade if you like clicky, Topre if you like thock.</p><button class="btn" data-go="keys">Browse sounds</button> <button class="btn" id="stRand">🎲 Surprise me</button></div></div>
+    <div class="step" id="st-key"><div class="num">${mac ? 2 : 1}</div><div class="b"><h4>Pick your keyboard sound</h4><p>145 switches, all synthesised live. Holy Panda is the default — try Box Jade if you like clicky, Topre if you like thock.</p><button class="btn" data-go="keys">Browse sounds</button> <button class="btn" id="stRand">Surprise me</button></div></div>
     <div class="step" id="st-mods"><div class="num">${mac ? 3 : 2}</div><div class="b"><h4>Turn things on</h4><p>Charge Glow is on. Popular extras:</p><div class="chips" id="stMods"></div></div></div>
-    <div class="step" id="st-login"><div class="num">${mac ? 4 : 3}</div><div class="b"><h4>Start with your ${mac ? 'Mac' : 'computer'}</h4><p>Surge lives in the ${mac ? 'menu bar' : 'system tray'} and uses almost nothing. Click the ⚡ up there any time.</p><button class="btn" id="stLogin"></button></div></div>
+    <div class="step" id="st-login"><div class="num">${mac ? 4 : 3}</div><div class="b"><h4>Start with your ${mac ? 'Mac' : 'computer'}</h4><p>Surge lives in the ${mac ? 'menu bar' : 'system tray'} and uses almost nothing. Click the Surge icon up there any time.</p><button class="btn" id="stLogin"></button></div></div>
   </div></section>`;
   panes += `<section class="pane" id="pane-about"><div class="about"><div class="logo"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></div><h2>Surge</h2><p>${MODS.length} modules and counting. Every sound is synthesised, every glow is drawn live, nothing phones home.</p><p style="font-size:12px"><span id="aboutVer">v…</span> · <span id="reset" style="cursor:pointer;text-decoration:underline">reset all settings</span></p></div></section>`;
   $('#panes').innerHTML = panes;
@@ -292,7 +294,7 @@ function buildPicker(el, mid, k){
       if (!ps.length) continue;
       if (el._cat==='all' || el._cat==='fav') html += `<div class="cat">${c.name}${c.desc?' · '+c.desc:''}</div>`;
       html += `<div class="list">${ps.map(p=>`<button class="pr ${s[k]===p.id?'on':''}" data-id="${p.id}" style="--c:${c.color}"><i></i>${p.name}${lib==='keyboard'?`<span class="fav ${favs.has(p.id)?'on':''}" data-fav="${p.id}">★</span>`:''}</button>`).join('')}</div>`; }
-    html += `<div class="meta"><span>${SurgeSounds.count} keyboard · ${SurgeSounds.mouse.length} mouse</span><span>Selected: <b>${(lib==='keyboard'?SurgeSounds.findKey(s[k]):SurgeSounds.findMouse(s[k])).name}</b></span><span style="cursor:pointer" data-rand="1">🎲 Surprise me</span></div>`;
+    html += `<div class="meta"><span>${SurgeSounds.count} keyboard · ${SurgeSounds.mouse.length} mouse</span><span>Selected: <b>${(lib==='keyboard'?SurgeSounds.findKey(s[k]):SurgeSounds.findMouse(s[k])).name}</b></span><span style="cursor:pointer" data-rand="1">Surprise me</span></div>`;
     el.innerHTML = html;
     el.querySelectorAll('.tab').forEach(b => b.onclick = () => { el._cat = b.dataset.c; render(); });
     const qi = el.querySelector('input.q'); qi.oninput = () => { el._q = qi.value; const pos = qi.selectionStart; render(); const n = el.querySelector('input.q'); n.focus(); n.setSelectionRange(pos,pos); };
@@ -346,7 +348,7 @@ function paint(){
   }
   $('#onCount').textContent = on; document.querySelector('#pane-all .hero')?.style.setProperty('--lv', Math.max(8, Math.round(on / Math.max(1, MODS.length) * 100)) + '%');
   const mv = $('#master'); if (document.activeElement !== mv) { mv.value = S.masterVolume ?? 1; mv.style.setProperty('--p', (S.masterVolume ?? 1)*100+'%'); }
-  $('#vol').classList.toggle('muted', !!S.muted); $('#mute').textContent = S.muted ? '🔇' : '🔊';
+  $('#vol').classList.toggle('muted', !!S.muted); 
   const note = $('#hookNote'); note.classList.toggle('show', hook==='error' || hook==='unavailable' || hook==='needs-accessibility' || hook==='stale'); note.innerHTML = hook==='stale' ? 'macOS shows Surge as allowed, but isn\'t delivering keyboard &amp; mouse events (a stuck permission entry). <a id="axFix" style="color:#FFD37A;text-decoration:underline;cursor:pointer">Repair it</a> — Surge restarts and asks once.' : hook==='needs-accessibility' ? 'Keyboard &amp; mouse modules need <b>Accessibility</b> permission. <a id="axBtn" style="color:#FFD37A;text-decoration:underline;cursor:pointer">Open Accessibility settings</a> → turn on Surge. They start automatically once granted.' : hook==='error' ? 'Hook failed to start. Enable Surge under Privacy &amp; Security → <a id="axBtn" style="color:#FFD37A;text-decoration:underline;cursor:pointer">Accessibility</a> and <a id="imBtn" style="color:#FFD37A;text-decoration:underline;cursor:pointer">Input Monitoring</a>, then relaunch.' : hook==='unavailable' ? 'Keyboard/mouse modules are unavailable in this build (native hook missing).' : '';
   const ax=$('#axBtn'); if(ax) ax.onclick=()=>api?.openAccessibility(); const fx=$('#axFix'); if(fx) fx.onclick=()=>api?.repairAccessibility(); const im=$('#imBtn'); if(im) im.onclick=()=>api?.openInputMonitoring();
   document.querySelectorAll('[data-theme]').forEach(b=>b.classList.toggle('on',themeActive(THEMES.find(t=>t.id===b.dataset.theme))));

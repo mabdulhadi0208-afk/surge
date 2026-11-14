@@ -2,7 +2,7 @@
 let id = null, until = 0, timer = null;
 module.exports = {
   id: 'caffeine', name: 'Caffeine', icon: 'coffee', group: 'Productivity',
-  desc: 'Keep your Mac and display awake — indefinitely or for a set time. Lives in the menu bar as ☕.',
+  desc: 'Keep your Mac and display awake — indefinitely or for a set time. Shows “Awake” in the menu bar while it is on.',
   defaults: { minutes: 0 },
   schema: [
     { k: 'minutes', t: 'seg', label: 'Default duration', opts: [[0,'∞'],[30,'30m'],[60,'1h'],[120,'2h'],[240,'4h']] },
@@ -14,7 +14,7 @@ module.exports = {
   _toggle(ctx) { id == null ? module.exports._on(ctx, ctx.mod('caffeine').minutes) : module.exports._off(ctx); },
   _tray(ctx) {
     const left = until ? Math.max(0, Math.round((until - Date.now()) / 60000)) : null;
-    ctx.setTray('caffeine', { title: id != null ? (left != null ? `☕${left}m` : '☕') : '', menu: [
+    ctx.setTray('caffeine', { title: id != null ? (left != null ? `Awake ${left}m` : 'Awake') : '', menu: [
       { label: id != null ? `Caffeine: awake${left != null ? ' · ' + left + ' min left' : ''}` : 'Caffeine: off', enabled: false },
       { label: id != null ? 'Let it sleep' : 'Keep awake', click: () => module.exports._toggle(ctx) },
       { label: 'Keep awake 1h', click: () => module.exports._on(ctx, 60) },

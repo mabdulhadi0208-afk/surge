@@ -89,7 +89,7 @@ function onHookDead() {
   // Mark it stale instead; the popover/settings offer a one-click Repair that resets + relaunches on purpose.
   if (deadFixes++ < 2) { if (deadFixes === 2) hookMode = hookMode === 'worker' ? 'process' : 'worker'; log('hook went deaf → restarting it as', hookMode, '(attempt', deadFixes, ')'); hookTries = 0; setTimeout(ensureHook, 500); return; }   // a fresh helper usually hears again
   hookState = 'stale'; ctx.broadcast('settings:update', settings);
-  if (deadFixes === 3) fireGlow('warn', { hud: { text: 'Keyboard & mouse permission needs a repair — click ⚡ → Repair', color: '#FFD60A' } });
+  if (deadFixes === 3) fireGlow('warn', { hud: { text: 'Keyboard & mouse permission needs a repair — open Surge → Repair', color: '#FFD60A' } });
 }
 /* ---- clean-exit marker + watchdog: if Surge dies without meaning to (crash, killed by macOS), it comes back by itself */
 const cleanExitPath = () => path.join(app.getPath('userData'), 'clean-exit');
@@ -404,15 +404,36 @@ function trayChip(b) {
 function setTrayBattery(b, style) {
   if (!tray) return;
   const chip = IS_MAC && style === 'chip' && b && b.level != null;
-  const k = b ? `${Math.round(b.level)}|${b.charging ? 1 : 0}|${b.charged ? 1 : 0}|${chip ? 'chip' + (mod('glow')?.color || '') + (mod('glow')?.theme || '') : ''}` : 'bolt';
+  const k = b ? `${Math.round(b.level)}|${b.charging ? 1 : 0}|${b.charged ? 1 : 0}|${chip ? 'chip' + (mod('glow')?.color || '') + (mod('glow')?.theme || '') + (mod('glow')?.trayFlow === false ? 'still' : '') : ''}` : 'bolt';
   if (k === trayIconKey) return; trayIconKey = k;
-  try { tray.setImage((chip && trayChip(b)) || trayIcon(b)); } catch (e) { console.error('tray icon', e); }
+  try { const img = (chip && trayChip(b)) || trayIcon(b); tray.setImage(img); } catch (e) { console.error('tray icon', e); }
+  chipFlow(chip && !chipBad && mod('glow')?.trayFlow !== false ? b : null);
 }
+// The chip's liquid keeps moving: 12 frames per state, painted once and cached, then cycled. Costs next to nothing (a ready image is swapped in);
+// paused while the screen is locked or the Mac sleeps.
+let flowT = null, flowFrames = [], flowL = null, flowI = 0, flowPaused = false, flowLogged = false;
+function chipFlow(b) {
+  clearInterval(flowT); flowT = null; flowFrames = []; flowL = null; flowI = 0;
+  if (!b || !tray || flowPaused) return;
+  try { const C = require('./traychip.js'), g = mod('glow') || {};
+    flowL = C.chipLayout(b, { accent: g.theme === 'solid' ? g.color : '#00FF85', scale: 2 });
+    flowT = setInterval(() => { try {
+      if (!tray || tray.isDestroyed()) return chipFlow(null);
+      flowI = (flowI + 1) % C.FRAMES;
+      let img = flowFrames[flowI];
+      if (!img) { img = nativeImage.createFromBuffer(C.chipFramePNG(flowL, flowI), { scaleFactor: 2 }); if (img.isEmpty()) return chipFlow(null); img.setTemplateImage(false); flowFrames[flowI] = img; }
+      tray.setImage(img);
+      if (!flowLogged && flowI === C.FRAMES - 1) { flowLogged = true; log('tray chip flow ok ' + C.FRAMES + ' frames'); }
+    } catch (e) { log('tray chip flow error ' + e.message); chipFlow(null); } }, b.charging ? 110 : 170);
+  } catch (e) { log('tray chip flow error ' + e.message); }
+}
+function chipFlowPause(p) { flowPaused = p; if (p) chipFlow(null); else { trayIconKey = ''; try { MODULES.glow?.onSettings?.(ctx); } catch {} } }
+app.whenReady().then(() => { try { const { powerMonitor } = require('electron'); for (const e of ['suspend', 'lock-screen']) powerMonitor.on(e, () => chipFlowPause(true)); for (const e of ['resume', 'unlock-screen']) powerMonitor.on(e, () => chipFlowPause(false)); } catch {} });
 function setTray(id, extra) { const k = JSON.stringify(extra, (kk, v) => typeof v === 'function' ? undefined : v); if (trayKeys[id] === k) return; trayKeys[id] = k; trayExtras[id] = extra; updateTray(); }
 const trayKeys = {};
 function updateTray() {
   if (!tray) return;
-  const titles = Object.values(trayExtras).map(e => e?.title).filter(Boolean); if (settings.muted) titles.push(IS_MAC ? '🔇' : '(muted)');
+  const titles = Object.values(trayExtras).map(e => e?.title).filter(Boolean); if (settings.muted) titles.push(IS_MAC ? 'Muted' : '(muted)');
   if (IS_MAC) tray.setTitle(titles.length ? ' ' + titles.join('  ') : ''); else tray.setToolTip(['Surge', ...titles].join('  '));
   const items = [];
   for (const [id, e] of Object.entries(trayExtras)) if (e?.menu?.length) { items.push(...e.menu); items.push({ type: 'separator' }); }
@@ -539,7 +560,7 @@ app.whenReady().then(async () => {
   if (process.platform === 'darwin') app.dock?.hide();
   createOverlays(); ensureAudio();
   tray = new Tray(trayIcon()); tray.setIgnoreDoubleClickEvents(true); tray.setToolTip('Surge');
-  if (IS_MAC && process.env.SURGE_SELFTEST) { try { const t = trayChip({ level: 67, charging: true }); log('tray chip selftest ' + (t ? 'pass' : 'FAIL')); log('tray svg icon ' + (trayIconRaw({ level: 50 }).isEmpty() ? 'EMPTY' : 'ok') + ', fallback ' + (trayIcon({ level: 50 }).isEmpty() ? 'EMPTY' : 'ok') + ', bolt ' + (trayIcon().isEmpty() ? 'EMPTY' : 'ok')); } catch (e) { log('tray chip selftest FAIL ' + e.message); } }
+  if (IS_MAC && process.env.SURGE_SELFTEST) { try { const t = trayChip({ level: 67, charging: true }); log('tray chip selftest ' + (t ? 'pass' : 'FAIL')); setTimeout(() => chipFlow({ level: 67, charging: true }), 1500); setTimeout(() => { if (!battery || battery.level == null) chipFlow(null); }, 6000); log('tray svg icon ' + (trayIconRaw({ level: 50 }).isEmpty() ? 'EMPTY' : 'ok') + ', fallback ' + (trayIcon({ level: 50 }).isEmpty() ? 'EMPTY' : 'ok') + ', bolt ' + (trayIcon().isEmpty() ? 'EMPTY' : 'ok')); } catch (e) { log('tray chip selftest FAIL ' + e.message); } }
   tray.on('click', togglePopover);
   tray.on('right-click', () => trayMenu && tray.popUpContextMenu(trayMenu));
   if (IS_WIN) app.setAppUserModelId('app.surge.glow');

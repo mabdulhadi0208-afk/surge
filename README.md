@@ -1,44 +1,44 @@
-# âš¡ Surge â€” a 17-in-1 Mac toolbox
+# Surge€a 17-in-1 Mac toolbox
 
-Started as a charging glow. Now a menu-bar toolbox where every feature is an independent module you flip on in Settings (âŒ˜,).
+Started as a charging glow. Now a menu-bar toolbox where every feature is an independent module you flip on in Settings (Œ,).
 
 | Group | Module | What it does |
 |---|---|---|
 | Glow | **Charge Glow** | Edge aurora on plug-in (green), warm sweep on unplug, red pulse on low battery, gold at 100%, charge capsule, chimes |
 | Glow | **Network Glow** | Ice glow when Wi-Fi comes back, amber when you drop offline |
-| Sound | **Keyboard Sounds** | 145 synthesised presets: **Switches** (30 real-switch sound-alikes: MX Blue/Brown/Red/Black/Clear/Green/Speed Silver, Holy Panda, Boba U4T, Zealios V2, Box White/Jade/Navy, Topre, Buckling Spring, NK Cream, Oil Kingâ€¦) Â· Thocky Â· Creamy Â· Clicky Â· Clacky Â· Special, search + favourites + ğŸ², pitch variety, deep spacebar, release sound |
-| Sound | **Mouse Sounds** | 14 click sounds (Click, Pop, Glass, Shutter, Metal, Marbleâ€¦) + 3 scroll styles |
+| Sound | **Keyboard Sounds** | 145 synthesised presets: **Switches** (30 real-switch sound-alikes: MX Blue/Brown/Red/Black/Clear/Green/Speed Silver, Holy Panda, Boba U4T, Zealios V2, Box White/Jade/Navy, Topre, Buckling Spring, NK Cream, Oil King€¦) Â· Thocky Â· Creamy Â· Clicky Â· Clacky Â· Special, search + favourites +, pitch variety, deep spacebar, release sound |
+| Sound | **Mouse Sounds** | 14 click sounds (Click, Pop, Glass, Shutter, Metal, Marble€¦) + 3 scroll styles |
 | Sound | **Hourly Chime** | Soft bell on the hour, quiet hours |
 | Screen | **Click Ripple** | Glowing ring under every click (left/right colours) |
-| Screen | **Cursor Spotlight** | Dim everything except a circle around the cursor â€” âŒ˜â‡§S |
+| Screen | **Cursor Spotlight** | Dim everything except a circle around the cursor€Œ§S |
 | Screen | **Night Tint** | Warm screen wash on a schedule |
-| Screen | **Surge Dock** | Full Dock replacement: pinned + running apps with magnification, launch/switch (right-click quits), hides the macOS Dock; plus a glass widget bar (clock, battery ring, CPU graph, now playing w/ controls, volume, focus, caffeine, quick actions), bottom or top, magnify on hover, auto-hide â€” âŒ˜â‡§D |
+| Screen | **Surge Dock** | Full Dock replacement: pinned + running apps with magnification, launch/switch (right-click quits), hides the macOS Dock; plus a glass widget bar (clock, battery ring, CPU graph, now playing w/ controls, volume, focus, caffeine, quick actions), bottom or top, magnify on hover, auto-hide€Œ§D |
 | Screen | **Caps Lock HUD** | Pill + sound when Caps Lock flips |
-| Productivity | **Caffeine** | Keep the Mac awake (âˆ / 30m / 1h / 2h / 4h) â€” â˜• in the menu bar |
+| Productivity | **Caffeine** | Keep the Mac awake (ˆ / 30m / 1h / 2h / 4h)€shows€Awake€ in the menu bar |
 | Productivity | **Clipboard History** | Last 10/25/50 copies in the menu bar |
 | Productivity | **Focus Timer** | Pomodoro with glow + chime on phase change, countdown in the menu bar |
 | Productivity | **Break Reminder** | 20-20-20 nudges |
 | Productivity | **Typing Stats** | Live WPM + keys today |
-| Productivity | **Quick Notes** | Floating always-on-top scratchpad â€” âŒ˜â‡§N |
+| Productivity | **Quick Notes** | Floating always-on-top scratchpad€Œ§N |
 | System | **System Stats** | CPU / memory in the menu bar, warn glow when pegged |
 | System | **Auto Dark Mode** | Dark at night, light in the morning |
-| System | **Auto Update** | Polls GitHub Releases, downloads the DMG in the background, swaps the app and relaunches â€” works despite ad-hoc signing |
-| System | **Hotkeys** | âŒ˜â‡§G glow Â· âŒ˜â‡§N notes Â· âŒ˜â‡§S spotlight Â· âŒ˜â‡§K keyboard sounds Â· âŒ˜â‡§C caffeine |
+| System | **Auto Update** | Polls GitHub Releases, downloads the DMG in the background, swaps the app and relaunches€works despite ad-hoc signing |
+| System | **Hotkeys** |Œ§G glow Â·Œ§N notes Â·Œ§S spotlight Â·Œ§K keyboard sounds Â·Œ§C caffeine |
 
-All sounds are generated with WebAudio at runtime (no sample packs â†’ no licensing, tiny app). All glows are drawn live by `engine.js`.
+All sounds are generated with WebAudio at runtime (no sample packs†’ no licensing, tiny app). All glows are drawn live by `engine.js`.
 
 ## Run / build
 
 ```bash
 npm install          # also rebuilds the native input hook for Electron
 npm start
-./build-dmg.sh       # â†’ dist/Surge-2.0.0-arm64.dmg
+./build-dmg.sh       #†’ dist/Surge-2.0.0-arm64.dmg
 ```
 
 ## Permissions (macOS asks once)
 
-- **Input Monitoring** â€” Keyboard Sounds, Mouse Sounds, Click Ripple, Caps Lock HUD, Typing Stats. System Settings â†’ Privacy & Security â†’ Input Monitoring â†’ Surge. Relaunch after granting.
-- **Automation (System Events)** â€” Auto Dark Mode only.
+- **Input Monitoring**€Keyboard Sounds, Mouse Sounds, Click Ripple, Caps Lock HUD, Typing Stats. System Settings†’ Privacy & Security†’ Input Monitoring†’ Surge. Relaunch after granting.
+- **Automation (System Events)**€Auto Dark Mode only.
 
 ## Add your own module
 
