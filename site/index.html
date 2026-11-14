@@ -200,6 +200,15 @@
   footer{position:relative;z-index:1;border-top:1px solid var(--line);padding:30px 0;color:var(--muted);font-size:13px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
   footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
   .kbd{font:12px ui-monospace,Menlo,monospace;padding:2px 7px;border-radius:6px;border:1px solid var(--line);background:rgba(255,255,255,.05)}
+
+  /* fluid max: real damped springs everywhere */
+  :root{--spring:linear(0,.009,.035 2.1%,.141 4.4%,.723 12.9%,.938 16.7%,1.017,1.077,1.121,1.149 24.3%,1.159,1.163,1.161,1.154 29.9%,1.129 32.8%,1.051 39.6%,1.017 43.1%,.991,.977 51%,.974 53.8%,.975 57.1%,.997 69.8%,1.003 76.9%,1.004 83.8%,1);
+    --spring-soft:linear(0,.006,.025 2.8%,.101 6.1%,.539 18.9%,.721 25.3%,.849 31.5%,.937 38.1%,.968 41.8%,.991 45.7%,1.006 50.1%,1.015 55%,1.017 63.9%,1.001 85.9%,1)}
+  .r{transform:translateY(70px) scale(.92);transition:opacity .8s var(--flow),transform 1.2s var(--spring-soft)}
+  .btn{transition:transform .8s var(--spring),background .3s,box-shadow .4s} .btn:hover{box-shadow:0 18px 40px -18px currentColor}
+  .mcard{transition:transform .9s var(--spring),border-color .4s,opacity .9s var(--ease),box-shadow .5s} .mcard:hover{box-shadow:0 30px 50px -34px var(--a)}
+  .mcard .ico{transition:transform .9s var(--spring)} .mcard:hover .ico{transform:scale(1.18) rotate(-10deg)}
+  @media (prefers-reduced-motion:reduce){ .r{transition:none} }
 </style>
 </head>
 <body>
@@ -220,12 +229,12 @@
   <h1><span class="w"><span>Plug</span></span> <span class="w"><span>in.</span></span><br><span class="w"><span class="glow">Light</span></span> <span class="w"><span class="glow">up.</span></span></h1>
   <p class="sub">Surge started as a charging glow. Now it's a 20-in-1 menu-bar toolbox: edge aurora on plug-in, a full Dock replacement with Launchpad, 145 keyboard sounds, mouse clicks, click ripples, cursor spotlight, night tint, caffeine, focus timer and more. Flip on what you want.</p>
   <div class="cta">
-    <a class="btn pri mag" href="https://github.com/mabdulhadi0208-afk/surge/releases/latest/download/Surge-mac-arm64.dmg" id="dl"><span class="apple"></span>Mac · v2.12.1</a>
-    <a class="btn win mag" href="https://github.com/mabdulhadi0208-afk/surge/releases/latest/download/Surge-win-x64.exe" id="dlwin"><span class="winlogo"><i></i></span>Windows laptop · v2.12.1</a>
-    <a class="btn win mag" href="https://github.com/mabdulhadi0208-afk/surge/releases/latest/download/Surge-win-x64.exe"><span class="winlogo"><i></i></span>Windows PC · v2.12.1</a>
+    <a class="btn pri mag" href="https://github.com/mabdulhadi0208-afk/surge/releases/latest/download/Surge-mac-arm64.dmg" id="dl"><span class="apple"></span>Mac · v2.13.0</a>
+    <a class="btn win mag" href="https://github.com/mabdulhadi0208-afk/surge/releases/latest/download/Surge-win-x64.exe" id="dlwin"><span class="winlogo"><i></i></span>Windows laptop · v2.13.0</a>
+    <a class="btn win mag" href="https://github.com/mabdulhadi0208-afk/surge/releases/latest/download/Surge-win-x64.exe"><span class="winlogo"><i></i></span>Windows PC · v2.13.0</a>
     <a class="btn mag" href="#feel">See it in motion</a>
   </div>
-  <div class="meta">Latest: v2.12.1 · Your Mac, your laptop or your PC — with extras. Same features on all three, always in sync · self-updating · needs Accessibility for sounds (one click)</div>
+  <div class="meta">Latest: v2.13.0 · Your Mac, your laptop or your PC — with extras. Same features on all three, always in sync · self-updating · needs Accessibility for sounds (one click)</div>
 
   <div class="stage" id="stage">
     <div class="mac" id="mac">
@@ -318,9 +327,9 @@
     <h2 class="r">Your Mac deserves a <span style="background:linear-gradient(90deg,var(--a),var(--b));-webkit-background-clip:text;background-clip:text;color:transparent">glow up.</span></h2>
     <p class="lead r" style="margin:16px auto 34px">Free, open source. 20 modules, 145 keyboard sounds, zero accounts. Drops into your menu bar and stays out of the way.</p>
     <div class="cta r">
-      <a class="btn pri mag" href="https://github.com/mabdulhadi0208-afk/surge/releases/latest/download/Surge-mac-arm64.dmg"><span class="apple"></span>Mac · v2.12.1</a>
-      <a class="btn win mag" href="https://github.com/mabdulhadi0208-afk/surge/releases/latest/download/Surge-win-x64.exe"><span class="winlogo"><i></i></span>Windows laptop · v2.12.1</a>
-    <a class="btn win mag" href="https://github.com/mabdulhadi0208-afk/surge/releases/latest/download/Surge-win-x64.exe"><span class="winlogo"><i></i></span>Windows PC · v2.12.1</a>
+      <a class="btn pri mag" href="https://github.com/mabdulhadi0208-afk/surge/releases/latest/download/Surge-mac-arm64.dmg"><span class="apple"></span>Mac · v2.13.0</a>
+      <a class="btn win mag" href="https://github.com/mabdulhadi0208-afk/surge/releases/latest/download/Surge-win-x64.exe"><span class="winlogo"><i></i></span>Windows laptop · v2.13.0</a>
+    <a class="btn win mag" href="https://github.com/mabdulhadi0208-afk/surge/releases/latest/download/Surge-win-x64.exe"><span class="winlogo"><i></i></span>Windows PC · v2.13.0</a>
       <a class="btn mag" href="https://github.com/mabdulhadi0208-afk/surge">View source</a>
     </div>
     <p class="meta r">Apple silicon · macOS 13+ · Free & open source · Press <span class="kbd">⌘ ,</span> for settings</p>

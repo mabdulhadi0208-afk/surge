@@ -85,7 +85,18 @@
   .cell b{position:relative;font-size:15px;font-weight:750;font-variant-numeric:tabular-nums;text-shadow:0 1px 3px rgba(0,0,0,.6)}
   .cell .cbolt{position:absolute;top:3px;right:4px;display:none} .cell.chg .cbolt{display:block} .cbolt svg{width:9px;height:9px;fill:#fff}
   @media (prefers-reduced-motion:reduce){ .dock,.apps.first .ap,.cell i svg,.dock.charging::before{animation:none!important} }
-</style></head>
+
+  /* ───────── fluid max ───────── */
+  .dock{animation:dockIn 1s var(--spring-soft) backwards;box-shadow:0 34px 80px -26px rgba(0,0,0,.95),inset 0 1px 0 rgba(255,255,255,.18),inset 0 0 0 1px rgba(255,255,255,.05)}
+  .w{transition:transform .75s var(--spring),background .35s,box-shadow .4s} .w:hover{transform:translateY(-9px) scale(1.07);box-shadow:0 20px 30px -18px #000}
+  .w svg.i,.w .i{transition:transform .75s var(--spring)} .w:hover svg.i{transform:scale(1.18) rotate(-8deg)}
+  .apps.first .ap{animation:apIn .95s var(--spring) backwards;animation-delay:calc(.12s + var(--n,0)*50ms)}
+  .ap.launch .ic{animation:launch 1.1s var(--flow)} @keyframes launch{0%{translate:0 0}18%{translate:0 -26px}36%{translate:0 0}52%{translate:0 -14px}68%{translate:0 0}80%{translate:0 -5px}100%{translate:0 0}}
+  .ap .dot{transition:width .6s var(--spring),background .3s,box-shadow .3s}
+  #ctx{animation:ctxIn .6s var(--spring) backwards;transform-origin:50% 100%} @keyframes ctxIn{from{opacity:0;transform:scale(.7) translateY(14px)}} #ctx .it{transition:background .2s,transform .5s var(--spring),padding .5s var(--spring)} #ctx .it:hover{transform:translateX(4px)}
+  .cell i{transition:height 1.6s var(--spring-soft),background .5s}
+</style><script>window.FLUID={light:false,magnet:'.none',press:'.w:not(.apps),.ap .ic,#ctx .it',ripple:'.w:not(.apps)'}</script><link rel="stylesheet" href="fluid.css"><script defer src="fluid.js"></script>
+</head>
 <body>
 <div class="dock" id="dock"></div><div id="tip"></div><div id="ctx"></div>
 <script>

@@ -159,7 +159,35 @@
   @media (prefers-reduced-motion:reduce){ .hero::after,.pane.enter *{animation:none!important} }
   .ebolt{width:13px;height:13px;fill:var(--accent);flex:none}
   #mute svg{width:16px;height:16px;fill:currentColor;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;fill-opacity:1;display:block} #mute svg path:not(:first-child){fill:none} #mute .x{display:none} .vol.muted #mute .x{display:block} .vol.muted #mute .w1,.vol.muted #mute .w2{display:none}
+
+  /* ───────── fluid max ───────── */
+  .win{animation:pop .95s var(--spring-soft) both} @keyframes pop{from{opacity:0;transform:scale(.88) translateY(26px);filter:blur(8px)}}
+  .pane{transition:opacity .4s var(--flow),transform .9s var(--spring-soft),filter .4s;transform:translateY(34px) scale(.97);filter:blur(6px)} .pane.on{filter:none}
+  .pane.enter .mod,.pane.enter .card,.pane.enter .step,.pane.enter .theme,.pane.enter .hero{animation:stage .95s var(--spring-soft) backwards;animation-delay:calc(var(--i,0)*34ms)}
+  @keyframes stage{from{opacity:0;transform:translateY(40px) scale(.9);filter:blur(6px)}}
+  #navInd{transition:transform .75s var(--spring),opacity .3s;background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 16%,var(--bg3)),var(--bg3));box-shadow:inset 3px 0 0 var(--accent),0 10px 24px -16px var(--accent)}
+  nav button{transition:color .3s,background .3s,transform .6s var(--spring)} nav button:hover{transform:translateX(5px)} nav button .ic{transition:transform .7s var(--spring)} nav button:hover .ic,nav button.on .ic{transform:scale(1.2) rotate(-8deg)} nav button.on .ic svg{stroke:var(--accent)}
+  nav button.live .led{animation:led 2.4s ease-in-out infinite} @keyframes led{50%{box-shadow:0 0 14px 2px var(--accent);transform:scale(1.25)}}
+  .brand .dot{animation:brand 3.6s ease-in-out infinite} @keyframes brand{50%{box-shadow:0 0 30px 2px var(--accent);transform:rotate(-8deg) scale(1.08)}}
+  .mod{transition:transform .8s var(--spring),background .35s,box-shadow .5s} .mod:hover{transform:translateY(-8px) scale(1.02);box-shadow:0 26px 44px -28px #000,inset 0 0 0 1px rgba(255,255,255,.08)}
+  .mod.on:hover{box-shadow:0 26px 50px -26px var(--accent),inset 0 0 0 1px color-mix(in srgb,var(--accent) 45%,transparent)}
+  .mod .ic{transition:background .5s var(--flow),box-shadow .5s,transform .8s var(--spring)} .mod:hover .ic{transform:scale(1.18) rotate(-10deg)}
+  .mod.on .ic{background:linear-gradient(145deg,var(--accent),color-mix(in srgb,var(--accent) 70%,#00d4ff));box-shadow:0 12px 26px -10px var(--accent),inset 0 1px 0 rgba(255,255,255,.45)}
+  .theme{transition:transform .8s var(--spring),box-shadow .5s} .theme:hover{transform:translateY(-8px) scale(1.03) rotate(-1deg)} .theme i{transition:transform .8s var(--spring)} .theme:hover i{transform:scale(1.05)}
+  .card{transition:box-shadow .5s,transform .8s var(--spring)} .card{box-shadow:inset 0 1px 0 rgba(255,255,255,.045)}
+  .row{transition:background .3s,padding .5s var(--spring-soft)} 
+  .tg{transition:background .4s,box-shadow .4s} .tg::after{transition:transform .75s var(--spring),width .3s var(--flow);box-shadow:0 2px 6px rgba(0,0,0,.35)} .tg:hover::after{width:23px} .tg.on:hover::after{transform:translateX(17px)}
+  .tg.on{background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 80%,#00d4ff),var(--accent))}
+  .btn.btn{transition:transform .7s var(--spring),background .3s,box-shadow .4s} .btn.btn:hover{transform:translateY(-3px) scale(1.05)}
+  .chip,.sp .tab,.sp .pr,.wi{transition:transform .7s var(--spring),background .3s,box-shadow .3s!important} .sp .pr:hover,.chip:hover,.wi:hover{transform:translateY(-4px) scale(1.04)}
+  .hero{box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 30px 60px -40px var(--accent)} .hero::before{transition:width 1.6s var(--spring-soft)} .hero::after{transition:left 1.6s var(--spring-soft)}
+  .hero h2{background:linear-gradient(180deg,#fff,color-mix(in srgb,var(--accent) 30%,#fff));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero .n{display:inline-block}
+  header h1{transition:transform .8s var(--spring)} 
+  .status,.vol{transition:transform .7s var(--spring),background .3s} .status:hover,.vol:hover{transform:translateY(-3px)}
+  #toast{transition:transform .8s var(--spring),opacity .3s!important}
 </style>
+<script>window.FLUID={blobs:1}</script><link rel="stylesheet" href="fluid.css"><script defer src="fluid.js"></script>
 </head>
 <body>
 <div class="win">
