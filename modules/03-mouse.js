@@ -9,13 +9,14 @@ module.exports = {
   desc: MAC ? '14 click sounds plus scroll ticks you can hear and feel: 8 styles, real momentum, pitch that follows your speed, and trackpad haptics.'
             : '14 click sounds plus scroll-wheel ticks: 8 styles, real momentum and pitch that follows your speed.',
   defaults: { preset: 'click', scrollPreset: 'fine', volume: 0.5, scroll: true, rightDifferent: true, momentum: true,
-              haptic: true, hapticStrength: 'medium', hapticOnly: false, spacing: 'normal', speedPitch: true, dirPitch: true },
+              haptic: true, hapticStrength: 'medium', hapticOnly: false, scrollVolume: 0.25, spacing: 'normal', speedPitch: true, dirPitch: true },
   schema: [
     { k: 'preset', t: 'soundpicker', label: 'Click sound', lib: 'mouse' },
-    { k: 'volume', t: 'range', label: 'Volume', min: 0, max: 1, step: .01, fmt: 'pct' },
+    { k: 'volume', t: 'range', label: 'Click volume', min: 0, max: 1, step: .01, fmt: 'pct' },
     { k: 'rightDifferent', t: 'toggle', label: 'Lower pitch for right-click' },
     { k: 'scroll', t: 'toggle', label: 'Scroll ticks' },
     { k: 'scrollPreset', t: 'seg', label: 'Scroll style', opts: [['fine','Fine'],['ratchet','Ratchet'],['soft','Soft'],['notch','Notch'],['wood','Wood'],['glass','Glass'],['bubble','Bubble'],['clock','Clock']] },
+    { k: 'scrollVolume', t: 'range', label: 'Tick volume', min: 0, max: 1, step: .01, fmt: 'pct' },
     { k: 'spacing', t: 'seg', label: 'Tick spacing', opts: [['dense','Dense'],['normal','Normal'],['chunky','Chunky']] },
     { k: 'momentum', t: 'toggle', label: 'Momentum ticks', hint: 'Keep ticking as the scroll coasts after you lift off' },
     { k: 'speedPitch', t: 'toggle', label: 'Pitch follows speed', hint: 'Faster scrolling sounds higher, like a wheel spinning up' },
@@ -35,7 +36,7 @@ module.exports = {
       let pitch = 1;
       if (s.speedPitch) pitch *= 1.28 - Math.min(1, gap / 160) * .38;               // fast → up to 1.28×, slow → 0.9×
       if (s.dirPitch) pitch *= horiz ? 1.22 : dir > 0 ? .95 : 1.05;
-      if (!(MAC && s.haptic && s.hapticOnly)) ctx.play('scroll', { preset: s.scrollPreset, volume: s.volume * .5 * vol, pitch });
+      if (!(MAC && s.haptic && s.hapticOnly)) ctx.play('scroll', { preset: s.scrollPreset, volume: (s.scrollVolume ?? .25) * vol, pitch });
       if (MAC && s.haptic && !coasting) haptics.tap(STRENGTH[s.hapticStrength] ?? 1, Math.max(40, SPACING[s.spacing] || 28));   // fingers are off the pad while it coasts → nothing to feel
     };
     const stopCoast = () => { clearTimeout(inertia); inertia = null; clearTimeout(coastT); coastT = null; };
