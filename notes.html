@@ -11,14 +11,24 @@
   .win{border:0;border-radius:20px;background:linear-gradient(180deg,rgba(19,24,36,.92),rgba(11,14,21,.94));box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px rgba(255,255,255,.05);animation:nIn .9s var(--spring-soft)} @keyframes nIn{from{opacity:0;transform:scale(.86) translateY(20px)}}
   header{text-transform:none;letter-spacing:0;font-size:12.5px} header i{animation:nDot 2.6s ease-in-out infinite} @keyframes nDot{50%{transform:scale(1.4)}}
   header .x{transition:transform .7s var(--spring),background .3s,opacity .3s} header .x:hover{transform:rotate(90deg) scale(1.15)}
+
+  /* balanced pass */
+  header{height:44px;padding:0 10px 0 16px;font-size:13px;font-weight:650;color:#eef1f7}
+  header .x{display:grid;place-items:center;width:26px;height:26px;padding:0;border-radius:50%} header .x svg{width:10px;height:10px;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;fill:none}
+  textarea{padding:6px 18px 16px;font:15px/1.7 -apple-system,"SF Pro Text","Segoe UI",system-ui,sans-serif;background-image:linear-gradient(transparent calc(100% - 1px),rgba(255,255,255,.045) 0);background-size:100% 1.7em;background-attachment:local;background-position:0 6px}
+  textarea::selection{background:rgba(0,255,133,.35)}
+  footer{padding:8px 16px 10px;background:rgba(0,0,0,.22);font-size:11.5px;color:#8b94a7}
+  .sv{display:inline-flex;align-items:center;gap:6px;animation:none!important;opacity:1!important} .sv svg{width:11px;height:11px;stroke:#00FF85;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;scale:0;transition:scale .5s cubic-bezier(.34,1.56,.64,1)} .sv.ok svg{scale:1} .sv.ok b{color:#cfe9db} .sv b{font-weight:600;transition:color .3s}
+  @keyframes svPop{40%{scale:1.15}} .sv.pop{animation:svPop .5s ease-out!important}
 </style><link rel="stylesheet" href="fluid.css"><script defer src="fluid.js"></script><link rel="stylesheet" href="fx.css"><script defer src="fx.js"></script>
 </head><body><div class="win">
-<header><i></i>Quick Notes<span class="x" id="x">✕</span></header>
+<header><i></i>Quick Notes<span class="x" id="x"><svg viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8"/></svg></span></header>
 <textarea id="t" placeholder="Jot anything… it autosaves. ⌘⇧N to toggle."></textarea>
-<footer><span id="count"></span><span>Saved</span></footer></div>
+<footer><span id="count"></span><span id="sv" class="sv ok"><svg viewBox="0 0 12 12"><path d="M2 6.5l2.7 2.7L10 3.5"/></svg><b>Saved</b></span></footer></div>
 <script>
-const t=document.getElementById('t'), c=document.getElementById('count'); let timer;
-window.surge?.notesLoad().then(v=>{ t.value=v||''; c.textContent=(t.value.trim().split(/\s+/).filter(Boolean).length)+' words'; });
-t.oninput=()=>{ c.textContent=(t.value.trim().split(/\s+/).filter(Boolean).length)+' words'; clearTimeout(timer); timer=setTimeout(()=>window.surge?.notesSave(t.value),300); };
+const t=document.getElementById('t'), c=document.getElementById('count'), sv=document.getElementById('sv'); let timer;
+const cnt=()=>{ const w=t.value.trim().split(/\s+/).filter(Boolean).length; c.textContent=w+(w===1?' word':' words')+' · '+t.value.length+' characters'; };
+window.surge?.notesLoad().then(v=>{ t.value=v||''; cnt(); });
+t.oninput=()=>{ cnt(); sv.className='sv'; sv.querySelector('b').textContent='Saving'; clearTimeout(timer); timer=setTimeout(async()=>{ try{ await window.surge?.notesSave(t.value); }catch{} sv.className='sv ok pop'; sv.querySelector('b').textContent='Saved'; },300); };
 document.getElementById('x').onclick=()=>window.surge?.hide();
 </script></body></html>

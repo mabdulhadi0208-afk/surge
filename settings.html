@@ -190,6 +190,23 @@
   .mod,.theme{transition:transform .8s var(--spring),background .35s,box-shadow .5s,opacity .35s} .grid:hover .mod:not(:hover),.themes:hover .theme:not(:hover){opacity:.6}
   /* the hero tank sloshes when a module is switched */
   @keyframes heroSlosh{0%{scale:1 1}25%{scale:2.6 1.04}55%{scale:.6 .97}80%{scale:1.5 1}100%{scale:1 1}} .hero.slosh::after{animation:heroSlosh .9s ease-out}
+
+  /* ───────── balanced pass: module pages + search ───────── */
+  .card.mh{display:flex;align-items:center;gap:18px;padding:22px 22px;border-radius:24px;position:relative;overflow:hidden;isolation:isolate;background:var(--bg2)}
+  .card.mh::before{content:"";position:absolute;inset:0;background:linear-gradient(100deg,color-mix(in srgb,var(--accent) 26%,transparent),transparent 62%);opacity:0;transition:opacity .6s var(--flow);z-index:-1} .card.mh.on::before{opacity:1}
+  .mh .mic{width:62px;height:62px;border-radius:20px;display:grid;place-items:center;flex:none;background:var(--bg3);transition:background .5s var(--flow),box-shadow .5s,transform .8s var(--spring),border-radius .8s var(--spring)}
+  .mh .mic svg{width:28px;height:28px;stroke:var(--muted);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;transition:stroke .3s}
+  .mh.on .mic{background:linear-gradient(145deg,var(--accent),color-mix(in srgb,var(--accent) 70%,#00d4ff));box-shadow:0 16px 34px -14px var(--accent),inset 0 1px 0 rgba(255,255,255,.45);border-radius:50%} .mh.on .mic svg{stroke:#04140c}
+  .mh:hover .mic{transform:scale(1.08) rotate(-8deg)}
+  .mh .mt{flex:1;min-width:0} .mh .mn{display:flex;align-items:center;gap:10px} .mh h2{margin:0;font-size:24px;font-weight:750;letter-spacing:-.6px}
+  .mh .mst{font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--bg3);color:var(--muted);transition:background .4s,color .4s} .mh.on .mst{background:var(--accent);color:#04140c}
+  .mh p{margin:5px 0 0;color:color-mix(in srgb,var(--text) 68%,transparent);font-size:13px;line-height:1.5;max-width:62ch} .mh .mhook{display:block;margin-top:7px;font-size:12px;color:var(--muted)} .mh .mhook:empty{display:none}
+  .mh .tg{scale:1.25;margin-right:6px}
+  .nsearch{display:flex;align-items:center;gap:8px;height:34px;margin:0 0 8px;padding:0 11px;border-radius:11px;background:var(--bg2);transition:box-shadow .3s,background .3s;-webkit-app-region:no-drag;cursor:text}
+  .nsearch:focus-within{box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 45%,transparent);background:var(--bg3)}
+  .nsearch svg{width:14px;height:14px;stroke:var(--muted);fill:none;stroke-width:2;stroke-linecap:round;flex:none} .nsearch input{all:unset;flex:1;min-width:0;font-size:13px;color:var(--text)} .nsearch input::placeholder{color:var(--muted)}
+  #nav .nhide{display:none}
+  .card:not(.mh) h3{font-size:13px;color:var(--text);margin-bottom:12px}
 </style>
 <script>window.FLUID={blobs:1}</script><link rel="stylesheet" href="fluid.css"><script defer src="fluid.js"></script><link rel="stylesheet" href="fx.css"><script defer src="fx.js"></script>
 </head>
@@ -238,12 +255,14 @@ function build(){
   let nav = `<button data-p="welcome"><span class="ic">${ic('bolt')}</span>Welcome</button><button data-p="all" class="on"><span class="ic">${ic('grid')}</span>All modules</button>`;
   for (const g of groups){ const ms = MODS.filter(m=>m.group===g); if(!ms.length) continue; nav += `<div class="grp">${g}</div>` + ms.map(m=>`<button data-p="${m.id}"><span class="ic">${ic(m.icon)}</span>${m.name}<span class="led"></span></button>`).join(''); }
   nav += `<div class="grp">App</div><button data-p="about"><span class="ic">${ic('info')}</span>About</button>`;
-  $('#nav').innerHTML = nav;
+  $('#nav').innerHTML = `<label class="nsearch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="nq" placeholder="Search" spellcheck="false"></label>` + nav;
+  { const nq=$('#nq'); nq.oninput=()=>{ const q=nq.value.trim().toLowerCase(); let any=false; document.querySelectorAll('#nav button').forEach(b=>{ const m=MODS.find(x=>x.id===b.dataset.p); const hit=!q||b.textContent.toLowerCase().includes(q)||(m&&(m.desc||'').toLowerCase().includes(q)); b.classList.toggle('nhide',!hit); if(hit) any=true; }); document.querySelectorAll('#nav .grp').forEach(g=>{ let n=g.nextElementSibling, vis=false; while(n&&n.tagName==='BUTTON'){ if(!n.classList.contains('nhide')) vis=true; n=n.nextElementSibling; } g.classList.toggle('nhide',!vis); }); setTimeout(navInd,60); };
+    nq.onkeydown=e=>{ if(e.key==='Enter'){ const b=document.querySelector('#nav button:not(.nhide)'); if(b){ b.click(); nq.value=''; nq.oninput(); nq.blur(); } } if(e.key==='Escape'){ nq.value=''; nq.oninput(); nq.blur(); } }; }
   let panes = `<section class="pane on" id="pane-all">
     <div class="hero"><div><h2 id="heroT">Your Mac, with extras.</h2><p>Flip anything on. Each module is independent, tiny, and lives in the ${/Mac/.test(navigator.platform)?'menu bar':'system tray'}.</p></div><div class="n"><span id="onCount">0</span>/${MODS.length}</div></div>
     <div class="note" id="hookNote"></div>
     <div class="sech">Themes</div>${themeHTML()}<div class="sech">Modules</div><div class="grid">${MODS.map((m,i)=>`<div class="mod ${m.needsHook?'needs':''}" data-m="${m.id}" style="animation-delay:${i*40}ms"><div class="top"><div class="ic">${ic(m.icon)}</div><h4>${m.name}</h4></div><p>${m.desc}</p><div class="need">Needs Accessibility permission</div><div class="tg" data-m="${m.id}"></div></div>`).join('')}</div></section>`;
-  for (const m of MODS) panes += `<section class="pane" id="pane-${m.id}"><div class="card"><h3>${m.name}</h3><div class="row"><div class="l">Enabled<small>${m.desc}</small></div><div class="tg" data-m="${m.id}"></div></div>${m.needsHook?'<div class="row"><div class="l"><small id="hook-'+m.id+'"></small></div></div>':''}</div>${m.id==='glow'?'<div class="card"><h3>Live preview</h3><div class="preview" id="preview"><canvas id="pc"></canvas></div></div>':''}${m.schema.length?'<div class="card"><h3>Options</h3>'+m.schema.map(f=>field(m,f)).join('')+'</div>':''}</section>`;
+  for (const m of MODS) panes += `<section class="pane" id="pane-${m.id}"><div class="card mh" data-mh="${m.id}"><div class="mic">${ic(m.icon)}</div><div class="mt"><div class="mn"><h2>${m.name}</h2><span class="mst"></span></div><p>${m.desc}</p>${m.needsHook?'<small class="mhook" id="hook-'+m.id+'"></small>':''}</div><div class="tg" data-m="${m.id}"></div></div>${m.id==='glow'?'<div class="card"><h3>Live preview</h3><div class="preview" id="preview"><canvas id="pc"></canvas></div></div>':''}${m.schema.length?'<div class="card"><h3>Options</h3>'+m.schema.map(f=>field(m,f)).join('')+'</div>':''}</section>`;
   const mac = !document.body.classList.contains('winos');
   panes += `<section class="pane" id="pane-welcome"><div class="hero"><div><h2>Welcome to Surge</h2><p>Four quick things and you're set. Everything here can be changed later.</p></div></div><div class="steps">
     ${mac ? `<div class="step" id="st-ax"><div class="num">1</div><div class="b"><h4>Allow keyboard &amp; mouse</h4><p>Key sounds, click ripples and the Caps Lock pill need macOS Accessibility permission — one click on Allow, no data leaves your Mac.</p><button class="btn primary" id="stAx">Allow in System Settings</button> <span id="stAxT" style="font-size:12px;color:var(--muted);margin-left:8px"></span></div></div>` : ''}
@@ -357,7 +376,7 @@ function buildWidgets(el, mid, k){
 }
 function syncRange(r){ r.style.setProperty('--p', (r.value-r.min)/(r.max-r.min)*100+'%'); r.nextElementSibling.value = fmt(r.dataset.fmt, +r.value); }
 function stage(p){ const el=document.getElementById('pane-'+p); if(!el) return; let i=0; el.querySelectorAll('.hero,.theme,.mod,.card,.step').forEach(x=>x.style.setProperty('--i',Math.min(i++,22))); el.classList.remove('enter'); void el.offsetWidth; el.classList.add('enter'); }
-function navInd(){ const b=document.querySelector('#nav button.on'), a=document.querySelector('aside'); if(!b||!a) return; let ind=document.getElementById('navInd'); if(!ind){ ind=document.createElement('div'); ind.id='navInd'; a.appendChild(ind); } const r=b.getBoundingClientRect(), ar=a.getBoundingClientRect(); ind.style.transform=`translateY(${Math.round(r.top-ar.top+a.scrollTop)}px)`; ind.style.opacity=1; }
+function navInd(){ const b=document.querySelector('#nav button.on'), a=document.querySelector('aside'); if(!a) return; if(!b||!b.offsetParent){ const i0=document.getElementById('navInd'); if(i0) i0.style.opacity=0; return; } let ind=document.getElementById('navInd'); if(!ind){ ind=document.createElement('div'); ind.id='navInd'; a.appendChild(ind); } const r=b.getBoundingClientRect(), ar=a.getBoundingClientRect(); ind.style.transform=`translateY(${Math.round(r.top-ar.top+a.scrollTop)}px)`; ind.style.opacity=1; }
 addEventListener('resize',()=>navInd()); setTimeout(navInd,400); setTimeout(navInd,1200);
 function go(p){ { const order=[...document.querySelectorAll('#nav button')].map(b=>b.dataset.p), a=order.indexOf(cur), b=order.indexOf(p), dir=b>=a?1:-1; const out=document.getElementById('pane-'+cur), inn=document.getElementById('pane-'+p); if(out&&inn&&out!==inn){ out.style.setProperty('--dir',-dir); inn.style.transition='none'; inn.style.setProperty('--dir',dir); void inn.offsetWidth; inn.style.transition=''; } }
   stage(p); setTimeout(navInd,0); cur = p; document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on', b.dataset.p===p)); document.querySelectorAll('.pane').forEach(x=>x.classList.toggle('on', x.id===`pane-${p}`));
@@ -380,6 +399,7 @@ function paint(){
     const h = document.getElementById('hook-'+m.id); if (h) h.textContent = hook==='running' ? 'Input monitoring: active' : hook==='ready' ? 'Turns on when enabled — macOS will ask for Accessibility permission once.' : hook==='needs-accessibility' ? 'Waiting for permission: System Settings → Privacy & Security → Accessibility → turn on Surge. Starts automatically once granted.' : hook==='error' ? 'Hook failed to start. Check Accessibility and Input Monitoring for Surge, then relaunch.' : 'Global input hook not installed in this build (uiohook-napi). Run npm install on a Mac.';
   }
   { const h=document.querySelector('#pane-all .hero'); if(h&&$('#onCount').textContent!==String(on)&&$('#onCount').textContent!=='—'){ h.classList.remove('slosh'); void h.offsetWidth; h.classList.add('slosh'); } }
+  document.querySelectorAll('.mh').forEach(h=>{ const on2=!!S.modules[h.dataset.mh]?.enabled; h.classList.toggle('on',on2); const st=h.querySelector('.mst'); if(st&&st.textContent!==(on2?'On':'Off')) st.textContent=on2?'On':'Off'; });
   $('#onCount').textContent = on; document.querySelector('#pane-all .hero')?.style.setProperty('--lv', Math.max(8, Math.round(on / Math.max(1, MODS.length) * 100)) + '%');
   const mv = $('#master'); if (document.activeElement !== mv) { mv.value = S.masterVolume ?? 1; mv.style.setProperty('--p', (S.masterVolume ?? 1)*100+'%'); }
   $('#vol').classList.toggle('muted', !!S.muted); 
