@@ -479,7 +479,7 @@ function applyPatch(patch) {
 
 /* ------------------------------------------------------------------ ipc */
 ipcMain.handle('settings:get', () => settings);
-ipcMain.handle('settings:set', (_e, patch) => { applyPatch(patch); return settings; });
+ipcMain.handle('settings:set', (_e, patch) => { applyPatch(patch); try { if (IS_MAC && patch && patch.modules && mod('mouse')?.haptic !== false) require('./haptics.js').tap(0, 60); } catch {} return settings; });
 ipcMain.handle('settings:reset', () => { settings = { launchAtLogin: settings.launchAtLogin, masterVolume: 1, muted: false, welcomed: true, modules: {} }; for (const id in MODULES) settings.modules[id] = defaultsFor(MODULES[id]); saveSettings(); reconcile(); ctx.broadcast('settings:update', settings); updateTray(); return settings; });
 ipcMain.handle('modules:list', () => Object.values(MODULES).map(m => ({ id: m.id, name: m.name, icon: m.icon, group: m.group, desc: m.desc, needsHook: !!m.needsHook, schema: m.schema || [] })));
 ipcMain.handle('battery:get', () => battery);

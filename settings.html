@@ -186,6 +186,10 @@
   header h1{transition:transform .8s var(--spring)} 
   .status,.vol{transition:transform .7s var(--spring),background .3s} .status:hover,.vol:hover{transform:translateY(-3px)}
   #toast{transition:transform .8s var(--spring),opacity .3s!important}
+
+  .mod,.theme{transition:transform .8s var(--spring),background .35s,box-shadow .5s,opacity .35s} .grid:hover .mod:not(:hover),.themes:hover .theme:not(:hover){opacity:.6}
+  /* the hero tank sloshes when a module is switched */
+  @keyframes heroSlosh{0%{scale:1 1}25%{scale:2.6 1.04}55%{scale:.6 .97}80%{scale:1.5 1}100%{scale:1 1}} .hero.slosh::after{animation:heroSlosh .9s ease-out}
 </style>
 <script>window.FLUID={blobs:1}</script><link rel="stylesheet" href="fluid.css"><script defer src="fluid.js"></script><link rel="stylesheet" href="fx.css"><script defer src="fx.js"></script>
 </head>
@@ -375,6 +379,7 @@ function paint(){
     }
     const h = document.getElementById('hook-'+m.id); if (h) h.textContent = hook==='running' ? 'Input monitoring: active' : hook==='ready' ? 'Turns on when enabled — macOS will ask for Accessibility permission once.' : hook==='needs-accessibility' ? 'Waiting for permission: System Settings → Privacy & Security → Accessibility → turn on Surge. Starts automatically once granted.' : hook==='error' ? 'Hook failed to start. Check Accessibility and Input Monitoring for Surge, then relaunch.' : 'Global input hook not installed in this build (uiohook-napi). Run npm install on a Mac.';
   }
+  { const h=document.querySelector('#pane-all .hero'); if(h&&$('#onCount').textContent!==String(on)&&$('#onCount').textContent!=='—'){ h.classList.remove('slosh'); void h.offsetWidth; h.classList.add('slosh'); } }
   $('#onCount').textContent = on; document.querySelector('#pane-all .hero')?.style.setProperty('--lv', Math.max(8, Math.round(on / Math.max(1, MODS.length) * 100)) + '%');
   const mv = $('#master'); if (document.activeElement !== mv) { mv.value = S.masterVolume ?? 1; mv.style.setProperty('--p', (S.masterVolume ?? 1)*100+'%'); }
   $('#vol').classList.toggle('muted', !!S.muted); 
