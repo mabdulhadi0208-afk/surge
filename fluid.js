@@ -40,7 +40,7 @@
   document.addEventListener('pointerleave', () => { inside = false; light && light.classList.remove('on'); if (mag) { lastMag = mag; mag = null; mtx = mty = 0; kick(); } });
 
   /* drifting colour */
-  if (C.blobs) { const L = layer('back'); for (const [cls, css] of [['', 'width:46%;height:52%;left:-12%;top:-16%'], ['b', 'width:50%;height:48%;right:-14%;bottom:-18%']]) { const b = document.createElement('i'); b.className = 'fl-blob ' + cls; b.style.cssText = css; L.appendChild(b); } }
+  if (C.blobs) { const L = layer('back'); for (const [cls, css] of [['', 'width:70%;height:70%;left:-25%;top:-28%'], ['b', 'width:74%;height:70%;right:-28%;bottom:-30%']]) { const b = document.createElement('i'); b.className = 'fl-blob ' + cls; b.style.cssText = css; L.appendChild(b); } }
 
   /* segmented controls: the selection slides and stretches instead of jumping */
   const segs = new WeakSet();
@@ -59,5 +59,7 @@
   new MutationObserver(scan).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
   addEventListener('resize', () => document.querySelectorAll('.seg').forEach(s => segSync(s, true)));
   addEventListener('load', scan); scan(); setTimeout(() => document.querySelectorAll('.seg').forEach(s => segSync(s, true)), 600);
+  /* a window nobody is using should cost nothing: ambient loops stop when it loses focus (the dock opts out: it is never focused) */
+  if (!C.keepAlive) { const idle = v => document.documentElement.classList.toggle('fl-idle', v); addEventListener('blur', () => idle(true)); addEventListener('focus', () => idle(false)); document.addEventListener('visibilitychange', () => idle(document.hidden)); }
   window.SurgeFluid = { scan, segSync };
 })();

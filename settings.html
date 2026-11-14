@@ -161,14 +161,14 @@
   #mute svg{width:16px;height:16px;fill:currentColor;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;fill-opacity:1;display:block} #mute svg path:not(:first-child){fill:none} #mute .x{display:none} .vol.muted #mute .x{display:block} .vol.muted #mute .w1,.vol.muted #mute .w2{display:none}
 
   /* ───────── fluid max ───────── */
-  .win{animation:pop .95s var(--spring-soft) both} @keyframes pop{from{opacity:0;transform:scale(.88) translateY(26px);filter:blur(8px)}}
-  .pane{transition:opacity .4s var(--flow),transform .9s var(--spring-soft),filter .4s;transform:translateY(34px) scale(.97);filter:blur(6px)} .pane.on{filter:none}
+  .win{animation:pop .95s var(--spring-soft) both} @keyframes pop{from{opacity:0;transform:scale(.88) translateY(26px)}}
+  .pane{transition:opacity .4s var(--flow),transform .9s var(--spring-soft);transform:translateY(34px) scale(.97)}
   .pane.enter .mod,.pane.enter .card,.pane.enter .step,.pane.enter .theme,.pane.enter .hero{animation:stage .95s var(--spring-soft) backwards;animation-delay:calc(var(--i,0)*34ms)}
-  @keyframes stage{from{opacity:0;transform:translateY(40px) scale(.9);filter:blur(6px)}}
+  @keyframes stage{from{opacity:0;transform:translateY(40px) scale(.9)}}
   #navInd{transition:transform .75s var(--spring),opacity .3s;background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 16%,var(--bg3)),var(--bg3));box-shadow:inset 3px 0 0 var(--accent),0 10px 24px -16px var(--accent)}
   nav button{transition:color .3s,background .3s,transform .6s var(--spring)} nav button:hover{transform:translateX(5px)} nav button .ic{transition:transform .7s var(--spring)} nav button:hover .ic,nav button.on .ic{transform:scale(1.2) rotate(-8deg)} nav button.on .ic svg{stroke:var(--accent)}
-  nav button.live .led{animation:led 2.4s ease-in-out infinite} @keyframes led{50%{box-shadow:0 0 14px 2px var(--accent);transform:scale(1.25)}}
-  .brand .dot{animation:brand 3.6s ease-in-out infinite} @keyframes brand{50%{box-shadow:0 0 30px 2px var(--accent);transform:rotate(-8deg) scale(1.08)}}
+  @keyframes led{50%{transform:scale(1.35)}}
+  .brand .dot{animation:brand 3.6s ease-in-out infinite} @keyframes brand{50%{transform:rotate(-8deg) scale(1.08)}}
   .mod{transition:transform .8s var(--spring),background .35s,box-shadow .5s} .mod:hover{transform:translateY(-8px) scale(1.02);box-shadow:0 26px 44px -28px #000,inset 0 0 0 1px rgba(255,255,255,.08)}
   .mod.on:hover{box-shadow:0 26px 50px -26px var(--accent),inset 0 0 0 1px color-mix(in srgb,var(--accent) 45%,transparent)}
   .mod .ic{transition:background .5s var(--flow),box-shadow .5s,transform .8s var(--spring)} .mod:hover .ic{transform:scale(1.18) rotate(-10deg)}

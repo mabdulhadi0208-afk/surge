@@ -21,7 +21,7 @@
 
   /* fluid max */
   .box{border:0;border-radius:26px;box-shadow:0 40px 100px -30px rgba(0,0,0,.95),0 0 70px -34px var(--a),inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px rgba(255,255,255,.05)}
-  .box.in{animation:in .9s var(--spring-soft)} @keyframes in{from{transform:translateY(30px) scale(.86);opacity:0;filter:blur(8px)}}
+  .box.in{animation:in .9s var(--spring-soft)} @keyframes in{from{transform:translateY(30px) scale(.86);opacity:0}}
   .top input{border:0;background:rgba(255,255,255,.07);border-radius:16px;transition:box-shadow .4s,background .3s,transform .7s var(--spring)} .top input:focus{box-shadow:0 0 0 3px color-mix(in srgb,var(--a) 26%,transparent);transform:scale(1.01)}
   .it{border-radius:14px;transition:background .25s,transform .7s var(--spring),box-shadow .3s;animation:row .8s var(--spring-soft) backwards;animation-delay:calc(var(--i)*22ms)} @keyframes row{from{opacity:0;transform:translateX(-26px) scale(.94)}}
   .it:hover{transform:translateX(5px)} .it.sel{background:color-mix(in srgb,var(--a) 16%,transparent);box-shadow:inset 3px 0 0 var(--a);transform:translateX(5px)}
