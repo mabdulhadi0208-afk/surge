@@ -46,8 +46,10 @@ function playPreset(p, v, kind, variance, pitch = 1){
 }
 function playUp(p, v){ const u = p.up; if (!u) return; v *= p.gain ?? 1; if (u.tone) tone({ f: u.f, f2: u.f2 || u.f, dur: u.dur, vol: v * u.vol, type: 'sine' }); else noise({ dur: u.dur, f: u.f, q: u.q ?? 1, vol: v * u.vol }); if (u.ping && p.ping) tone({ f: p.ping.f * 1.1, dur: p.ping.dur * .6, vol: v * p.ping.vol * .5, type: 'sine' }); }
 
+let acked = false;
 function play(p) {
   if (AC.state !== 'running') AC.resume();
+  if (!acked) { acked = true; setTimeout(() => window.surge?.audioAck?.(AC.state), 150); }
   const v = Math.max(0, Math.min(1, (p.volume ?? .5) * (p.master ?? 1)));
   if (v <= 0) return;
   switch (p.sound) {

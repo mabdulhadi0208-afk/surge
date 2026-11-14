@@ -106,6 +106,7 @@ jobs:
           [ "$(grep -c "start dock" $L/surge.log)" -ge 2 ] && echo "✓ startup ran to the end both times (no freeze)" || { echo "✗ startup did not finish (FROZEN)"; cat $L/surge.log; exit 1; }
           osascript -e 'with timeout of 5 seconds' -e 'tell application "System Events" to key code 49' -e 'end timeout' >/dev/null 2>&1 || true; sleep 2
           grep -q "hook first event" $L/surge.log && echo "✓ a real key press reached Surge through the hook" || echo "! could not send a synthetic key on this runner (event delivery not verified)"
+          grep -q "audio ok" $L/surge.log && echo "✓ that key press played a keyboard sound (key → hook → sound engine)" || { echo "✗ key press produced NO sound"; cat $L/surge.log; exit 1; }
           echo "----- surge.log"; cat $L/surge.log; echo "----- update.log"; cat $L/update.log; ls ~/Library/Logs/DiagnosticReports 2>/dev/null | grep -i surge || true
           # 3b. watchdog: kill it the hard way, it must come back on its own
           kill -9 $P2; sleep 10

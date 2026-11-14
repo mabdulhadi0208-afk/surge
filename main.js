@@ -20,7 +20,8 @@ const settingsPath = () => path.join(app.getPath('userData'), 'settings.json');
 function defaultsFor(m) { return { enabled: !!m.defaultEnabled, ...(m.defaults || {}) }; }
 function loadSettings() {
   let raw = {}; try { raw = JSON.parse(fs.readFileSync(settingsPath(), 'utf8')); } catch {}
-  settings = { launchAtLogin: !!raw.launchAtLogin, masterVolume: raw.masterVolume ?? 1, muted: !!raw.muted, welcomed: raw.welcomed, modules: {} };
+  settings = { launchAtLogin: !!raw.launchAtLogin, masterVolume: raw.masterVolume ?? 1, muted: !!raw.muted, welcomed: raw.welcomed, soundFix: raw.soundFix, modules: {} };
+  if (!settings.soundFix) { if (settings.muted || settings.masterVolume === 0) setTimeout(() => log('one-time sound reset: was muted =', settings.muted, 'master =', settings.masterVolume), 0); settings.muted = false; if (!(settings.masterVolume > 0.05)) settings.masterVolume = 1; settings.soundFix = 1; }
   for (const id in MODULES) settings.modules[id] = { ...defaultsFor(MODULES[id]), ...(raw.modules?.[id] || {}) };
 }
 function saveSettings() { try { fs.mkdirSync(path.dirname(settingsPath()), { recursive: true }); fs.writeFileSync(settingsPath(), JSON.stringify(settings, null, 2)); } catch (e) { console.error(e); } }
@@ -46,7 +47,7 @@ function ensureHook() {
   hookProc = child;
   const t = setTimeout(() => { if (!started) { log('hook host did not start within 4s (native start blocked) — killing it'); try { child.kill(); } catch {} } }, 4000);
   child.on('message', (m) => {
-    if (m.ev) { if (!hookEvents++) log('hook first event'); hookListeners[m.ev]?.forEach(fn => { try { fn(m.e); } catch (err) { console.error(err); } }); return; }
+    if (m.ev) { lastInputAt = Date.now(); if (!hookEvents++) log('hook first event'); hookListeners[m.ev]?.forEach(fn => { try { fn(m.e); } catch (err) { console.error(err); } }); return; }
     if (m.started) { started = true; clearTimeout(t); hookStarting = false; hookStarted = true; hookState = 'running'; log('hook started'); setTimeout(() => { if (hookProc === child) hookTries = 0; }, 30000); watchHookAlive(); ctx.broadcast('settings:update', settings); }
     else if (m.error) log('hook host error:', m.error);
   });
@@ -158,7 +159,7 @@ function ensureAudio() {
   audioWin.webContents.on('console-message', (_e, lvl, msg) => lvl >= 2 && log('audio', msg));
   return audioWin;
 }
-function play(sound, opts = {}) { if (settings.muted && !opts.force) return; const w = ensureAudio(); if (!w || w.isDestroyed()) return; const send = () => { try { w.webContents.send('audio:play', { sound, master: settings.masterVolume ?? 1, ...opts }); } catch {} }; w.webContents.isLoading() ? w.webContents.once('did-finish-load', send) : send(); }
+function play(sound, opts = {}) { if (settings.muted && !opts.force) return; lastSoundAt = Date.now(); const w = ensureAudio(); if (!w || w.isDestroyed()) return; const send = () => { try { w.webContents.send('audio:play', { sound, master: settings.masterVolume ?? 1, ...opts }); } catch {} }; w.webContents.isLoading() ? w.webContents.once('did-finish-load', send) : send(); }
 function sysSound(name) { if (IS_MAC) execFile('afplay', [`/System/Library/Sounds/${name}.aiff`], () => {}); else play('chime', { name, volume: .6 }); }
 
 /* ------------------------------------------------------------------ battery (shared by modules) */
@@ -326,6 +327,11 @@ function ensurePopover() {
   popWin.webContents.on('console-message', (_e, lvl, msg) => lvl >= 2 && log('popover', msg));
   return popWin;
 }
+let popBelow = true;
+ipcMain.on('popover:height', (_e, h) => { const w = popWin; if (!w || w.isDestroyed() || !(h > 200)) return; h = Math.round(Math.min(h, 820)); const b = w.getBounds(); if (b.height === h) return;
+  const d = screen.getDisplayNearestPoint({ x: b.x, y: b.y }); const maxH = d.workArea.height - 16; h = Math.min(h, maxH);
+  let y = popBelow ? b.y : b.y + b.height - h; y = Math.max(d.workArea.y + 6, Math.min(y, d.workArea.y + d.workArea.height - h - 6));
+  w.setBounds({ x: b.x, y, width: b.width, height: h }, false); });
 function togglePopover() {
   const w = ensurePopover();
   if (w.isVisible()) { w.hide(); return; }
@@ -335,7 +341,7 @@ function togglePopover() {
   let x = Math.round(b.x + b.width / 2 - pw / 2); const below = b.y < d.workArea.y + d.workArea.height / 2; let y = below ? Math.round(b.y + b.height + 4) : Math.round(b.y - ph - 8);
   if (!b.width && !b.height) { x = d.workArea.x + d.workArea.width - pw - 12; y = d.workArea.y + d.workArea.height - ph - 12; }   // some Windows trays report no bounds
   x = Math.max(d.workArea.x + 6, Math.min(x, d.workArea.x + d.workArea.width - pw - 6)); y = Math.max(d.workArea.y + 6, Math.min(y, d.workArea.y + d.workArea.height - ph - 6));
-  w.webContents.send('popover:edge', below ? 'top' : 'bottom');
+  popBelow = below; w.webContents.send('popover:edge', below ? 'top' : 'bottom');
   w.setPosition(x, y, false); w.show(); w.focus(); w.webContents.send('popover:show');
   try { if (running.has('updater')) MODULES.updater._check(ctx, false); } catch {}
 }
@@ -376,7 +382,7 @@ function setTray(id, extra) { const k = JSON.stringify(extra, (kk, v) => typeof 
 const trayKeys = {};
 function updateTray() {
   if (!tray) return;
-  const titles = Object.values(trayExtras).map(e => e?.title).filter(Boolean);
+  const titles = Object.values(trayExtras).map(e => e?.title).filter(Boolean); if (settings.muted) titles.push(IS_MAC ? '🔇' : '(muted)');
   if (IS_MAC) tray.setTitle(titles.length ? ' ' + titles.join('  ') : ''); else tray.setToolTip(['Surge', ...titles].join('  '));
   const items = [];
   for (const [id, e] of Object.entries(trayExtras)) if (e?.menu?.length) { items.push(...e.menu); items.push({ type: 'separator' }); }
@@ -412,7 +418,7 @@ function reconcile() {
 }
 function applyPatch(patch) {
   if ('masterVolume' in patch) settings.masterVolume = Math.max(0, Math.min(1, +patch.masterVolume));
-  if ('muted' in patch) settings.muted = !!patch.muted;
+  if ('muted' in patch) { settings.muted = !!patch.muted; setTimeout(updateTray, 0); }
   if ('launchAtLogin' in patch) { settings.launchAtLogin = !!patch.launchAtLogin; if (IS_MAC || IS_WIN) app.setLoginItemSettings({ openAtLogin: settings.launchAtLogin, openAsHidden: true }); }
   if (patch.modules) for (const id in patch.modules) settings.modules[id] = { ...settings.modules[id], ...patch.modules[id] };
   saveSettings(); reconcile(); ctx.broadcast('settings:update', settings); updateTray();
@@ -425,6 +431,23 @@ ipcMain.handle('settings:reset', () => { settings = { launchAtLogin: settings.la
 ipcMain.handle('modules:list', () => Object.values(MODULES).map(m => ({ id: m.id, name: m.name, icon: m.icon, group: m.group, desc: m.desc, needsHook: !!m.needsHook, schema: m.schema || [] })));
 ipcMain.handle('battery:get', () => battery);
 ipcMain.handle('hook:state', () => hookState);
+let lastInputAt = 0, lastSoundAt = 0, audioState = '';
+// one plain-language answer to "why is there no sound?", shown in the popover
+ipcMain.handle('sound:diag', () => {
+  const k = mod('keys') || {}, m = mod('mouse') || {};
+  let code = 'ok', text = 'Sounds are working';
+  if (settings.muted) { code = 'muted'; text = 'Surge is muted'; }
+  else if (!((settings.masterVolume ?? 1) > 0.02)) { code = 'volume'; text = 'Surge volume is at zero'; }
+  else if (!k.enabled && !m.enabled) { code = 'off'; text = 'Keyboard and mouse sounds are turned off'; }
+  else if (hookState === 'needs-accessibility') { code = 'permission'; text = 'macOS has not allowed keyboard & mouse access'; }
+  else if (hookState === 'stale') { code = 'stale'; text = 'The keyboard & mouse permission is stuck'; }
+  else if (hookState === 'error' || hookState === 'unavailable') { code = 'error'; text = 'The keyboard & mouse listener could not start'; }
+  else if (hookState !== 'running') { code = 'starting'; text = 'Starting the keyboard & mouse listener…'; }
+  else if ((k.enabled && !(k.volume > 0.02)) && (!m.enabled || !(m.volume > 0.02))) { code = 'modvol'; text = 'Keyboard sound volume is at zero'; }
+  else if (!lastInputAt) { code = 'waiting'; text = 'Listening — press any key to test'; }
+  return { code, text, hookState, lastInputAt, lastSoundAt, audioState, keys: !!k.enabled, mouse: !!m.enabled };
+});
+ipcMain.on('audio:ack', (_e, st) => { if (!audioState) log('audio ok — first sound played, context', st); audioState = String(st); });
 ipcMain.handle('module:action', (_e, id, action, arg) => { try { return MODULES[id]?.actions?.[action]?.(ctx, arg); } catch (e) { console.error(e); } });
 ipcMain.on('glow:preview', (_e, kind) => fireGlow(kind || 'preview', kind === 'low' ? { level: 12 } : kind === 'full' ? { level: 100 } : {}));
 ipcMain.on('audio:test', (_e, sound, opts) => play(sound, { ...(opts || {}), force: true }));
