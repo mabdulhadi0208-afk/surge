@@ -20,6 +20,7 @@
 
   /* ---------- fx layer: ripples + spotlight ---------- */
   const fx = document.getElementById('fx'), fc = fx.getContext('2d');
+  let trail = [], trailColor = '#00FF85', trailSize = 7;
   let ripples = [], spot = { on:false, x:-9999, y:-9999, radius:180, dim:.75, softness:.5, cur:{x:-9999,y:-9999} }, fxRaf = 0;
   function fxSize(){ const d = Math.min(devicePixelRatio||1, 1.5); if (fx.width !== Math.round(innerWidth*d)) { fx.width = innerWidth*d; fx.height = innerHeight*d; } fc.setTransform(d,0,0,d,0,0); }
   function hex(h){ const n=parseInt(h.slice(1),16); return [n>>16&255,n>>8&255,n&255]; }
@@ -39,15 +40,30 @@
       fc.fillStyle = h; fc.beginPath(); fc.arc(spot.cur.x, spot.cur.y, r + soft, 0, Math.PI*2); fc.fill();
       fc.globalCompositeOperation = 'source-over';
     }
-    // ripples
-    ripples = ripples.filter(rp => now - rp.t0 < 700);
+    // comet trail: a tapering ribbon through the last few cursor positions
+    trail = trail.filter(p => now - p.t < 380);
+    if (trail.length > 1) { fc.lineCap = 'round'; fc.lineJoin = 'round'; const c = hex(trailColor);
+      for (let i = 1; i < trail.length; i++) { const a = trail[i - 1], b = trail[i], k = 1 - (now - b.t) / 380; if (k <= 0) continue; fc.strokeStyle = `rgba(${c},${(k * .75).toFixed(3)})`; fc.lineWidth = 1 + k * trailSize; fc.beginPath(); fc.moveTo(a.x, a.y); fc.lineTo(b.x, b.y); fc.stroke(); } }
+    // ripples (ring · shock · sparks · drop)
+    const back = p => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(p - 1, 3) + c1 * Math.pow(p - 1, 2); };   // overshoots, then settles
+    ripples = ripples.filter(rp => now - rp.t0 < rp.dur);
     for (const rp of ripples) {
-      const p = (now - rp.t0) / 700, e = 1 - Math.pow(1 - p, 3), c = hex(rp.color);
-      const rad = rp.size * (0.2 + e * 1.0), a = (1 - p) * 0.9;
-      fc.lineWidth = Math.max(1.5, rp.size * 0.08 * (1 - p)); fc.strokeStyle = `rgba(${c},${a})`; fc.beginPath(); fc.arc(rp.x, rp.y, rad, 0, Math.PI*2); fc.stroke();
-      const g = fc.createRadialGradient(rp.x, rp.y, 0, rp.x, rp.y, rad); g.addColorStop(0, `rgba(${c},${a*.35})`); g.addColorStop(1, `rgba(${c},0)`); fc.fillStyle = g; fc.fill();
+      const p = (now - rp.t0) / rp.dur, e = 1 - Math.pow(1 - p, 3), c = hex(rp.color), a = (1 - p) * 0.9, st = rp.style || 'ring';
+      const ring = (rad, w, al) => { if (rad <= 0 || al <= 0) return; fc.lineWidth = w; fc.strokeStyle = `rgba(${c},${al})`; fc.beginPath(); fc.arc(rp.x, rp.y, rad, 0, Math.PI * 2); fc.stroke(); };
+      const fill = (rad, al) => { const g = fc.createRadialGradient(rp.x, rp.y, 0, rp.x, rp.y, rad); g.addColorStop(0, `rgba(${c},${al})`); g.addColorStop(1, `rgba(${c},0)`); fc.fillStyle = g; fc.beginPath(); fc.arc(rp.x, rp.y, rad, 0, Math.PI * 2); fc.fill(); };
+      if (st === 'drop') {                                             // a liquid splat with a wobbling edge
+        const rad = rp.size * (.25 + back(Math.min(1, p * 1.4)) * .75), wob = (1 - p) * rp.size * .16; fc.beginPath();
+        for (let k = 0; k <= 40; k++) { const an = k / 40 * Math.PI * 2, r = rad + Math.sin(an * 5 + rp.seed + p * 9) * wob; const x = rp.x + Math.cos(an) * r, y = rp.y + Math.sin(an) * r; k ? fc.lineTo(x, y) : fc.moveTo(x, y); }
+        fc.closePath(); fc.fillStyle = `rgba(${c},${a * .3})`; fc.fill(); fc.lineWidth = Math.max(1.5, rp.size * .05 * (1 - p)); fc.strokeStyle = `rgba(${c},${a})`; fc.stroke();
+      } else {
+        const rad = rp.size * (0.2 + (st === 'ring' ? back(Math.min(1, p * 1.25)) * .85 + e * .15 : e) * 1.0);
+        ring(rad, Math.max(1.5, rp.size * 0.08 * (1 - p)), a); fill(rad, a * .35);
+        if (st === 'shock') { const p2 = Math.max(0, p - .16) / .84, e2 = 1 - Math.pow(1 - p2, 3); ring(rp.size * (.1 + e2 * 1.35), Math.max(1, rp.size * .03 * (1 - p2)), (1 - p2) * .6); fill(rp.size * .28 * (1 - p), (1 - p) * .9); }
+        if (st === 'sparks') { for (let k = 0; k < 9; k++) { const an = rp.seed + k * (Math.PI * 2 / 9) + Math.sin(rp.seed * (k + 1)) * .35, d = rp.size * (.35 + e * (1.05 + .5 * Math.abs(Math.sin(rp.seed * 3 + k)))), sz = Math.max(.6, rp.size * .055 * (1 - p));
+            fc.fillStyle = `rgba(${k % 3 ? c : '255,255,255'},${a})`; fc.beginPath(); fc.arc(rp.x + Math.cos(an) * d, rp.y + Math.sin(an) * d + p * p * rp.size * .25, sz, 0, Math.PI * 2); fc.fill(); } }
+      }
     }
-    if (spot.on || ripples.length) fxRaf = requestAnimationFrame(fxFrame); else fxRaf = 0;
+    if (spot.on || ripples.length || trail.length) fxRaf = requestAnimationFrame(fxFrame); else fxRaf = 0;
   }
   const kick = () => { if (!fxRaf) fxRaf = requestAnimationFrame(fxFrame); };
 
@@ -60,7 +76,8 @@
     api.on('overlay:bounds', b => bounds = b);
     api.on('settings:update', s => engine.assign(s.modules?.glow || {}));
     api.on('glow:fire', p => { if (p.settings) engine.assign(p.settings); engine.fire(p.kind, p.level ?? 100, p); });
-    api.on('ripple', p => { const x = p.x - bounds.x, y = p.y - bounds.y; if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) return; ripples.push({ ...p, x, y, t0: performance.now() }); kick(); });
+    api.on('ripple', p => { const x = p.x - bounds.x, y = p.y - bounds.y; if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) return; ripples.push({ ...p, x, y, t0: performance.now(), seed: Math.random() * 6.283, dur: p.style === 'sparks' ? 850 : p.style === 'drop' ? 800 : p.style === 'shock' ? 800 : 700 }); if (ripples.length > 12) ripples.shift(); kick(); });
+    api.on('trail', p => { const x = p.x - bounds.x, y = p.y - bounds.y; if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) return; trailColor = p.color || trailColor; trailSize = p.size || 7; trail.push({ x, y, t: performance.now() }); if (trail.length > 40) trail.shift(); kick(); });
     api.on('spotlight', p => { spot = { ...spot, ...p }; if (p.on) kick(); else { fxSize(); fc.clearRect(0,0,innerWidth,innerHeight); } });
     api.on('cursor', p => { spot.x = p.x - bounds.x; spot.y = p.y - bounds.y; });
     api.on('tint', setTint);

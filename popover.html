@@ -99,6 +99,8 @@
   /* tiles fill like liquid when switched on */
   .m svg{background-image:linear-gradient(145deg,var(--a),color-mix(in srgb,var(--a) 72%,#00d4ff));background-repeat:no-repeat;background-position:50% 100%;background-size:100% 0%;transition:background-size .7s var(--spring-soft),background-color .5s var(--flow),stroke .3s,box-shadow .5s,transform .7s var(--spring)}
   .m.on svg{background-image:linear-gradient(145deg,var(--a),color-mix(in srgb,var(--a) 72%,#00d4ff));background-size:100% 100%;background-color:var(--bg2)}
+
+  .m{transition:transform .7s var(--spring),opacity .35s,scale .7s var(--spring)} .grid:hover .m:not(:hover){opacity:.62;scale:.94} .quick:hover .q:not(:hover){opacity:.6;scale:.96} .q{transition:transform .7s var(--spring),background .35s,box-shadow .4s,opacity .35s,scale .7s var(--spring)}
 </style><script>window.FLUID={blobs:1,pop:'#mout'}</script><link rel="stylesheet" href="fluid.css"><script defer src="fluid.js"></script><link rel="stylesheet" href="fx.css"><script defer src="fx.js"></script>
 </head>
 <body>
