@@ -5,7 +5,7 @@
 <title>Surge</title>
 <style>
   :root{ --bg:rgba(12,12,18,.9); --panel:rgba(255,255,255,.045); --line:rgba(255,255,255,.08); --text:#f2f2f6; --muted:#9a9aa6; --accent:#00FF85; --accent2:#39FF14;
-    --spring:cubic-bezier(.34,1.56,.64,1); --ease:cubic-bezier(.22,1,.36,1); }
+    --spring:cubic-bezier(.34,1.56,.64,1); --ease:cubic-bezier(.22,1,.36,1); --flow:cubic-bezier(.2,.8,.2,1); }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%;background:transparent;color:var(--text);font:14px/1.45 -apple-system,"SF Pro Text",Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden;-webkit-user-select:none}
   .win{height:100%;display:grid;grid-template-columns:220px minmax(0,1fr);grid-template-rows:100%;background:var(--bg);border-radius:14px;overflow:hidden;position:relative;animation:pop .6s var(--spring) both}
@@ -14,6 +14,20 @@
   .wc{display:none;gap:4px;-webkit-app-region:no-drag} body.winos .wc{display:flex}
   .wc button{all:unset;cursor:pointer;width:34px;height:28px;border-radius:8px;display:grid;place-items:center;color:var(--muted);transition:background .2s,color .2s} .wc button:hover{background:rgba(255,255,255,.1);color:var(--text)} .wc button.x:hover{background:#e0443e;color:#fff}
   .wc svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round}
+  .sech{font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin:16px 2px 8px}
+  .themes{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:6px}
+  .theme{all:unset;cursor:pointer;position:relative;overflow:hidden;border-radius:16px;padding:12px 12px 12px;background:var(--panel);border:1px solid var(--line);display:flex;flex-direction:column;gap:3px;transition:transform .5s var(--flow),border-color .3s,box-shadow .4s;animation:rise .6s var(--flow) backwards;animation-delay:calc(var(--i)*40ms)}
+  .theme i{display:block;height:34px;border-radius:10px;margin-bottom:7px;background:linear-gradient(120deg,var(--c1),var(--c2));background-size:180% 180%;transition:background-position .9s var(--flow),transform .6s var(--flow)}
+  .theme b{font-size:13px} .theme small{font-size:11px;color:var(--muted);line-height:1.35}
+  .theme:hover{transform:translateY(-4px);border-color:color-mix(in srgb,var(--c1) 55%,transparent);box-shadow:0 14px 34px -16px var(--c1)} .theme:hover i{background-position:100% 100%;transform:scale(1.03)} .theme:active{transform:scale(.97)}
+  .theme.on{border-color:var(--c1);box-shadow:0 0 0 1px var(--c1),0 14px 34px -18px var(--c1)}
+  /* fluid motion: buttons fill like liquid from below, panes re-stage their content every time you open them */
+  .btn.btn{position:relative;overflow:hidden;isolation:isolate}
+  .btn.btn::before{content:"";position:absolute;left:50%;top:100%;width:180%;aspect-ratio:1;border-radius:50%;background:rgba(255,255,255,.16);transform:translate(-50%,0);transition:transform .65s var(--flow);z-index:-1;pointer-events:none}
+  .btn.btn:hover::before{transform:translate(-50%,-62%)}
+  @keyframes stage{from{opacity:0;transform:translateY(22px) scale(.97)}}
+  .pane.enter .mod,.pane.enter .card,.pane.enter .step,.pane.enter .theme,.pane.enter .hero{animation:stage .7s var(--flow) backwards;animation-delay:calc(var(--i,0)*26ms)}
+  .mod:hover{transform:translateY(-4px) scale(1.012)}
   /* welcome */
   .steps{display:grid;gap:12px} .step{display:flex;gap:14px;align-items:flex-start;padding:16px;border-radius:16px;background:var(--panel);border:1px solid var(--line);transition:border-color .3s,background .3s} .step.done{border-color:rgba(0,255,133,.4);background:rgba(0,255,133,.06)}
   .step .num{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.08);display:grid;place-items:center;font-weight:700;flex:none;font-size:13px} .step.done .num{background:var(--accent);color:#06110a}
@@ -128,7 +142,7 @@
 <script>
 const $ = s => document.querySelector(s), api = window.surge;
 const ICONS = {
-  island:'<rect x="6" y="4" width="12" height="6" rx="3"/><path d="M4 15h16M7 19h10"/>', bolt:'<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>', keyboard:'<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/>',
+  snap:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v16M12 12h9"/>', island:'<rect x="6" y="4" width="12" height="6" rx="3"/><path d="M4 15h16M7 19h10"/>', bolt:'<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>', keyboard:'<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/>',
   mouse:'<rect x="6" y="3" width="12" height="18" rx="6"/><path d="M12 7v3"/>', ripple:'<circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/>',
   spot:'<circle cx="12" cy="12" r="5"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/>', moon:'<path d="M21 13A9 9 0 1 1 11 3a7 7 0 0 0 10 10z"/>',
   caps:'<path d="M12 4 4 12h5v8h6v-8h5z"/>', coffee:'<path d="M4 8h12v6a5 5 0 0 1-10 0z"/><path d="M16 9h2a2 2 0 1 1 0 4h-2M6 20h10"/>',
@@ -141,7 +155,7 @@ const ICONS = {
 const ic = n => `<svg viewBox="0 0 24 24">${ICONS[n]||ICONS.bolt}</svg>`;
 let S = {}, MODS = [], hook = 'unavailable', cur = 'all', mini = null, pkind = 'plug';
 const fmt = (f, v) => f==='pct' ? Math.round(v*100)+'%' : f==='px' ? v+'px' : f==='s' ? (+v).toFixed(1)+'s' : f==='x' ? (+v).toFixed(2)+'×' : v;
-function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),1000); }
+function toast(m,ms=1000){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),ms); }
 let saveT, pending = { modules: {} };
 function set(id, patch){ S.modules[id] = { ...S.modules[id], ...patch }; pending.modules[id] = { ...(pending.modules[id]||{}), ...patch }; paint();
   clearTimeout(saveT); saveT = setTimeout(async()=>{ const p = pending; pending = { modules: {} }; await api?.setSettings(p); toast('Saved'); }, 200); }
@@ -156,11 +170,12 @@ function build(){
   let panes = `<section class="pane on" id="pane-all">
     <div class="hero"><div><h2 id="heroT">Your Mac, with extras.</h2><p>Flip anything on. Each module is independent, tiny, and lives in the ${/Mac/.test(navigator.platform)?'menu bar':'system tray'}.</p></div><div class="n"><span id="onCount">0</span>/${MODS.length}</div></div>
     <div class="note" id="hookNote"></div>
-    <div class="grid">${MODS.map((m,i)=>`<div class="mod ${m.needsHook?'needs':''}" data-m="${m.id}" style="animation-delay:${i*40}ms"><div class="top"><div class="ic">${ic(m.icon)}</div><h4>${m.name}</h4></div><p>${m.desc}</p><div class="need">Needs Accessibility permission</div><div class="tg" data-m="${m.id}"></div></div>`).join('')}</div></section>`;
+    <div class="sech">Themes</div>${themeHTML()}<div class="sech">Modules</div><div class="grid">${MODS.map((m,i)=>`<div class="mod ${m.needsHook?'needs':''}" data-m="${m.id}" style="animation-delay:${i*40}ms"><div class="top"><div class="ic">${ic(m.icon)}</div><h4>${m.name}</h4></div><p>${m.desc}</p><div class="need">Needs Accessibility permission</div><div class="tg" data-m="${m.id}"></div></div>`).join('')}</div></section>`;
   for (const m of MODS) panes += `<section class="pane" id="pane-${m.id}"><div class="card"><h3>${m.name}</h3><div class="row"><div class="l">Enabled<small>${m.desc}</small></div><div class="tg" data-m="${m.id}"></div></div>${m.needsHook?'<div class="row"><div class="l"><small id="hook-'+m.id+'"></small></div></div>':''}</div>${m.id==='glow'?'<div class="card"><h3>Live preview</h3><div class="preview" id="preview"><canvas id="pc"></canvas></div></div>':''}${m.schema.length?'<div class="card"><h3>Options</h3>'+m.schema.map(f=>field(m,f)).join('')+'</div>':''}</section>`;
   const mac = !document.body.classList.contains('winos');
   panes += `<section class="pane" id="pane-welcome"><div class="hero"><div><h2>Welcome to Surge ⚡</h2><p>Four quick things and you're set. Everything here can be changed later.</p></div></div><div class="steps">
     ${mac ? `<div class="step" id="st-ax"><div class="num">1</div><div class="b"><h4>Allow keyboard &amp; mouse</h4><p>Key sounds, click ripples and the Caps Lock pill need macOS Accessibility permission — one click on Allow, no data leaves your Mac.</p><button class="btn primary" id="stAx">Allow in System Settings</button> <span id="stAxT" style="font-size:12px;color:var(--muted);margin-left:8px"></span></div></div>` : ''}
+    <div class="step" id="st-vibe"><div class="num">★</div><div class="b"><h4>Pick a vibe</h4><p>One click sets the glow, the key sounds and the click ripple. Try a few — you'll hear each one.</p>${themeHTML()}</div></div>
     <div class="step" id="st-key"><div class="num">${mac ? 2 : 1}</div><div class="b"><h4>Pick your keyboard sound</h4><p>145 switches, all synthesised live. Holy Panda is the default — try Box Jade if you like clicky, Topre if you like thock.</p><button class="btn" data-go="keys">Browse sounds</button> <button class="btn" id="stRand">🎲 Surprise me</button></div></div>
     <div class="step" id="st-mods"><div class="num">${mac ? 3 : 2}</div><div class="b"><h4>Turn things on</h4><p>Charge Glow is on. Popular extras:</p><div class="chips" id="stMods"></div></div></div>
     <div class="step" id="st-login"><div class="num">${mac ? 4 : 3}</div><div class="b"><h4>Start with your ${mac ? 'Mac' : 'computer'}</h4><p>Surge lives in the ${mac ? 'menu bar' : 'system tray'} and uses almost nothing. Click the ⚡ up there any time.</p><button class="btn" id="stLogin"></button></div></div>
@@ -212,7 +227,21 @@ function wire(el){
 }
 document.addEventListener('click', async e => { const a = e.target.closest('[data-a]'); if (!a) return; const [mid, act] = a.dataset.a.split(':');
   if (mid==='glow' && act!=='stats') { api?.preview(act); replay(act==='preview'?'plug':act); return; }
-  const r = await api?.action(mid, act); if (act==='stats') toast(`${r ?? 0} keys today`); else toast('Done'); });
+  const r = await api?.action(mid, act); if (act==='stats') toast(`${r ?? 0} keys today`); else toast(typeof r === 'string' && r ? r : 'Done', typeof r === 'string' && r.length > 24 ? 2600 : 1000); });
+// Themes: one click restyles the glow, the sounds and the click ripple together. They only change looks/sounds, never what is switched on.
+const THEMES=[
+  {id:'aurora',name:'Aurora',c:['#00FF85','#00D4FF'],d:'The original. Green aurora, Holy Panda keys.',p:{glow:{theme:'aurora',color:'#00FF85'},keys:{preset:'switches:holy-panda'},mouse:{preset:'click'},ripple:{color:'#00FF85',rightColor:'#FF3DF0'}}},
+  {id:'cyber',name:'Cyberpunk',c:['#FF3DF0','#7A5CFF'],d:'Magenta glow, sharp Box Jade clicks.',p:{glow:{theme:'solid',color:'#FF3DF0'},keys:{preset:'switches:box-jade'},mouse:{preset:'metal'},ripple:{color:'#FF3DF0',rightColor:'#00D4FF'}}},
+  {id:'minimal',name:'Minimal',c:['#E8F7FF','#7DF9FF'],d:'Ice glow, near-silent switches.',p:{glow:{theme:'ice',intensity:.6},keys:{preset:'switches:boba-u4-silent'},mouse:{preset:'soft-click'},ripple:{color:'#FFFFFF',rightColor:'#7DF9FF'}}},
+  {id:'retro',name:'Retro',c:['#FF9500','#FFD60A'],d:'Ember glow and a typewriter.',p:{glow:{theme:'ember'},keys:{preset:'special:typewriter'},mouse:{preset:'typewriter'},ripple:{color:'#FF9500',rightColor:'#FFD60A'}}},
+  {id:'thock',name:'Thock',c:['#00FF85','#0B6B4A'],d:'Deep Topre thock, heavy clicks.',p:{glow:{theme:'aurora',color:'#00FF85'},keys:{preset:'switches:topre-45g'},mouse:{preset:'deep-click'},ripple:{color:'#00FF85',rightColor:'#00D4FF'}}},
+  {id:'arcade',name:'Arcade',c:['#FFD60A','#FF1744'],d:'Gold glow, 8-bit keys, pop clicks.',p:{glow:{theme:'solid',color:'#FFD60A'},keys:{preset:'special:retro-8-bit'},mouse:{preset:'pop'},ripple:{color:'#FFD60A',rightColor:'#FF1744'}}},
+];
+const themeHTML=()=>`<div class="themes">${THEMES.map((t,i)=>`<button class="theme" data-theme="${t.id}" style="--c1:${t.c[0]};--c2:${t.c[1]};--i:${i}"><i></i><b>${t.name}</b><small>${t.d}</small></button>`).join('')}</div>`;
+function themeActive(t){ const m=S.modules; return m.keys?.preset===t.p.keys.preset && m.glow?.theme===t.p.glow.theme && (!t.p.glow.color||m.glow?.color===t.p.glow.color); }
+async function applyTheme(id, alsoEnableKeys){ const t=THEMES.find(x=>x.id===id); if(!t) return; const patch={modules:{}}; for(const mid in t.p) if(S.modules[mid]) patch.modules[mid]={...t.p[mid]}; if(alsoEnableKeys&&patch.modules.keys) patch.modules.keys.enabled=true;
+  for(const mid in patch.modules) Object.assign(S.modules[mid],patch.modules[mid]); await api?.setSettings(patch); paint(); api?.preview('preview'); audition('keyboard',t.p.keys.preset); toast(t.name+' theme on'); }
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-theme]'); if(b) applyTheme(b.dataset.theme, !!b.closest('#pane-welcome')); });
 function buildPicker(el, mid, k){
   const lib = el.dataset.lib; const cats = lib==='keyboard' ? SurgeSounds.keyboard : [{ id:'mouse', name:'Clicks', color:'#00FF85', presets: SurgeSounds.mouse }];
   el._cat = 'all'; el._q = '';
@@ -255,7 +284,8 @@ function buildWidgets(el, mid, k){
   el._render = render; render();
 }
 function syncRange(r){ r.style.setProperty('--p', (r.value-r.min)/(r.max-r.min)*100+'%'); r.nextElementSibling.value = fmt(r.dataset.fmt, +r.value); }
-function go(p){ cur = p; document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on', b.dataset.p===p)); document.querySelectorAll('.pane').forEach(x=>x.classList.toggle('on', x.id===`pane-${p}`));
+function stage(p){ const el=document.getElementById('pane-'+p); if(!el) return; let i=0; el.querySelectorAll('.hero,.theme,.mod,.card,.step').forEach(x=>x.style.setProperty('--i',Math.min(i++,22))); el.classList.remove('enter'); void el.offsetWidth; el.classList.add('enter'); }
+function go(p){ stage(p); cur = p; document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on', b.dataset.p===p)); document.querySelectorAll('.pane').forEach(x=>x.classList.toggle('on', x.id===`pane-${p}`));
   $('#title').textContent = p==='all' ? 'Modules' : p==='about' ? 'About' : p==='welcome' ? 'Welcome' : MODS.find(m=>m.id===p)?.name || ''; if (p==='glow') replay(); }
 function paint(){
   let on = 0;
@@ -279,6 +309,7 @@ function paint(){
   $('#vol').classList.toggle('muted', !!S.muted); $('#mute').textContent = S.muted ? '🔇' : '🔊';
   const note = $('#hookNote'); note.classList.toggle('show', hook==='error' || hook==='unavailable' || hook==='needs-accessibility' || hook==='stale'); note.innerHTML = hook==='stale' ? 'macOS shows Surge as allowed, but isn\'t delivering keyboard &amp; mouse events (a stuck permission entry). <a id="axFix" style="color:#FFD37A;text-decoration:underline;cursor:pointer">Repair it</a> — Surge restarts and asks once.' : hook==='needs-accessibility' ? 'Keyboard &amp; mouse modules need <b>Accessibility</b> permission. <a id="axBtn" style="color:#FFD37A;text-decoration:underline;cursor:pointer">Open Accessibility settings</a> → turn on Surge. They start automatically once granted.' : hook==='error' ? 'Hook failed to start. Enable Surge under Privacy &amp; Security → <a id="axBtn" style="color:#FFD37A;text-decoration:underline;cursor:pointer">Accessibility</a> and <a id="imBtn" style="color:#FFD37A;text-decoration:underline;cursor:pointer">Input Monitoring</a>, then relaunch.' : hook==='unavailable' ? 'Keyboard/mouse modules are unavailable in this build (native hook missing).' : '';
   const ax=$('#axBtn'); if(ax) ax.onclick=()=>api?.openAccessibility(); const fx=$('#axFix'); if(fx) fx.onclick=()=>api?.repairAccessibility(); const im=$('#imBtn'); if(im) im.onclick=()=>api?.openInputMonitoring();
+  document.querySelectorAll('[data-theme]').forEach(b=>b.classList.toggle('on',themeActive(THEMES.find(t=>t.id===b.dataset.theme))));
   $('#st-ax')?.classList.toggle('done', hook === 'running'); const axT = $('#stAxT'); if (axT) axT.textContent = hook === 'running' ? '✓ allowed' : hook === 'needs-accessibility' ? 'waiting…' : '';
   $('#st-key')?.classList.toggle('done', !!S.modules.keys?.enabled); $('#stMods')?.querySelectorAll('[data-st]').forEach(b => b.classList.toggle('on', !!S.modules[b.dataset.st]?.enabled));
   $('#st-mods')?.classList.toggle('done', ['mouse','dock','caps','clip','focus'].some(id => S.modules[id]?.enabled));

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+  :root{--a:#00FF85;--ink:#f2f2f6;--muted:#9a9aa6;--line:rgba(255,255,255,.1);--spring:cubic-bezier(.34,1.56,.64,1);--flow:cubic-bezier(.2,.8,.2,1)}
+  *{box-sizing:border-box} html,body{margin:0;height:100%;background:transparent;font:13px/1.35 -apple-system,"SF Pro Text","Segoe UI",Inter,system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased;-webkit-user-select:none;overflow:hidden}
+  .box{height:100%;border-radius:22px;background:rgba(16,16,22,.94);border:1px solid var(--line);box-shadow:0 40px 100px -30px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.07);display:flex;flex-direction:column;overflow:hidden}
+  .box.in{animation:in .42s var(--flow)} @keyframes in{from{transform:translateY(14px) scale(.96);opacity:0}}
+  .top{display:flex;align-items:center;gap:10px;padding:14px 14px 10px}
+  .top input{all:unset;flex:1;font-size:15px;padding:10px 13px;border-radius:13px;background:rgba(255,255,255,.07);border:1px solid var(--line);color:var(--ink)}
+  .top input:focus{border-color:rgba(0,255,133,.5);box-shadow:0 0 0 3px rgba(0,255,133,.12)}
+  .top .k{color:var(--muted);font-size:11px;white-space:nowrap}
+  .list{flex:1;overflow:auto;padding:2px 8px 10px} .list::-webkit-scrollbar{width:8px} .list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:4px}
+  .it{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:12px;cursor:pointer;transition:background .15s,transform .3s var(--spring);animation:row .4s var(--flow) backwards;animation-delay:calc(var(--i)*14ms)}
+  @keyframes row{from{opacity:0;transform:translateX(-10px)}}
+  .it:hover{background:rgba(255,255,255,.06)} .it.sel{background:rgba(0,255,133,.13);box-shadow:inset 0 0 0 1px rgba(0,255,133,.35)} .it:active{transform:scale(.985)}
+  .it .n{width:20px;text-align:center;color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums;flex:none} .it.sel .n{color:var(--a)}
+  .it .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .it .t b{color:var(--a);font-weight:700}
+  .it .m{color:var(--muted);font-size:10.5px;flex:none} .it .x{all:unset;cursor:pointer;width:20px;height:20px;border-radius:6px;display:grid;place-items:center;color:var(--muted);opacity:0} .it:hover .x{opacity:1} .it .x:hover{background:rgba(255,92,92,.25);color:#fff}
+  .empty{padding:60px 20px;text-align:center;color:var(--muted)}
+  .foot{display:flex;justify-content:space-between;padding:8px 16px 10px;border-top:1px solid var(--line);color:var(--muted);font-size:11px} .foot a{cursor:pointer} .foot a:hover{color:var(--ink)}
+</style></head>
+<body><div class="box" id="box">
+  <div class="top"><input id="q" placeholder="Search your clipboard…" autofocus><span class="k">↵ paste · esc close</span></div>
+  <div class="list" id="list"></div>
+  <div class="foot"><span id="cnt"></span><a id="clear">Clear history</a></div>
+</div>
+<script>
+const api=window.surge, $=s=>document.querySelector(s); let ALL=[], shown=[], sel=0;
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function mark(t,q){ const flat=t.replace(/\s+/g,' ').trim().slice(0,160); if(!q) return esc(flat); const i=flat.toLowerCase().indexOf(q); return i<0?esc(flat):esc(flat.slice(0,i))+'<b>'+esc(flat.slice(i,i+q.length))+'</b>'+esc(flat.slice(i+q.length)); }
+function render(){ const q=$('#q').value.trim().toLowerCase(); shown=q?ALL.filter(t=>t.toLowerCase().includes(q)):ALL.slice(); sel=Math.min(sel,Math.max(0,shown.length-1));
+  $('#list').innerHTML=shown.length?shown.map((t,i)=>`<div class="it ${i===sel?'sel':''}" data-i="${i}" style="--i:${Math.min(i,14)}"><span class="n">${i<9?i+1:''}</span><span class="t">${mark(t,q)}</span><span class="m">${t.length>160?t.length+' chars':''}</span><button class="x" data-x="${i}" title="Remove">×</button></div>`).join(''):`<div class="empty">${ALL.length?'Nothing matches':'Copy something and it shows up here'}</div>`;
+  $('#cnt').textContent=ALL.length+(ALL.length===1?' item':' items')+' · kept in memory only'; }
+function paste(t){ if(t) api?.action('clip','paste',t); }
+$('#list').onclick=async e=>{ const x=e.target.closest('[data-x]'); if(x){ ALL=await api?.action('clip','remove',shown[+x.dataset.x])||[]; render(); return; } const it=e.target.closest('.it'); if(it) paste(shown[+it.dataset.i]); };
+$('#q').oninput=()=>{ sel=0; render(); }; $('#clear').onclick=async()=>{ await api?.action('clip','clear'); ALL=[]; render(); };
+addEventListener('keydown',e=>{ if(e.key==='Escape'){ api?.hide(); return; } if(e.key==='Enter'){ paste(shown[sel]); return; }
+  if((e.metaKey||e.ctrlKey)&&/^[1-9]$/.test(e.key)){ e.preventDefault(); paste(shown[+e.key-1]); return; }
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){ e.preventDefault(); sel=Math.max(0,Math.min(shown.length-1,sel+(e.key==='ArrowDown'?1:-1))); document.querySelectorAll('.it').forEach((el,i)=>el.classList.toggle('sel',i===sel)); document.querySelector('.it.sel')?.scrollIntoView({block:'nearest'}); } });
+async function open(){ ALL=await api?.action('clip','list')||[]; sel=0; $('#q').value=''; render(); $('#q').focus(); const b=$('#box'); b.classList.remove('in'); void b.offsetWidth; b.classList.add('in'); }
+api?.on('clip:show',open); open();
+</script></body></html>

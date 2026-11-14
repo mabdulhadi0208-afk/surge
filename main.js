@@ -409,6 +409,8 @@ function updateTray() {
 const ctx = {
   app, screen, clipboard, Notification, nativeTheme, powerSaveBlocker, globalShortcut, execFile, os,
   get settings() { return settings; }, mod, fireGlow, overlaySend, setOverlayPersistent, play, sysSound, onInput, hookState: () => hookState,
+  frontApp: async () => { try { return (await runningApps()).find(a => a.front) || null; } catch { return null; } },
+  activateApp: (a) => { if (!a) return; if (IS_WIN) { if (a.pid) winapps.activate(a.pid); } else if (a.path) execFile('open', ['-a', a.path], () => {}); },
   setTray, setTrayBattery, openSettings, toggleNotes, readBattery, markCleanExit, bundlePath, stopHook: () => { quitting = true; stopHook(); }, applyPatch: (p) => applyPatch(p), get battery() { return battery; }, set battery(v) { battery = v; },
   notify: (title, body) => { try { new Notification({ title, body, silent: true }).show(); } catch {} },
   broadcast: (ch, p) => { [settingsWin, notesWin, audioWin, popWin, ...overlays].forEach(w => { try { if (w && !w.isDestroyed()) w.webContents.send(ch, p); } catch {} }); },

@@ -2,7 +2,7 @@
 const reg = [];
 module.exports = {
   id: 'hotkeys', name: 'Hotkeys', icon: 'keys', group: 'System', defaultEnabled: true,
-  desc: '⌘⇧G preview glow · ⌘⇧N quick notes · ⌘⇧S spotlight · ⌘⇧K keyboard sounds · ⌘⇧M mute all · ⌘⇧C caffeine · ⌘⇧D dock · ⌘⇧L launchpad.',
+  desc: '⌘⇧G preview glow · ⌘⇧N quick notes · ⌘⇧S spotlight · ⌘⇧K keyboard sounds · ⌘⇧M mute all · ⌘⇧C caffeine · ⌘⇧D dock · ⌘⇧L launchpad · ⌘⇧V clipboard · ⌃⌥ arrows snap windows.',
   defaults: {},
   schema: [],
   start(ctx) {
