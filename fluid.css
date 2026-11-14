@@ -19,6 +19,8 @@
   background:radial-gradient(closest-side,color-mix(in srgb,var(--bc) 55%,transparent),color-mix(in srgb,var(--bc) 18%,transparent) 55%,transparent);animation:flDrift 22s ease-in-out infinite alternate}
 .fl-blob.b{--bc:#3d7bff;opacity:.26;animation-duration:27s;animation-direction:alternate-reverse}
 @keyframes flDrift{from{transform:translate(0,0) rotate(0) scale(1)}to{transform:translate(60px,40px) rotate(50deg) scale(1.25)}}
+/* rim light */
+.fl-rim{position:absolute;inset:0;border-radius:inherit;padding:1px;background:linear-gradient(140deg,color-mix(in srgb,var(--accent,var(--a,#00FF85)) 70%,transparent),rgba(255,255,255,.14) 22%,transparent 45%,transparent 60%,rgba(61,123,255,.5) 88%,color-mix(in srgb,var(--accent,var(--a,#00FF85)) 55%,transparent));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;opacity:.75}
 /* ripple */
 .fl-rip{position:absolute;border-radius:50%;pointer-events:none;background:radial-gradient(circle,rgba(255,255,255,.34),rgba(255,255,255,.06) 60%,transparent 70%);transform:translate(-50%,-50%) scale(0);animation:flRip .75s var(--flow) forwards;z-index:0}
 @keyframes flRip{to{transform:translate(-50%,-50%) scale(1);opacity:0}}
