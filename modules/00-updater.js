@@ -104,7 +104,14 @@ async function install() {
     try { fs.writeFileSync(path.join(C.app.getPath('userData'), 'just-updated'), ''); } catch {}
     set({ status: 'installing' }); log('installing (windows)', state.latest);
     try { C.markCleanExit?.(); } catch {}
-    const child = spawn(state.staged, ['/S', '--force-run'], { detached: true, stdio: 'ignore', windowsHide: true }); child.unref();
+    // The installer occasionally crashes on its first try (seen on clean Windows machines: exit 0xC0000005). Never leave the user without Surge:
+    // a tiny script retries it up to 4 times, makes sure Surge is running afterwards, and reopens the old version if every try failed.
+    const exe = process.execPath, cmd = path.join(updDir(), 'update.cmd'), wl = path.join(C.app.getPath('logs'), 'update.log');
+    fs.writeFileSync(cmd, ['@echo off', 'setlocal', `set "LOG=${wl}"`, `echo === %DATE% %TIME% installing ${state.latest} >> "%LOG%"`, 'timeout /t 2 /nobreak >nul', 'set N=0', ':try',
+      `"${state.staged}" /S --force-run`, 'set RC=%ERRORLEVEL%', 'echo installer exit %RC% >> "%LOG%"', 'if "%RC%"=="0" goto ok', 'set /a N+=1', 'if %N% GEQ 4 goto fail', 'timeout /t 3 /nobreak >nul', 'goto try',
+      ':ok', 'timeout /t 6 /nobreak >nul', `tasklist /FI "IMAGENAME eq Surge.exe" | find /I "Surge.exe" >nul || start "" "${exe}"`, 'echo done >> "%LOG%"', 'exit /b 0',
+      ':fail', 'echo all attempts failed, reopening the current version >> "%LOG%"', `start "" "${exe}"`, 'exit /b 1'].join('\r\n'));
+    const child = spawn('cmd.exe', ['/c', cmd], { detached: true, stdio: 'ignore', windowsHide: true }); child.unref();
     setTimeout(() => C.app.exit(0), 400);
     return state;
   }
