@@ -88,7 +88,7 @@ jobs:
           V=$(node -p "require('./package.json').version"); L=~/Library/Logs/Surge
           rm -rf /Applications/Surge.app "$L"; ditto "$APP" /Applications/Surge.app
           # make the runner look like a real user's Mac: keyboard/mouse permission GRANTED (so the native input hook really runs) and the heavy modules ON
-          for DB in "/Library/Application Support/com.apple.TCC/TCC.db" "$HOME/Library/Application Support/com.apple.TCC/TCC.db"; do for SVC in kTCCServiceAccessibility kTCCServiceListenEvent kTCCServicePostEvent; do
+          for DB in "/Library/Application Support/com.apple.TCC/TCC.db" "$HOME/Library/Application Support/com.apple.TCC/TCC.db"; do for SVC in kTCCServiceAccessibility; do
             sudo sqlite3 "$DB" "INSERT OR REPLACE INTO access VALUES('$SVC','app.surge.glow',0,2,4,1,NULL,NULL,0,'UNUSED',NULL,0,1700000000,NULL,NULL,'UNUSED',1700000000);" 2>/dev/null && echo "granted $SVC" || echo "could not grant $SVC ($DB)"; done; done
           mkdir -p "$HOME/Library/Application Support/Surge"
           echo '{"launchAtLogin":false,"welcomed":true,"modules":{"keys":{"enabled":true},"mouse":{"enabled":true},"ripple":{"enabled":true},"caps":{"enabled":true},"typing":{"enabled":true},"dock":{"enabled":true,"autohide":true},"stats":{"enabled":true},"clip":{"enabled":true},"focus":{"enabled":true},"caffeine":{"enabled":true}}}' > "$HOME/Library/Application Support/Surge/settings.json"
