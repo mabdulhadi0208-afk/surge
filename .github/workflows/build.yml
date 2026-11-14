@@ -123,7 +123,7 @@ jobs:
           # 4. required files made it into the bundle
           npx --yes @electron/asar list "$APP/Contents/Resources/app.asar" | grep -q "assets/tray/bolt.png" && echo "✓ tray assets bundled"
           npx --yes @electron/asar list "$APP/Contents/Resources/app.asar" | grep -q "launchpad.html" && echo "✓ launchpad bundled"
-          for f in clip.html hookworker.js traychip.js haptics.js fluid.css fluid.js modules/18-snap.js; do npx --yes @electron/asar list "$APP/Contents/Resources/app.asar" | grep -q "$f" && echo "✓ $f bundled" || { echo "✗ $f missing from the app"; exit 1; }; done
+          for f in clip.html hookworker.js traychip.js haptics.js fluid.css fluid.js fx.css fx.js modules/18-snap.js; do npx --yes @electron/asar list "$APP/Contents/Resources/app.asar" | grep -q "$f" && echo "✓ $f bundled" || { echo "✗ $f missing from the app"; exit 1; }; done
           # 5. sizes sane
           for f in dist/Surge-mac-arm64.dmg dist/Surge-mac-arm64.zip; do s=$(stat -f%z "$f"); [ "$s" -gt 60000000 ] && echo "✓ $f $s bytes" || { echo "✗ $f too small ($s)"; exit 1; }; done
         env: { CSC_IDENTITY_AUTO_DISCOVERY: "false" }

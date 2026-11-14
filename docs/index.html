@@ -209,6 +209,25 @@
   .mcard{transition:transform .9s var(--spring),border-color .4s,opacity .9s var(--ease),box-shadow .5s} .mcard:hover{box-shadow:0 30px 50px -34px var(--a)}
   .mcard .ico{transition:transform .9s var(--spring)} .mcard:hover .ico{transform:scale(1.18) rotate(-10deg)}
   @media (prefers-reduced-motion:reduce){ .r{transition:none} }
+
+  /* effects pack (site) */
+  @keyframes sfx0{to{rotate:360deg}} .mcard:nth-child(8n+1):hover .ico svg{animation:sfx0 .8s ease-out}
+  @keyframes sfx1{0%,100%{opacity:1;scale:1}20%{opacity:.3}35%{opacity:1;scale:1.25}50%{opacity:.5}} .mcard:nth-child(8n+2):hover .ico svg{animation:sfx1 .8s ease-out}
+  @keyframes sfx2{0%,100%{translate:0 0}30%{translate:0 3px;scale:1 .88}60%{translate:0 -2px}} .mcard:nth-child(8n+3):hover .ico svg{animation:sfx2 .8s ease-out}
+  @keyframes sfx3{0%,100%{rotate:0deg}25%{rotate:-16deg}55%{rotate:10deg}80%{rotate:-4deg}} .mcard:nth-child(8n+4):hover .ico svg{animation:sfx3 .8s ease-out}
+  @keyframes sfx4{0%{scale:1}50%{scale:1.35;opacity:.5}100%{scale:1}} .mcard:nth-child(8n+5):hover .ico svg{animation:sfx4 .8s ease-out}
+  @keyframes sfx5{0%,100%{rotate:0deg}15%{rotate:20deg}30%{rotate:-18deg}45%{rotate:14deg}60%{rotate:-10deg}} .mcard:nth-child(8n+6):hover .ico svg{animation:sfx5 .8s ease-out}
+  @keyframes sfx6{0%{scale:1 1}50%{scale:-1 1}100%{scale:1 1}} .mcard:nth-child(8n+7):hover .ico svg{animation:sfx6 .8s ease-out}
+  @keyframes sfx7{0%,40%,60%,100%{scale:1 1}50%,90%{scale:1 .1}} .mcard:nth-child(8n+8):hover .ico svg{animation:sfx7 .8s ease-out}
+  ::selection{background:color-mix(in srgb,var(--a) 45%,transparent);color:#fff}
+  .sfx-prog{position:fixed;left:0;top:0;right:0;height:2px;z-index:80;transform-origin:0 50%;transform:scaleX(0);background:linear-gradient(90deg,var(--a),var(--b));box-shadow:0 0 10px var(--a);pointer-events:none}
+  nav .logo .bolt{transition:rotate .8s var(--spring)} nav .logo:hover .bolt{rotate:-18deg} nav .logo:hover .bolt svg{animation:sfx1 .6s linear}
+  .btn.pri,.btn.win{background-image:linear-gradient(110deg,transparent 35%,rgba(255,255,255,.35) 50%,transparent 65%);background-size:250% 100%;background-position:140% 0;background-repeat:no-repeat} .btn.pri:hover,.btn.win:hover{background-position:-60% 0;transition:transform .8s var(--spring),box-shadow .4s,background-position .9s var(--flow)}
+  .mcard h3{transition:translate .7s var(--spring)} .mcard:hover h3{translate:4px 0} .mcard p{transition:color .4s} .mcard:hover p{color:rgba(255,255,255,.82)}
+  footer span{transition:letter-spacing .7s var(--spring),color .3s} footer span:hover{letter-spacing:.4px;color:#fff}
+  .meta{transition:opacity .4s} 
+  @keyframes sfxDot{50%{scale:1.5;box-shadow:0 0 14px var(--a)}} .tag i,.badge i{animation:sfxDot 2.4s ease-in-out infinite}
+  @media (prefers-reduced-motion:reduce){ .mcard:hover .ico svg,.tag i,.badge i{animation:none!important} }
 </style>
 </head>
 <body>
@@ -229,12 +248,12 @@
   <h1><span class="w"><span>Plug</span></span> <span class="w"><span>in.</span></span><br><span class="w"><span class="glow">Light</span></span> <span class="w"><span class="glow">up.</span></span></h1>
   <p class="sub">Surge started as a charging glow. Now it's a 20-in-1 menu-bar toolbox: edge aurora on plug-in, a full Dock replacement with Launchpad, 145 keyboard sounds, mouse clicks, click ripples, cursor spotlight, night tint, caffeine, focus timer and more. Flip on what you want.</p>
   <div class="cta">
-    <a class="btn pri mag" href="https://github.com/mabdulhadi0208-afk/surge/releases/latest/download/Surge-mac-arm64.dmg" id="dl"><span class="apple"></span>Mac · v2.13.0</a>
-    <a class="btn win mag" href="https://github.com/mabdulhadi0208-afk/surge/releases/latest/download/Surge-win-x64.exe" id="dlwin"><span class="winlogo"><i></i></span>Windows laptop · v2.13.0</a>
-    <a class="btn win mag" href="https://github.com/mabdulhadi0208-afk/surge/releases/latest/download/Surge-win-x64.exe"><span class="winlogo"><i></i></span>Windows PC · v2.13.0</a>
+    <a class="btn pri mag" href="https://github.com/mabdulhadi0208-afk/surge/releases/latest/download/Surge-mac-arm64.dmg" id="dl"><span class="apple"></span>Mac · v2.14.0</a>
+    <a class="btn win mag" href="https://github.com/mabdulhadi0208-afk/surge/releases/latest/download/Surge-win-x64.exe" id="dlwin"><span class="winlogo"><i></i></span>Windows laptop · v2.14.0</a>
+    <a class="btn win mag" href="https://github.com/mabdulhadi0208-afk/surge/releases/latest/download/Surge-win-x64.exe"><span class="winlogo"><i></i></span>Windows PC · v2.14.0</a>
     <a class="btn mag" href="#feel">See it in motion</a>
   </div>
-  <div class="meta">Latest: v2.13.0 · Your Mac, your laptop or your PC — with extras. Same features on all three, always in sync · self-updating · needs Accessibility for sounds (one click)</div>
+  <div class="meta">Latest: v2.14.0 · Your Mac, your laptop or your PC — with extras. Same features on all three, always in sync · self-updating · needs Accessibility for sounds (one click)</div>
 
   <div class="stage" id="stage">
     <div class="mac" id="mac">
@@ -327,9 +346,9 @@
     <h2 class="r">Your Mac deserves a <span style="background:linear-gradient(90deg,var(--a),var(--b));-webkit-background-clip:text;background-clip:text;color:transparent">glow up.</span></h2>
     <p class="lead r" style="margin:16px auto 34px">Free, open source. 20 modules, 145 keyboard sounds, zero accounts. Drops into your menu bar and stays out of the way.</p>
     <div class="cta r">
-      <a class="btn pri mag" href="https://github.com/mabdulhadi0208-afk/surge/releases/latest/download/Surge-mac-arm64.dmg"><span class="apple"></span>Mac · v2.13.0</a>
-      <a class="btn win mag" href="https://github.com/mabdulhadi0208-afk/surge/releases/latest/download/Surge-win-x64.exe"><span class="winlogo"><i></i></span>Windows laptop · v2.13.0</a>
-    <a class="btn win mag" href="https://github.com/mabdulhadi0208-afk/surge/releases/latest/download/Surge-win-x64.exe"><span class="winlogo"><i></i></span>Windows PC · v2.13.0</a>
+      <a class="btn pri mag" href="https://github.com/mabdulhadi0208-afk/surge/releases/latest/download/Surge-mac-arm64.dmg"><span class="apple"></span>Mac · v2.14.0</a>
+      <a class="btn win mag" href="https://github.com/mabdulhadi0208-afk/surge/releases/latest/download/Surge-win-x64.exe"><span class="winlogo"><i></i></span>Windows laptop · v2.14.0</a>
+    <a class="btn win mag" href="https://github.com/mabdulhadi0208-afk/surge/releases/latest/download/Surge-win-x64.exe"><span class="winlogo"><i></i></span>Windows PC · v2.14.0</a>
       <a class="btn mag" href="https://github.com/mabdulhadi0208-afk/surge">View source</a>
     </div>
     <p class="meta r">Apple silicon · macOS 13+ · Free & open source · Press <span class="kbd">⌘ ,</span> for settings</p>
@@ -903,5 +922,6 @@ function play(p) {
   el.addEventListener('mousedown',e=>{ if(sel.indexOf(':')>=0||e.target.closest('.pr,.tab')) return; play({sound:'click',preset:sel,volume:.7}); });
 })();
 </script>
+<script>(()=>{ if(matchMedia('(prefers-reduced-motion: reduce)').matches) return; const b=document.createElement('i'); b.className='sfx-prog'; document.body.appendChild(b); let t=0; addEventListener('scroll',()=>{ if(t) return; t=requestAnimationFrame(()=>{ t=0; const m=document.documentElement.scrollHeight-innerHeight; b.style.transform='scaleX('+(m>0?(scrollY/m).toFixed(4):0)+')'; }); },{passive:true}); })();</script>
 </body>
 </html>
