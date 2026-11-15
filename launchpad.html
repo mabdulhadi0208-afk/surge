@@ -9,7 +9,7 @@
   .top input{-webkit-app-region:no-drag;flex:1;all:unset;font-size:16px;padding:10px 14px;border-radius:14px;background:rgba(255,255,255,.07);border:1px solid var(--line);color:var(--ink);width:100%}
   .top input:focus{border-color:rgba(0,255,133,.5);box-shadow:0 0 0 3px rgba(0,255,133,.12)}
   .top .k{color:var(--muted);font-size:11px;white-space:nowrap}
-  .grid{flex:1;overflow:auto;padding:26px 24px 30px;display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:4px;align-content:start}
+  .grid{flex:1;overflow:auto;padding:6px 14px 18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:4px;align-content:start}
   .grid::-webkit-scrollbar{width:8px} .grid::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:4px}
   .a{display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 6px 10px;border-radius:16px;cursor:pointer;transition:background .15s,transform .25s var(--spring)}
   .a:hover,.a.sel{background:rgba(255,255,255,.09)} .a:active{transform:scale(.94)}
@@ -58,7 +58,7 @@ function lazyIcons(){ io&&io.disconnect(); io=new IntersectionObserver(es=>{ for
 function open(a){ if(!a) return; api?.appOpen(a.path); api?.hide(); }
 $('#q').oninput=render;
 addEventListener('keydown',e=>{ if(e.key==='Escape'){ api?.hide(); return; } if(e.key==='Enter'){ open(shown[sel]); return; }
-  const cols=Math.max(1,Math.floor(($('#grid').clientWidth-48)/108)); let n=sel; if(e.key==='ArrowRight') n++; else if(e.key==='ArrowLeft') n--; else if(e.key==='ArrowDown') n+=cols; else if(e.key==='ArrowUp') n-=cols; else return; e.preventDefault();
+  const cols=Math.max(1,Math.floor(($('#grid').clientWidth-28)/108)); let n=sel; if(e.key==='ArrowRight') n++; else if(e.key==='ArrowLeft') n--; else if(e.key==='ArrowDown') n+=cols; else if(e.key==='ArrowUp') n-=cols; else return; e.preventDefault();
   sel=Math.max(0,Math.min(shown.length-1,n)); document.querySelectorAll('.a').forEach((el,i)=>el.classList.toggle('sel',i===sel)); document.querySelector('.a.sel')?.scrollIntoView({block:'nearest'}); });
 addEventListener('focus',()=>{ $('#q').value=''; render(); $('#q').focus(); });
 (async()=>{ ALL=await api?.appsInstalled()||[]; render(); $('#q').focus(); })();

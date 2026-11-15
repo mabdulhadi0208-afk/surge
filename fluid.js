@@ -3,41 +3,19 @@
   const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const SPRING = getComputedStyle(document.documentElement).getPropertyValue('--spring').trim() || 'ease-out';
   const C = Object.assign({ press: 'button,.btn,.grid .m,.q,.mod,.w,.theme,.chip,.pr,.tab,.wi,.it,.tg,.step .num,.ib,.pill', ripple: '.btn,.grid .m,.q,.mod,.w:not(.apps),.theme,.pr,.chip,.tab,.wi,.upd button',
-    magnet: '.__none', pop: '#onCount,.hero .n,#pct,#bpct,output', light: true, blobs: null }, window.FLUID || {});
+    magnet: '.btn,.q,.ib,header .btn', pop: '#onCount,.hero .n,#pct,#bpct,output', light: true, blobs: null }, window.FLUID || {});
   if (RM) return;
   const closest = (t, sel) => (t && t.closest) ? t.closest(sel) : null;
 
-  /* jelly: controls squash on press, swell on hover and wobble back on underdamped springs (scale / translate only, so the compositor does the work) */
-  class Sp { constructor(x, k, z, e) { this.x = x; this.v = 0; this.t = x; this.k = k; this.c = 2 * z * Math.sqrt(k); this.e = e || .0008; }
-    step(dt) { const n = Math.ceil(dt * 240), h = dt / n; for (let i = 0; i < n; i++) { this.v += (-this.k * (this.x - this.t) - this.c * this.v) * h; this.x += this.v * h; } }
-    get rest() { return Math.abs(this.x - this.t) < this.e && Math.abs(this.v) < this.e * 6; } snap() { this.x = this.t; this.v = 0; } }
-  const jt = new Set(); let jraf = 0, jlast = 0;
-  const jframe = now => { jraf = 0; const dt = Math.min(.034, (now - jlast) / 1000 || .016); jlast = now; for (const t of [...jt]) { let on = false; try { on = t(dt); } catch (e) {} if (!on) jt.delete(t); } if (jt.size) jraf = requestAnimationFrame(jframe); };
-  const jrun = t => { jt.add(t); if (!jraf) { jlast = performance.now(); jraf = requestAnimationFrame(jframe); } };
-  const HOV = C.keepAlive ? null : (C.hover || '.btn,.q,.ib,.chip,.tab,.pr,.theme,.pill,.grid .m,.mod,.wi,.it,.tg,.step .num,.a');
-  const bodies = new WeakMap(), hovered = new Set();
-  function body(el) { let b = bodies.get(el); if (b) return b;
-    const big = el.offsetWidth > 260, hv = HOV && el.matches(HOV);
-    const o = big ? { hover: hv ? 1.012 : 1, press: .97, pull: 0, squash: .015, kick: .2 } : !hv ? { hover: 1, press: .76, pull: 0, squash: .2, kick: .9 } : el.matches('.a') ? { hover: 1.08, press: .78, pull: 0, squash: .14, kick: .6 } : el.matches('.tg,.step .num,.ib') ? { hover: 1.22, press: .7, pull: .2, squash: .24, kick: 1.1 } : { hover: 1.13, press: .72, pull: .2, squash: .2, kick: .9 };
-    const S = new Sp(1, 260, .14), Q = new Sp(0, 320, .12), X = new Sp(0, 170, .2, .04), Y = new Sp(0, 170, .2, .04);
-    b = { el, o, S, Q, X, Y, hov: false, down: false, on: false }; const sps = [S, Q, X, Y];
-    const apply = () => { el.style.scale = `${(S.x * (1 + Q.x)).toFixed(4)} ${(S.x * (1 - Q.x * .9)).toFixed(4)}`; if (o.pull) el.style.translate = `${X.x.toFixed(2)}px ${Y.x.toFixed(2)}px`; };
-    b.tick = dt => { for (const s of sps) s.step(dt); apply(); if (sps.every(s => s.rest)) { for (const s of sps) s.snap(); if (!b.hov && !b.down && S.t === 1) { el.style.scale = ''; el.style.translate = ''; el.style.willChange = ''; el.removeAttribute('data-jl'); } else apply(); b.on = false; return false; } return true; };
-    b.wake = () => { if (b.on) return; b.on = true; el.style.willChange = 'scale,translate'; el.setAttribute('data-jl', ''); jrun(b.tick); };
-    bodies.set(el, b); return b; }
-  const SKIP = '.apps,.mh .tg';
+  /* squish on press, spring back on release — uses the standalone `scale` property so it never fights hover transforms */
   let pressed = null;
-  addEventListener('pointerdown', e => { const el = closest(e.target, C.press); if (!el || el.matches(SKIP)) return; const b = body(el); pressed = b; b.down = true; b.S.t = b.o.press; b.Q.v -= b.o.squash * 10; b.wake();
-    try { if (e.pointerType === 'mouse' && el.offsetWidth <= 200) el.setPointerCapture(e.pointerId); } catch (_) {}   /* it squashes under the pointer: keep the click on it */
+  addEventListener('pointerdown', e => { const el = closest(e.target, C.press); if (!el || el.matches('.apps')) return; pressed = el;
+    el.getAnimations().filter(a => a.id === 'fl-press').forEach(a => a.cancel());
+    const big = el.offsetWidth > 260; el.animate({ scale: ['1', big ? '.975' : '.92'] }, { duration: 130, easing: 'cubic-bezier(.3,.7,.4,1)', fill: 'forwards', id: 'fl-press' });
     const r = closest(e.target, C.ripple); if (r && !closest(e.target, 'input,textarea,select')) ripple(r, e); }, true);
-  const release = () => { const b = pressed; pressed = null; if (!b) return; b.down = false; b.S.t = b.hov ? b.o.hover : 1; b.S.v += b.o.kick * 1.8; b.Q.v += b.o.squash * 16; b.wake(); };
+  const release = () => { const el = pressed; pressed = null; if (!el) return; el.getAnimations().filter(a => a.id === 'fl-press').forEach(a => a.cancel());
+    const big = el.offsetWidth > 260; el.animate({ scale: [big ? '.975' : '.92', '1'] }, { duration: 750, easing: SPRING, id: 'fl-press' }); };
   addEventListener('pointerup', release, true); addEventListener('pointercancel', release, true); addEventListener('blur', release);
-  if (HOV) {
-    addEventListener('pointerover', e => { if (e.pointerType !== 'mouse') return; const el = closest(e.target, HOV); if (!el || el.contains(e.relatedTarget) || el.matches(SKIP)) return; const b = body(el); b.hov = true; hovered.add(b); b.S.t = b.down ? b.o.press : b.o.hover; b.S.v += b.o.kick; b.Q.v += b.o.squash * 18; b.wake(); }, true);
-    addEventListener('pointerout', e => { if (e.pointerType !== 'mouse') return; const el = closest(e.target, HOV); if (!el || el.contains(e.relatedTarget)) return; const b = bodies.get(el); if (!b) return; b.hov = false; hovered.delete(b); b.S.t = b.down ? b.o.press : 1; b.S.v -= b.o.kick * .6; b.Q.v -= b.o.squash * 14; b.X.t = b.Y.t = 0; b.wake(); }, true);
-    let mvE = null, mvOn = false; const mvTick = () => { const e = mvE; mvE = null; mvOn = false; if (!e) return false; for (const b of [...hovered]) { if (!b.el.isConnected) { hovered.delete(b); continue; } if (!b.o.pull) continue; const r = b.el.getBoundingClientRect();
-        b.X.t = Math.max(-r.width * .3, Math.min(r.width * .3, (e.clientX - (r.left + r.width / 2 - b.X.x)) * b.o.pull)); b.Y.t = Math.max(-r.height * .35, Math.min(r.height * .35, (e.clientY - (r.top + r.height / 2 - b.Y.x)) * b.o.pull)); b.wake(); } return false; };
-    addEventListener('pointermove', e => { if (!hovered.size) return; mvE = e; if (!mvOn) { mvOn = true; jrun(mvTick); } }, { passive: true }); }
   function ripple(el, e) { const r = el.getBoundingClientRect(), d = Math.max(r.width, r.height) * 2.4, s = document.createElement('span'); s.className = 'fl-rip';
     if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
     s.style.cssText = `width:${d}px;height:${d}px;left:${e.clientX - r.left}px;top:${e.clientY - r.top}px`; el.classList.add('fl-clip'); el.appendChild(s);
@@ -83,10 +61,10 @@
   addEventListener('load', scan); scan(); setTimeout(() => document.querySelectorAll('.seg').forEach(s => segSync(s, true)), 600);
   /* rubber-band: push past the end of a list and it stretches, then springs back */
   { let el = null, off = 0, v = 0, rb = 0, lastW = 0; const RB = C.rubber || '.pane.on,.list,.grid,.sp .list';
-    const tick = () => { rb = 0; if (!el) return; if (performance.now() - lastW > 70) { v = (v + (0 - off) * .14) * .9; off += v; } if (Math.abs(off) < .3 && Math.abs(v) < .3 && performance.now() - lastW > 70) { el.style.translate = ''; el = null; off = v = 0; return; } el.style.translate = `0 ${off.toFixed(1)}px`; rb = requestAnimationFrame(tick); };
+    const tick = () => { rb = 0; if (!el) return; if (performance.now() - lastW > 70) { v = (v + (0 - off) * .14) * .7; off += v; } if (Math.abs(off) < .3 && Math.abs(v) < .3 && performance.now() - lastW > 70) { el.style.translate = ''; el = null; off = v = 0; return; } el.style.translate = `0 ${off.toFixed(1)}px`; rb = requestAnimationFrame(tick); };
     addEventListener('wheel', e => { if (e.ctrlKey || Math.abs(e.deltaY) < Math.abs(e.deltaX)) return; let s = closest(e.target, RB); while (s && s.scrollHeight <= s.clientHeight + 2) s = closest(s.parentElement, RB); if (!s) return;
       const top = s.scrollTop <= 0 && e.deltaY < 0, bot = s.scrollTop + s.clientHeight >= s.scrollHeight - 1 && e.deltaY > 0; if (!top && !bot) { if (el === s && off) lastW = 0; return; }
-      if (el && el !== s) { el.style.translate = ''; off = v = 0; } el = s; lastW = performance.now(); off += -e.deltaY * .3 * (1 - Math.min(1, Math.abs(off) / 130)); off = Math.max(-130, Math.min(130, off)); v = 0; if (!rb) rb = requestAnimationFrame(tick); }, { passive: true, capture: true }); }
+      if (el && el !== s) { el.style.translate = ''; off = v = 0; } el = s; lastW = performance.now(); off += -e.deltaY * .22 * (1 - Math.min(1, Math.abs(off) / 70)); off = Math.max(-70, Math.min(70, off)); v = 0; if (!rb) rb = requestAnimationFrame(tick); }, { passive: true, capture: true }); }
 
   /* a thin rim of light around the glass (static: painted once) */
   if (C.rim !== false && host !== document.body) { const r = document.createElement('i'); r.className = 'fl-rim'; (host.querySelector(':scope > .fl-layer.top') || layer('top')).appendChild(r); }
