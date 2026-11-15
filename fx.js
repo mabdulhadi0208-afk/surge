@@ -20,7 +20,7 @@
   /* 3D tilt */
   const TILT = '.hero,.theme,.panel>header,.card#card';
   addEventListener('pointermove', e => { const el = e.target.closest && e.target.closest(TILT); $$('.fx-tilting').forEach(o => { if (o !== el) { o.classList.remove('fx-tilting'); o.style.transform = ''; } });
-    if (!el) return; const r = el.getBoundingClientRect(), px = (e.clientX - r.left) / r.width - .5, py = (e.clientY - r.top) / r.height - .5, k = r.width > 400 ? 3 : 9;
+    if (!el) return; const r = el.getBoundingClientRect(), px = (e.clientX - r.left) / r.width - .5, py = (e.clientY - r.top) / r.height - .5, k = r.width > 400 ? 5 : 16;
     el.classList.add('fx-tilt', 'fx-tilting'); el.style.transform = `perspective(700px) rotateX(${(-py * k).toFixed(2)}deg) rotateY(${(px * k).toFixed(2)}deg)`; }, { passive: true });
   document.addEventListener('pointerleave', () => $$('.fx-tilting').forEach(o => { o.classList.remove('fx-tilting'); o.style.transform = ''; }));
 
