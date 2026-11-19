@@ -165,6 +165,17 @@
         ctx.lineWidth = Math.max(1.25, 2.5 * sc); ctx.globalAlpha = 1; ctx.stroke(pr.p);                     // hairline
         ctx.restore(); }
 
+      // ================= v2.20: inner light, comets, shockwave =================
+      { ctx.save(); ctx.globalCompositeOperation = 'screen';
+        const il = thick * 0.95, strip = (x0, y0, x1, y1, rx, ry, rw, rh) => { const g = ctx.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, rgba(c3, 0.17 * A)); g.addColorStop(0.45, rgba(c0, 0.05 * A)); g.addColorStop(1, rgba(c0, 0)); ctx.fillStyle = g; ctx.fillRect(rx, ry, rw, rh); };
+        strip(0, H, 0, H - il, 0, H - il, W, il); strip(0, 0, 0, il, 0, 0, W, il); strip(0, 0, il, 0, 0, 0, il, H); strip(W, 0, W - il, 0, W - il, 0, il, H);
+        if (sweep > 0.55) { const hot = brighten(c3, 0.65), n = 3, sp = (kind === 'low' ? 0.34 : 0.17) * spd;
+          for (let i = 0; i < n; i++) { const head = t * sp + i / n; ctx.fillStyle = rgba(hot, 1);
+            for (let j = 0; j < 30; j++) { const q = edgePoint(head - j * 0.0016), f = 1 - j / 30; ctx.globalAlpha = Math.min(1, A * f * f * f * 0.55); ctx.beginPath(); ctx.arc(q[0], q[1], Math.max(1, (8 - j * 0.22) * sc), 0, 6.2832); ctx.fill(); }
+            const q = edgePoint(head), rr = 46 * sc, g = ctx.createRadialGradient(q[0], q[1], 0, q[0], q[1], rr); g.addColorStop(0, rgba(hot, 0.85 * A)); g.addColorStop(0.35, rgba(c3, 0.3 * A)); g.addColorStop(1, rgba(c3, 0)); ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.fillRect(q[0] - rr, q[1] - rr, rr * 2, rr * 2); } }
+        if ((kind === 'plug' || kind === 'full') && t < 1.5) { const p = easeOutExpo(clamp(t / 1.5, 0, 1)), a = Math.pow(1 - p, 1.6) * A; ctx.globalAlpha = 1; ctx.strokeStyle = rgba(brighten(c3, 0.5), 0.55 * a); ctx.lineWidth = Math.max(2, (34 * (1 - p) + 2) * sc); ctx.beginPath(); ctx.arc(W / 2, H, p * Math.max(W, H) * 0.95, 0, 6.2832); ctx.stroke(); }
+        ctx.restore(); }
+
       if (S.showCapsule) capsule(t, dur, A, sc, pal, level, kind);
     }
 
