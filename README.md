@@ -53,7 +53,7 @@ names must stay the same.
 
 ## Design and speed rules
 
-- One design system: `nova.css` (tokens, glass, hero banners, controls) and `nova.js` (icons, module colours).
+- One design system, Lumen 4.0's: `nova.css` (Lumen's palette, type, liquid glass, gem tiles, section heroes, light and dark) and `nova.js` (icons, module hues, the hero backdrop and its dots, which pause when hidden, off screen or unfocused).
 - No emoji anywhere in the app.
 - Only `transform` and `opacity` animate, every animation plays once, no `backdrop-filter` (Settings uses native vibrancy).
 - Transparent always-on-top windows are hidden when not in use and sized to their content.

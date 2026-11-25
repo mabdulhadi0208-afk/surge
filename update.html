@@ -1,90 +1,117 @@
 <!DOCTYPE html><html><head><meta charset="utf-8">
 <link rel="stylesheet" href="nova.css">
 <style>
+  /* Surge's update card in Lumen 4.0's poster layout (Lumen ui/update.html): a saturated slab of the accent on the left
+     holds the app gem in its progress ring and the new version number, huge; the glass side holds the words, the
+     version tube that fills with the download, what is new, and the buttons. One entrance, transform and opacity only. */
   html,body{height:auto;overflow:hidden}
-  body{padding:10px 12px 26px}
-  .card{position:relative;border-radius:30px;padding:9px;isolation:isolate;overflow:hidden;
-    background:radial-gradient(100% 50% at 0% 0%,rgba(25,214,154,.14),transparent 70%),linear-gradient(180deg,#141027,#08060f);
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.18),inset 0 0 0 1px rgba(255,255,255,.08),0 26px 50px -22px rgba(0,0,0,.95),0 18px 50px -26px var(--hc);animation:nv-pop .7s var(--jelly) both}
-  .hero{padding:16px 16px 16px 16px;gap:14px;border-radius:24px}
-  .hero .tile{--ts:54px}
-  .hero h1{font-size:27px}
-  .ver{display:inline-flex;align-items:center;gap:7px;margin-top:3px;align-self:flex-start;padding:5px 10px;border-radius:999px;font:800 11.5px/1 var(--head);font-variant-numeric:tabular-nums;background:rgba(0,0,30,.28);box-shadow:inset 0 0 0 1px rgba(255,255,255,.16)}
-  .ver svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;opacity:.8}
-  .x{position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:10px;background:rgba(0,0,30,.25)}
-  .x svg{width:13px;height:13px}
-  .body{padding:14px 10px 4px}
-  .prog{display:none;align-items:flex-end;gap:14px}
-  .prog.show{display:flex}
-  .pct{font:800 38px/.9 var(--head);letter-spacing:-.05em;font-variant-numeric:tabular-nums;min-width:96px}
-  .pct small{font-size:18px;letter-spacing:-.02em;opacity:.6}
-  .pw{flex:1;min-width:0}
-  .bar{position:relative;height:12px;border-radius:999px;background:rgba(255,255,255,.08);box-shadow:inset 0 1px 3px rgba(0,0,0,.5);overflow:hidden}
-  .bar i{position:absolute;inset:0;border-radius:inherit;transform-origin:0 50%;transform:scaleX(var(--f,0));transition:transform .7s var(--out);
-    background:linear-gradient(180deg,rgba(255,255,255,.45),rgba(255,255,255,0) 55%),linear-gradient(90deg,var(--hc),var(--hc2));box-shadow:0 0 14px -2px var(--hc)}
-  .bar.stripe i{transform:none;background:repeating-linear-gradient(115deg,color-mix(in oklab,var(--hc) 70%,transparent) 0 10px,color-mix(in oklab,var(--hc2) 50%,transparent) 10px 20px);opacity:.7}
-  .meta{display:flex;justify-content:space-between;gap:10px;margin-top:8px;font:650 11.5px/1 var(--body);color:var(--mut);font-variant-numeric:tabular-nums}
-  .meta b{color:var(--tx2);font-weight:750}
-  ul{display:none;list-style:none;margin:2px 0 0;padding:0;gap:7px;flex-direction:column}
-  ul.show{display:flex}
-  li{display:flex;align-items:center;gap:10px;font:650 12.5px/1.3 var(--body);color:var(--tx2)}
-  li .tile{--ts:24px;border-radius:8px}
-  li .tile svg{stroke-width:2.6}
-  .msg{display:none;font:650 12.5px/1.4 var(--body);color:var(--tx2)}
+  body{padding:10px 14px 28px}
+  .card{display:grid;grid-template-columns:184px minmax(0,1fr);min-height:290px;padding:0;border-radius:30px;animation:nv-pop .62s var(--jelly) both}
+  .slab{position:relative;overflow:hidden;isolation:isolate;display:flex;flex-direction:column;padding:18px 18px 16px;color:#fff;border-radius:30px 0 0 30px;
+    background:radial-gradient(90% 60% at 20% 0%,rgba(255,255,255,.35),transparent 60%),radial-gradient(120% 70% at 100% 100%,color-mix(in srgb,var(--accent3) 90%,transparent),transparent 70%),linear-gradient(165deg,var(--accent),var(--accent2) 55%,var(--accent3));
+    box-shadow:inset -1px 0 0 rgba(255,255,255,.25),inset 0 1px 0 rgba(255,255,255,.5)}
+  .slab::before{content:"";position:absolute;inset:0;z-index:-1;background:repeating-linear-gradient(115deg,transparent 0 46px,rgba(255,255,255,.07) 46px 48px)}
+  .slab .rings{position:absolute;left:-60px;bottom:-60px;width:220px;height:220px;border-radius:50%;z-index:-1;border:1px solid rgba(255,255,255,.22);box-shadow:0 0 0 26px rgba(255,255,255,.05),0 0 0 27px rgba(255,255,255,.14),0 0 0 60px rgba(255,255,255,.035)}
+  .slab .vert{position:absolute;right:10px;top:22px;writing-mode:vertical-rl;font:800 9.5px/1 var(--display);letter-spacing:.32em;text-transform:uppercase;color:rgba(255,255,255,.6)}
+  .gemw{position:relative;width:78px;height:78px}
+  .gemw .tile{position:absolute;inset:8px;--ts:62px;--ic:var(--accent);border-radius:19px;box-shadow:inset 0 2px 0 rgba(255,255,255,.85),inset 0 0 0 1px rgba(255,255,255,.4),0 0 0 5px rgba(255,255,255,.16),0 14px 28px rgba(20,0,60,.35)}
+  .gemw .ring{--p:0;position:absolute;inset:0;border-radius:24px;background:conic-gradient(from -90deg,#fff calc(var(--p)*1%),rgba(255,255,255,.18) 0);
+    -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;padding:3px}
+  .gemw .chk{position:absolute;right:-4px;bottom:-4px;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:#fff;color:var(--accent3);box-shadow:0 4px 10px rgba(20,0,60,.3);opacity:0;transform:scale(.4);transition:transform .62s var(--jelly),opacity .2s}
+  .gemw .chk svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+  .ready .gemw .chk,.updated .gemw .chk,.installing .gemw .chk{opacity:1;transform:none}
+  .slab .name{margin-top:auto;font:800 11px/1 var(--display);letter-spacing:.3em;text-transform:uppercase;color:rgba(255,255,255,.8)}
+  .slab .bigv{font:900 64px/.9 var(--display);letter-spacing:-.06em;font-variant-numeric:tabular-nums;margin:6px 0 8px;text-shadow:0 6px 24px rgba(20,0,60,.35);animation:bigIn .9s var(--spring) .1s both}
+  @keyframes bigIn{from{opacity:0;transform:translateY(16px) scale(.9)}}
+  .slab .dots{display:flex;gap:4px;margin-bottom:12px}
+  .slab .dots i{width:16px;height:4px;border-radius:3px;background:rgba(255,255,255,.4)}
+  .slab .dots i:nth-child(2){background:#fff}.slab .dots i:nth-child(3){background:color-mix(in srgb,var(--accent3) 60%,#fff)}.slab .dots i:nth-child(4){background:color-mix(in srgb,var(--accent) 50%,#fff)}
+  .slab .lnk{color:rgba(255,255,255,.85);padding:4px 0;text-decoration:underline;text-underline-offset:3px}
+  .slab .lnk:hover{background:none;color:#fff}
+  .slab .ver{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;margin-top:6px;padding:5px 10px;border-radius:999px;font:750 11px/1 var(--display);background:rgba(255,255,255,.18);box-shadow:inset 0 0 0 1px rgba(255,255,255,.3)}
+  .slab .ver svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+  .side{position:relative;overflow:hidden;isolation:isolate;display:flex;flex-direction:column;gap:8px;padding:18px 18px 16px 20px}
+  .side .pool{position:absolute;left:-40px;top:-60px;width:260px;height:200px;border-radius:50%;z-index:-1;background:radial-gradient(closest-side,color-mix(in srgb,var(--accent) 22%,transparent),transparent)}
+  .side .wm{position:absolute;right:-40px;bottom:-50px;width:190px;height:190px;z-index:-1;color:color-mix(in srgb,var(--accent2) 22%,transparent);transform:rotate(-12deg);animation:wmIn 1.2s var(--spring) .1s both}
+  .side .wm svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1;stroke-linecap:round;stroke-linejoin:round}
+  @keyframes wmIn{from{opacity:0;transform:translate(30px,10px) rotate(-30deg) scale(.8)}}
+  .top{display:flex;align-items:center;gap:8px}
+  .eye{display:flex;align-items:center;gap:8px;flex:1;font:800 10.5px/1 var(--display);letter-spacing:.22em;text-transform:uppercase;color:var(--ink)}
+  .eye i{width:7px;height:7px;border-radius:50%;background:var(--accent3);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent3) 20%,transparent),0 0 10px var(--accent3)}
+  .error .eye i{background:var(--amber);box-shadow:0 0 10px var(--amber)}
+  .x{width:30px;height:30px;border-radius:10px;-webkit-app-region:no-drag}
+  .x svg{width:12px;height:12px}
+  h1{margin:0;font:900 27px/1.02 var(--display);letter-spacing:-.045em;color:var(--fg)}
+  h1 em{font-style:normal;background:linear-gradient(120deg,var(--accent),var(--accent3));-webkit-background-clip:text;background-clip:text;color:transparent}
+  #sub{margin:-2px 0 0;font:500 12.5px/1.4 var(--font);color:var(--fg2)}
+  /* the version tube: a glass pipe between the two numbers that fills with light */
+  .tube{display:flex;align-items:center;gap:10px;padding:7px 7px 7px 13px;border-radius:999px;background:var(--field);box-shadow:inset 0 0 0 1px var(--fieldrim)}
+  .tube .a{font:800 12px/1 var(--display);color:var(--fg2);font-variant-numeric:tabular-nums}
+  .tube .t{position:relative;flex:1;height:8px;border-radius:9px;background:var(--press);overflow:hidden}
+  .tube .t i{position:absolute;inset:0;border-radius:inherit;transform-origin:0 50%;transform:scaleX(var(--f,0));transition:transform .7s var(--out);background:linear-gradient(180deg,rgba(255,255,255,.5),transparent 60%),linear-gradient(90deg,var(--accent),var(--accent2),var(--accent3));box-shadow:0 0 12px color-mix(in srgb,var(--accent) 60%,transparent)}
+  .tube .b{padding:6px 11px;border-radius:999px;font:850 12.5px/1 var(--display);color:#fff;font-variant-numeric:tabular-nums;background:linear-gradient(120deg,var(--accent),var(--accent3));box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 6px 14px -6px var(--accent)}
+  .tube svg{width:14px;height:14px;fill:none;stroke:var(--fg3);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+  .meta{display:flex;justify-content:space-between;gap:10px;font:500 11.5px/1 var(--font);color:var(--fg3);font-variant-numeric:tabular-nums;min-height:12px}
+  .meta b{color:var(--fg);font-weight:700}
+  .notes{display:none;padding:10px 12px;border-radius:18px}
+  .notes.show{display:block}
+  .nh{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;font:800 10px/1 var(--display);letter-spacing:.18em;text-transform:uppercase;color:var(--fg3)}
+  .nh span{letter-spacing:0;text-transform:none;padding:4px 8px;border-radius:999px;font:750 10.5px/1 var(--display);color:var(--ink);background:color-mix(in srgb,var(--accent3) 14%,transparent)}
+  ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px}
+  li{display:flex;align-items:center;gap:9px;font:500 12px/1.35 var(--font);color:var(--fg)}
+  li b{flex:none;width:19px;height:19px;border-radius:6px;display:grid;place-items:center;font:850 10.5px/1 var(--display);color:#fff;background:linear-gradient(135deg,var(--ic3),var(--ic))}
+  .msg{display:none;font:500 12.5px/1.45 var(--font);color:var(--fg2)}
   .msg.show{display:block}
-  .row{display:flex;align-items:center;gap:6px;padding:14px 4px 2px}
+  .row{display:flex;align-items:center;gap:8px;margin-top:auto;padding-top:4px}
   .row .grow{flex:1}
-  .card.busy .hero .tile{animation:nv-tile .9s var(--jelly) both}
 </style>
 <script src="nova.js"></script>
 </head><body>
-<div class="card h-mint" id="card">
-  <div class="hero h-mint drag" id="hero">
-    <div class="wm" id="wm"></div>
-    <div class="tile" id="tile"></div>
-    <div class="htx"><span class="eyebrow" id="eye">Surge update</span><h1 id="title">Update Surge</h1><span class="ver" id="ver"></span></div>
-    <button class="btn icon x" id="x" title="Close"></button>
-  </div>
-  <div class="body">
-    <div class="prog" id="prog"><div class="pct" id="pct">0<small>%</small></div><div class="pw"><div class="bar" id="bar"><i id="fill"></i></div><div class="meta"><span id="m1"></span><span id="m2"></span></div></div></div>
+<div class="card surface" id="card">
+  <div class="slab drag"><i class="rings"></i><span class="vert">Software update</span>
+    <div class="gemw"><i class="ring" id="ring"></i><div class="tile" id="tile"></div><i class="chk" id="chk"></i></div>
+    <span class="name">Surge</span><div class="bigv" id="bigv">3.0</div><div class="dots"><i></i><i></i><i></i><i></i></div>
+    <button class="lnk" id="skip">Skip this version</button><span class="ver" id="verified"></span></div>
+  <div class="side"><i class="pool"></i><i class="wm" id="wm"></i>
+    <div class="top drag"><span class="eye"><i></i><b id="eye">Software update</b></span><button class="btn icon x" id="x" title="Close"></button></div>
+    <h1 id="title">Update Surge</h1><p id="sub"></p>
+    <div class="tube" id="tube"><span class="a" id="from"></span><div class="t"><i id="fill"></i></div><span id="arrow"></span><span class="b" id="to"></span></div>
+    <div class="meta" id="metaRow"><span id="m1"></span><span id="m2"></span></div>
+    <div class="notes glass flat" id="notes"><div class="nh" id="nh">What is new</div><ol id="news"></ol></div>
     <div class="msg" id="msg"></div>
-    <ul id="news"></ul>
-    <div class="row"><button class="lnk" id="skip">Skip this version</button><button class="lnk" id="later">Later</button><div class="grow"></div><button class="btn pri lg" id="go">Update now</button></div>
+    <div class="row"><button class="lnk" id="later">Later</button><div class="grow"></div><button class="btn pri lg" id="go">Update now</button></div>
   </div>
 </div>
 <script>
 const $=s=>document.querySelector(s), api=window.surge, N=window.Nova;
 const fmt=b=>(b/1048576).toFixed(1)+' MB', secs=s=>s>=60?Math.round(s/60)+' min':Math.max(1,s)+' s';
-$('#x').innerHTML=N.ic('x'); $('#wm').innerHTML=N.ic('refresh');
+$('#x').innerHTML=N.ic('x'); $('#tile').innerHTML=N.ic('bolt'); $('#chk').innerHTML=N.ic('check'); $('#arrow').innerHTML=N.ic('play'); $('#verified').innerHTML=N.ic('shield')+'Verified';
 let U={}, last='';
-function paint(u){ U=u||{}; const st=U.status||'idle', L=String(U.latest||'').replace(/^v/,''), c=$('#card'), h=$('#hero');
-  const hue=st==='error'?'h-amber':st==='ready'||st==='installing'?'h-pink':st==='updated'?'h-violet':'h-mint';
-  for(const el of [c,h]){ el.classList.remove('h-mint','h-amber','h-pink','h-violet'); el.classList.add(hue); }
-  c.classList.toggle('busy',st!==last&&['ready','installing','updated'].includes(st)); last=st;
-  $('#ver').innerHTML=L&&st!=='updated'&&L!==U.current?`${N.esc(U.current)} ${N.ic('play')} ${N.esc(L)}`:`Version ${N.esc(U.current||L)}`;
-  const T={ available:['New version',`Surge ${L} is here`], checking:['Surge update','Checking GitHub'], downloading:['Downloading',`Getting Surge ${L}`],
-    unpacking:['Almost there',`Checking Surge ${L}`], ready:['Ready when you are',`Surge ${L} is ready`], installing:['Hold tight','Restarting Surge'],
-    error:['Update paused','Not this time'], uptodate:['All good','Surge is up to date'], updated:["You're on the new version",`Welcome to Surge ${L}`] }[st]||['Surge update','Update Surge'];
-  $('#eye').textContent=T[0]; $('#title').textContent=T[1];
-  $('#tile').innerHTML=N.ic(st==='ready'||st==='installing'?'rocket':st==='error'?'refresh':st==='updated'||st==='uptodate'?'check':'down');
+function paint(u){ U=u||{}; const st=U.status||'idle', L=String(U.latest||'').replace(/^v/,''), C=U.current||'', c=$('#card');
+  c.className='card surface '+st;
+  const V=(st==='updated'||st==='uptodate'||!L)?C:L; $('#bigv').textContent=V.split('.').slice(0,2).join('.');
+  const T={ available:['New version',`Surge <em>${N.esc(L)}</em> is here`,'It downloads in the background. You choose when to restart.'], checking:['Software update','Checking GitHub','One moment'],
+    downloading:['Downloading',`Getting Surge <em>${N.esc(L)}</em>`,'Keep working, it is all in the background.'], unpacking:['Almost there',`Checking Surge <em>${N.esc(L)}</em>`,'Making sure the download is complete.'],
+    ready:['Ready to install',`Surge <em>${N.esc(L)}</em> is ready`,'Restart now. It takes about 3 seconds and your settings stay as they are.'], installing:['Restarting','See you in a moment','Swapping in the new version.'],
+    error:['Update paused','Not this time',''], uptodate:['All good','Surge is up to date',''], updated:["You're on the new version",`Welcome to Surge <em>${N.esc(C)}</em>`,'Here is what changed.'] }[st]||['Software update','Update Surge',''];
+  $('#eye').textContent=T[0]; $('#title').innerHTML=T[1]; $('#sub').textContent=T[2]; $('#sub').style.display=T[2]?'':'none';
   $('#wm').innerHTML=N.ic(st==='ready'||st==='installing'?'rocket':st==='updated'?'spark':'refresh');
-  const prog=['downloading','unpacking','checking'].includes(st); $('#prog').classList.toggle('show',prog);
-  const p=st==='downloading'?(U.progress||0):st==='unpacking'?100:0; $('#pct').innerHTML=st==='checking'?'<small>...</small>':`${p}<small>%</small>`; $('#fill').style.setProperty('--f',p/100);
-  $('#bar').classList.toggle('stripe',st==='checking'||(st==='downloading'&&!U.size));
-  $('#m1').innerHTML=st==='downloading'&&U.size?`<b>${fmt(U.bytes||0)}</b> of ${fmt(U.size)}`:st==='unpacking'?'Verifying the download':st==='checking'?'One moment':'';
-  $('#m2').innerHTML=st==='downloading'&&U.speed?`${fmt(U.speed)}/s${U.eta?', about <b>'+secs(U.eta)+'</b> left':''}`:'';
-  const msg=st==='error'?(U.error||'Surge will try again on its own.'):st==='ready'?'Surge closes and reopens in about 3 seconds. Your settings stay exactly as they are.':st==='installing'?'Swapping in the new version. Surge will be back in the menu bar in a moment.':st==='uptodate'?(U.noBuild?'Updates for Intel Macs come from the website.':'You have the newest Surge. It checks again on its own.'):'';
-  $('#msg').textContent=msg; $('#msg').classList.toggle('show',!!msg);
-  const news=(st==='available'||st==='updated')&&U.whatsNew?.length; $('#news').classList.toggle('show',!!news);
-  if(news) $('#news').innerHTML=U.whatsNew.map(t=>`<li><div class="tile ${['h-pink','h-violet','h-cyan'][U.whatsNew.indexOf(t)%3]}">${N.ic('check')}</div>${N.esc(t)}</li>`).join('');
-  const b=$('#go'); b.disabled=false; b.style.display='';
-  if(st==='ready') b.textContent='Restart and update'; else if(st==='downloading'||st==='unpacking') b.textContent='Cancel'; else if(st==='error') b.textContent='Try again';
+  const tube=['available','downloading','unpacking','ready','installing'].includes(st)&&L&&L!==C; $('#tube').style.display=tube?'':'none'; $('#from').textContent=C; $('#to').textContent=L;
+  const p=st==='downloading'?(U.progress||0):['unpacking','ready','installing'].includes(st)?100:0; $('#fill').style.setProperty('--f',p/100); $('#ring').style.setProperty('--p',p);
+  $('#m1').innerHTML=st==='downloading'&&U.size?`<b>${fmt(U.bytes||0)}</b> of ${fmt(U.size)}, ${p}%`:'';
+  $('#m2').innerHTML=st==='downloading'&&U.speed?`${fmt(U.speed)}/s${U.eta?', about <b>'+secs(U.eta)+'</b> left':''}`:''; $('#metaRow').style.display=st==='downloading'?'':'none';
+  const msg=st==='error'?(U.error||'Surge will try again on its own.'):st==='uptodate'?(U.noBuild?'Updates for Intel Macs come from the website.':'You have the newest Surge. It checks again on its own.'):''; $('#msg').textContent=msg; $('#msg').classList.toggle('show',!!msg);
+  const news=(st==='available'||st==='ready'||st==='updated')&&U.whatsNew?.length; $('#notes').classList.toggle('show',!!news);
+  if(news){ $('#nh').innerHTML=`What is new in ${N.esc(st==='updated'?C:L)} <span>${U.whatsNew.length} changes</span>`; $('#news').innerHTML=U.whatsNew.map((t,i)=>`<li class="${['h-blue','h-violet','h-pink'][i%3]}"><b>${i+1}</b>${N.esc(t)}</li>`).join(''); }
+  const b=$('#go'); b.disabled=false;
+  if(st==='ready') b.textContent='Restart now'; else if(st==='downloading'||st==='unpacking') b.textContent='Cancel'; else if(st==='error') b.textContent='Try again';
   else if(st==='checking'||st==='installing'){ b.textContent=st==='installing'?'Restarting':'Checking'; b.disabled=true; } else if(st==='updated'||st==='uptodate') b.textContent='Nice'; else b.textContent='Update now';
   b.classList.toggle('pri',!(st==='downloading'||st==='unpacking'));
   $('#skip').style.visibility=(st==='available'||st==='ready')?'visible':'hidden'; $('#later').style.visibility=['updated','uptodate','installing'].includes(st)?'hidden':'visible';
-  requestAnimationFrame(()=>api?.updHeight?.(Math.ceil($('#card').offsetHeight+36))); }
+  requestAnimationFrame(()=>api?.updHeight?.(Math.ceil($('#card').offsetHeight+40))); }
 $('#go').onclick=()=>{ const st=U.status; if(st==='ready') api?.action('updater','install'); else if(st==='downloading'||st==='unpacking') api?.action('updater','cancel'); else if(st==='error') api?.action('updater','check'); else if(st==='updated'||st==='uptodate') api?.action('updater','close'); else api?.action('updater','download'); };
-$('#later').onclick=()=>api?.action('updater','later'); $('#skip').onclick=()=>api?.action('updater','skip'); $('#x').onclick=()=>api?.action(U.status==='updated'||U.status==='uptodate'?'updater':'updater',U.status==='updated'||U.status==='uptodate'?'close':'later');
+$('#later').onclick=()=>api?.action('updater','later'); $('#skip').onclick=()=>api?.action('updater','skip');
+$('#x').onclick=()=>api?.action('updater',U.status==='updated'||U.status==='uptodate'?'close':'later');
 addEventListener('keydown',e=>{ if(e.key==='Escape') $('#x').click(); });
 (async()=>{ paint(await api?.action('updater','state')||{}); api?.on('updater:state',paint); })();
 </script></body></html>

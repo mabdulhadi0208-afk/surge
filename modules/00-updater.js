@@ -12,7 +12,7 @@ const REPO = 'mabdulhadi0208-afk/surge', ZIP = 'Surge-mac-arm64.zip', DMG = 'Sur
 const IS_WIN = process.platform === 'win32';
 let timer = null, popup = null, snoozedUntil = 0, skipVersion = null, polling = false, misses = 0, lastTag = null, lastCheck = 0, dlProc = null, lastPeek = 0, retryT = null, fails = 0;
 // shown on the card right after an update lands (keep it to this version's changes)
-const WHATS_NEW = ['A whole new look: deep colour, glass and hero banners everywhere', 'Zero lag: Surge now sleeps when you are not using it', 'A new menu-bar icon, update card and sounds'];
+const WHATS_NEW = ['A whole new look that matches Lumen, in light and dark', 'Zero lag: Surge now sleeps when you are not using it', 'A new menu-bar icon, update card and sounds'];
 const NO_BUILD = process.platform === 'darwin' && process.arch !== 'arm64';   // only an Apple silicon build is published
 const state = { status: 'idle', latest: null, url: null, size: 0, progress: 0, bytes: 0, speed: 0, eta: 0, error: null, staged: null, isZip: true };
 
@@ -38,7 +38,7 @@ function set(patch) { if (['available', 'ready'].includes(patch.status) || (patc
 function showCard() {
   if (!C.mod('updater').popup) return;
   if (popup && !popup.isDestroyed()) { if (!popup.isVisible()) popup.showInactive(); push(); return; }
-  const d = screen.getPrimaryDisplay().workArea; const w = 520, h = 236;
+  const d = screen.getPrimaryDisplay().workArea; const w = 600, h = 300;
   popup = new BrowserWindow({ width: w, height: h, x: Math.round(d.x + d.width / 2 - w / 2), y: d.y + 12, frame: false, transparent: true, hasShadow: false, resizable: false, alwaysOnTop: true, skipTaskbar: true, focusable: true, fullscreenable: false, backgroundColor: '#00000000',
     webPreferences: { preload: path.join(__dirname, '..', 'preload.js'), contextIsolation: true } });
   popup.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true }); popup.setAlwaysOnTop(true, 'screen-saver');

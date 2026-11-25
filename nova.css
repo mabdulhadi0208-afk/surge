@@ -1,153 +1,225 @@
 /* ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
-   Surge 3.0 "Nova": one design system for every Surge window (menu, settings, tour, about, update card, notes,
-   clipboard, Launchpad, Dock, right-click menu, dialogs).
-   Deep saturated colour (pink is the signature, with violet, cyan and amber), hero banners (gradient wash, glossy icon
-   tile, huge bold title, a giant faded watermark glyph bleeding off the edge, pools of light), cheap liquid glass
-   (specular rim, inner glow, sheen, gradient borders, coloured shadows) and one-shot jelly springs.
-   Zero lag rules, enforced here:
-   - no backdrop-filter anywhere (the only live blur Surge uses is the Settings window's native vibrancy)
-   - only transform and opacity ever animate or transition
-   - every animation plays once; nothing loops, nothing follows the pointer, no SVG filters
+   Surge 3.0 in Lumen 4.0's design language (Lumen: docs/NOVA.md, ui/chrome41.css, pages/pages41.css).
+   One sheet for every Surge window: the menu, Settings, the update card, the right-click menu, dialogs, notes,
+   clipboard and Launchpad.
+   - Lumen's palette: the accent #5b8cff with --accent2 (+40 deg) and --accent3 (+95 deg), section hues for each module,
+     porcelain in light mode and deep ink in dark mode
+   - Lumen's type: --display (ui-rounded, SF Pro Rounded, Nunito) for headings, the system UI font for text
+   - Lumen's ultra liquid glass, painted (fill, offset sheen, refraction pools, specular rims, a bright gradient ring,
+     coloured shadows), gem tiles, the section hero (ink body, hue wash, light pools, a three-layer giant glyph,
+     drifting dots) and the Jelly spring (stiffness 300, damping 22) as a CSS linear() curve
+   Zero lag: no backdrop-filter on anything that scrolls (none at all here), only transform and opacity animate,
+   entrances play once, and the hero dots (the only loop) pause when the hero is off screen, the window is hidden or
+   the window is not focused (nova.js).
    ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
 :root{
-  --pink:#ff2e8a;--pink2:#c8106a;--violet:#7b3dff;--violet2:#4a1fd1;--cyan:#00c2ff;--cyan2:#0a6bff;--amber:#ffa514;--amber2:#ff5e1a;
-  --mint:#19d69a;--mint2:#0a8f86;--red:#ff4060;--red2:#c8143c;
-  --ink0:#06050e;--ink1:#0c0a1a;--ink2:#141127;--ink3:#1d1937;--ink4:#28234a;
-  --tx:#f6f3ff;--tx2:rgba(236,230,255,.82);--mut:rgba(214,206,250,.56);--line:rgba(255,255,255,.08);
-  --head:ui-rounded,"SF Pro Rounded","SF Pro Display",-apple-system,system-ui,sans-serif;
-  --body:-apple-system,"SF Pro Text",system-ui,"Segoe UI",sans-serif;
-  /* a damped spring: quick, one small overshoot, settles (toned down, lively) */
-  --jelly:linear(0,.157,.466 9.6%,.745 14.6%,.96 19.9%,1.06 24.3%,1.093 28.4%,1.087 33.5%,1.032 41.5%,.997 50%,.986 58.8%,.995 70%,1);
-  --jelly-soft:linear(0,.13,.42 10%,.72 17%,.93 24%,1.03 30%,1.045 36%,1.02 46%,.998 60%,1);
-  --out:cubic-bezier(.2,.9,.25,1);
-  --hc:var(--pink);--hc2:var(--violet);
-  color-scheme:dark;
+  --accent:#5b8cff;
+  --accent2:oklch(from var(--accent) calc(l - .02) c calc(h + 40));
+  --accent3:oklch(from var(--accent) calc(l + .04) c calc(h + 95));
+  --nova:linear-gradient(135deg,var(--accent),var(--accent2) 55%,var(--accent3));
+  --pink:#ff2d87;--violet:#8b5cf6;--blue:#2f7bff;--cyan:#06b6d4;--amber:#f5a300;--orange:#ff7a1a;--mint:#10b981;--green:#10b981;--red:#ff4d6a;--lime:#7cc417;--indigo:#6366f1;
+  --amber2:#ff7a1a;--mint2:#0a8f86;--cyan2:#2f7bff;--red2:#c8143c;--violet2:#6d3fe0;--pink2:#c8106a;
+  --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI Variable Text","Segoe UI",Inter,system-ui,sans-serif;
+  --display:ui-rounded,"SF Pro Rounded","Nunito",system-ui,var(--font);
+  --head:var(--display);--body:var(--font);
+  /* Lumen's Jelly spring (stiffness 300, damping 22, mass 1) sampled over 0.62 s */
+  --jelly:linear(0,.082,.267,.481,.681,.842,.957,1.028,1.065,1.075,1.07,1.057,1.041,1.025,1.013,1.004,.998,.995,.994,.995,.996,.997,.998,.999,1);
+  --jelly-soft:linear(0,.06,.21,.41,.6,.76,.88,.96,1.01,1.03,1.035,1.03,1.02,1.01,1.004,1,.998,.998,.999,1);
+  --spring:cubic-bezier(.3,1.3,.5,1);--ease:cubic-bezier(.2,.8,.2,1);--out:cubic-bezier(.2,.8,.2,1);
+  --ic:var(--accent);--hc:var(--ic);--hc2:oklch(from var(--ic) l c calc(h + 62));--ic3:oklch(from var(--ic) calc(l + .12) calc(c * .8) calc(h - 30));
+  /* light: porcelain */
+  color-scheme:light dark;
+  --page:color-mix(in srgb,var(--accent) 4%,#f5f6fb);
+  --fg:#141722;--fg2:rgba(20,23,34,.66);--fg3:rgba(20,23,34,.44);--tx:var(--fg);--tx2:var(--fg2);--mut:var(--fg3);
+  --ink:color-mix(in srgb,var(--accent) 42%,#141722);
+  --line:rgba(20,23,60,.09);--hover:rgba(20,23,60,.05);--press:rgba(20,23,60,.09);--field:rgba(20,23,60,.05);--fieldrim:rgba(20,23,60,.1);
+  --surface:radial-gradient(120% 50% at 0% 0%,color-mix(in srgb,var(--accent) 12%,transparent),transparent 70%),radial-gradient(90% 40% at 100% 100%,color-mix(in srgb,var(--accent3) 10%,transparent),transparent 70%),linear-gradient(180deg,rgba(255,255,255,.97),rgba(244,245,252,.97));
+  --surface-sh:inset 0 1px 0 #fff,inset 0 0 0 1px rgba(255,255,255,.8),0 0 0 1px color-mix(in srgb,var(--accent) 22%,transparent),0 2px 4px rgba(14,18,40,.08),0 22px 50px -12px color-mix(in srgb,var(--accent) 30%,rgba(14,18,40,.22)),0 50px 110px -30px color-mix(in srgb,var(--accent3) 34%,rgba(14,18,40,.2));
+  --lq-fill:linear-gradient(180deg,rgba(255,255,255,.93),rgba(249,250,255,.8));
+  --lq-sheen:linear-gradient(116deg,rgba(255,255,255,.95) 0%,rgba(255,255,255,.35) 16%,transparent 30%,transparent 58%,color-mix(in srgb,var(--accent3) 7%,transparent) 80%,rgba(255,255,255,.4) 100%);
+  --lq-refract:radial-gradient(70% 46% at 22% -6%,rgba(255,255,255,.9),transparent 70%),radial-gradient(60% 70% at 104% 112%,color-mix(in srgb,var(--hc) 15%,transparent),transparent 70%),radial-gradient(40% 50% at -4% 100%,color-mix(in srgb,var(--accent2) 8%,transparent),transparent 70%);
+  --lq-sh:inset 0 2px 0 -.5px #fff,inset 0 0 0 1px rgba(255,255,255,.6),inset 0 0 26px rgba(255,255,255,.55),inset 0 -22px 40px -26px color-mix(in srgb,var(--hc) 45%,transparent),
+    0 1px 2px rgba(16,20,40,.06),0 20px 44px -20px color-mix(in srgb,var(--hc) 38%,rgba(16,20,40,.2)),0 40px 70px -40px color-mix(in srgb,var(--accent3) 46%,transparent);
+  --lq-ring:linear-gradient(130deg,#fff,rgba(255,255,255,.95) 10%,color-mix(in srgb,var(--hc) 45%,rgba(255,255,255,.6)) 24%,rgba(255,255,255,.2) 42%,transparent 58%,color-mix(in srgb,var(--accent3) 50%,transparent) 84%,color-mix(in srgb,#fff 60%,var(--accent3)));
 }
+@media (prefers-color-scheme:dark){:root{
+  --page:color-mix(in srgb,var(--accent) 5%,#0c0e18);
+  --fg:#eef0fa;--fg2:rgba(238,240,250,.7);--fg3:rgba(238,240,250,.44);
+  --ink:color-mix(in srgb,var(--accent) 30%,#fff);
+  --line:rgba(255,255,255,.09);--hover:rgba(255,255,255,.06);--press:rgba(255,255,255,.1);--field:rgba(255,255,255,.07);--fieldrim:rgba(255,255,255,.1);
+  --surface:radial-gradient(120% 50% at 0% 0%,color-mix(in srgb,var(--accent) 20%,transparent),transparent 70%),radial-gradient(90% 40% at 100% 100%,color-mix(in srgb,var(--accent3) 16%,transparent),transparent 70%),linear-gradient(180deg,rgba(26,30,52,.97),rgba(13,15,28,.98));
+  --surface-sh:inset 0 1px 0 rgba(255,255,255,.16),inset 0 0 0 1px rgba(255,255,255,.08),0 0 0 1px color-mix(in srgb,var(--accent) 26%,transparent),0 2px 6px rgba(0,0,0,.45),0 26px 60px -14px color-mix(in srgb,var(--accent) 34%,rgba(0,0,0,.6)),0 60px 120px -30px color-mix(in srgb,var(--accent3) 36%,transparent);
+  --lq-fill:linear-gradient(180deg,rgba(30,34,60,.9),rgba(17,20,37,.9));
+  --lq-sheen:linear-gradient(116deg,rgba(255,255,255,.13) 0%,rgba(255,255,255,.04) 18%,transparent 30%,transparent 60%,color-mix(in srgb,var(--accent3) 8%,transparent) 82%,rgba(255,255,255,.06) 100%);
+  --lq-refract:radial-gradient(70% 46% at 22% -6%,rgba(255,255,255,.1),transparent 70%),radial-gradient(60% 70% at 104% 112%,color-mix(in srgb,var(--hc) 22%,transparent),transparent 70%),radial-gradient(40% 50% at -4% 100%,color-mix(in srgb,var(--accent2) 12%,transparent),transparent 70%);
+  --lq-sh:inset 0 1.5px 0 -.5px rgba(255,255,255,.3),inset 0 0 0 1px rgba(255,255,255,.07),inset 0 0 26px rgba(255,255,255,.03),inset 0 -22px 40px -26px color-mix(in srgb,var(--hc) 50%,transparent),
+    0 2px 4px rgba(0,0,0,.4),0 22px 48px -20px color-mix(in srgb,var(--hc) 40%,rgba(0,0,0,.6)),0 40px 70px -40px color-mix(in srgb,var(--accent3) 40%,transparent);
+  --lq-ring:linear-gradient(130deg,rgba(255,255,255,.55),rgba(255,255,255,.2) 12%,color-mix(in srgb,var(--hc) 50%,transparent) 26%,rgba(255,255,255,.05) 44%,transparent 58%,color-mix(in srgb,var(--accent3) 50%,transparent) 86%,color-mix(in srgb,#fff 40%,var(--accent3)));
+}}
 *{box-sizing:border-box}
-html,body{margin:0;background:transparent;color:var(--tx);font:13px/1.42 var(--body);-webkit-font-smoothing:antialiased;-webkit-user-select:none;user-select:none}
-button{font:inherit;color:inherit}
-input,textarea{font:inherit;color:inherit}
-::selection{background:color-mix(in oklab,var(--pink) 55%,transparent)}
+html,body{margin:0;background:transparent;color:var(--fg);font:13px/1.45 var(--font);-webkit-font-smoothing:antialiased;-webkit-user-select:none;user-select:none}
+button,input,textarea{font:inherit;color:inherit}
+::selection{background:color-mix(in srgb,var(--accent) 35%,transparent)}
 .drag{-webkit-app-region:drag}.nodrag,.drag button,.drag input{-webkit-app-region:no-drag}
 
-/* hue sets: put one on any element and its glass, tile, hero and buttons follow */
-.h-pink{--hc:var(--pink);--hc2:var(--violet)}
-.h-violet{--hc:var(--violet);--hc2:var(--pink)}
-.h-cyan{--hc:var(--cyan);--hc2:var(--violet)}
-.h-amber{--hc:var(--amber);--hc2:var(--pink)}
-.h-mint{--hc:var(--mint);--hc2:var(--cyan2)}
-.h-red{--hc:var(--red);--hc2:var(--amber2)}
+/* section hues (Lumen's SEC_HUE family): put one on any element and its glass, gem, hero and buttons follow */
+.h-blue{--ic:#2f7bff}.h-violet{--ic:#8b5cf6}.h-pink{--ic:#ff2d87}.h-orange{--ic:#ff7a1a}.h-green,.h-mint{--ic:#10b981}.h-amber{--ic:#f5a300}
+.h-cyan{--ic:#06b6d4}.h-indigo{--ic:#6366f1}.h-lime{--ic:#7cc417}.h-red{--ic:#ff4d6a}.h-accent{--ic:var(--accent)}
+[class*="h-"]{--hc:var(--ic);--hc2:oklch(from var(--ic) l c calc(h + 62));--ic3:oklch(from var(--ic) calc(l + .12) calc(c * .8) calc(h - 30))}
 
-/* ───────────────────────── glass: gradient border + specular rim + inner glow + sheen + coloured shadow (no blur) */
-.glass{position:relative;border:1px solid transparent;border-radius:22px;isolation:isolate;
-  background:
-    linear-gradient(180deg,rgba(255,255,255,.075),rgba(255,255,255,.015) 46%,rgba(255,255,255,0)) padding-box,
-    radial-gradient(120% 90% at 0% 0%,color-mix(in oklab,var(--hc) 16%,transparent),transparent 62%) padding-box,
-    linear-gradient(180deg,var(--ink3),var(--ink2)) padding-box,
-    linear-gradient(140deg,rgba(255,255,255,.38),color-mix(in oklab,var(--hc) 45%,transparent) 26%,rgba(255,255,255,.05) 52%,color-mix(in oklab,var(--hc2) 40%,transparent) 84%,rgba(255,255,255,.2)) border-box;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 0 22px -8px color-mix(in oklab,var(--hc) 40%,transparent),0 18px 40px -22px color-mix(in oklab,var(--hc) 70%,transparent),0 2px 6px -2px rgba(0,0,0,.5)}
-.glass.flat{box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 10px 26px -18px rgba(0,0,0,.8)}
+/* ───────── the surface every floating Surge window sits on (Lumen's chrome popover) */
+.surface{position:relative;isolation:isolate;overflow:hidden;border-radius:30px;background:var(--surface);box-shadow:var(--surface-sh)}
 
-/* ───────────────────────── the glossy icon tile */
-.tile{--ts:44px;width:var(--ts);height:var(--ts);flex:none;border-radius:calc(var(--ts)*.32);display:grid;place-items:center;position:relative;color:#fff;
-  background:radial-gradient(120% 80% at 30% 0%,rgba(255,255,255,.62),rgba(255,255,255,0) 46%),linear-gradient(150deg,color-mix(in oklab,var(--hc) 72%,#fff) -10%,var(--hc) 38%,var(--hc2) 108%);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.7),inset 0 -6px 12px -6px rgba(10,0,40,.55),0 0 0 4px color-mix(in oklab,var(--hc) 18%,transparent),0 12px 26px -10px var(--hc),0 0 36px -12px var(--hc)}
-.tile svg{width:52%;height:52%;fill:none;stroke:currentColor;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 1.5px 1.5px rgba(20,0,50,.4))}
+/* ───────── ultra liquid glass, painted (pages41) */
+.glass{position:relative;isolation:isolate;border-radius:22px;border:1.5px solid transparent;
+  background:var(--lq-sheen) padding-box,var(--lq-refract) padding-box,var(--lq-fill) padding-box,var(--lq-ring) border-box;box-shadow:var(--lq-sh)}
+.glass.flat{box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 1px 2px rgba(16,20,40,.06),0 12px 28px -18px color-mix(in srgb,var(--hc) 40%,rgba(16,20,40,.25))}
+@media (prefers-color-scheme:dark){.glass.flat{box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 2px 4px rgba(0,0,0,.35),0 14px 30px -18px color-mix(in srgb,var(--hc) 40%,rgba(0,0,0,.6))}}
+
+/* ───────── gem tile (Lumen's nav icons and hero tile: frosted white over the section colour) */
+.tile{--ts:44px;width:var(--ts);height:var(--ts);flex:none;border-radius:calc(var(--ts)*.3);display:grid;place-items:center;position:relative;color:#fff;
+  background:linear-gradient(180deg,rgba(255,255,255,.55),rgba(255,255,255,.08) 50%,rgba(255,255,255,.16)),linear-gradient(145deg,var(--ic3),var(--ic) 55%,color-mix(in srgb,var(--ic) 60%,black));
+  box-shadow:inset 0 1.5px 0 rgba(255,255,255,.85),inset 0 0 0 1px rgba(255,255,255,.35),inset 0 -6px 12px rgba(0,0,0,.18),0 6px 16px -4px color-mix(in srgb,var(--ic) 65%,transparent)}
+.tile svg{width:50%;height:50%;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .tile.sm{--ts:30px}.tile.md{--ts:38px}.tile.lg{--ts:58px}.tile.xl{--ts:84px}
-.tile.dim{background:linear-gradient(180deg,rgba(255,255,255,.1),rgba(255,255,255,.04));color:var(--mut);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),inset 0 0 0 1px rgba(255,255,255,.06)}
-.tile.dim svg{filter:none}
+.tile.dim{color:var(--ic);background:color-mix(in srgb,var(--ic) 14%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ic) 24%,transparent)}
 
-/* ───────────────────────── the hero banner */
-.hero{position:relative;isolation:isolate;overflow:hidden;border-radius:26px;padding:20px 22px;display:flex;align-items:center;gap:16px;border:1px solid transparent;
-  background:
-    radial-gradient(80% 120% at 0% 0%,color-mix(in oklab,var(--hc) 88%,transparent),transparent 62%) padding-box,
-    radial-gradient(90% 130% at 100% 110%,color-mix(in oklab,var(--hc2) 80%,transparent),transparent 64%) padding-box,
-    linear-gradient(160deg,color-mix(in oklab,var(--hc) 42%,#0c0620),color-mix(in oklab,var(--hc2) 38%,#070418)) padding-box,
-    linear-gradient(135deg,rgba(255,255,255,.7),color-mix(in oklab,var(--hc) 65%,transparent) 24%,rgba(255,255,255,.06) 50%,color-mix(in oklab,var(--hc2) 70%,transparent) 82%,rgba(255,255,255,.4)) border-box;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.3),inset 0 -30px 50px -30px rgba(6,0,30,.6),0 26px 50px -24px color-mix(in oklab,var(--hc) 90%,transparent),0 8px 22px -14px var(--hc2)}
-/* light pools, a sheen, a horizon line of light; all painted once */
-.hero::before{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
-  background:radial-gradient(42% 90% at 22% -20%,rgba(255,255,255,.36),transparent 70%),radial-gradient(30% 60% at 78% 120%,color-mix(in oklab,var(--hc2) 60%,#fff 10%),transparent 70%),
-    linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,0) 42%)}
-.hero::after{content:"";position:absolute;left:8%;right:8%;bottom:0;height:1px;z-index:-1;background:linear-gradient(90deg,transparent,rgba(255,255,255,.7) 35%,color-mix(in oklab,var(--hc) 50%,#fff) 65%,transparent);box-shadow:0 0 12px 1px color-mix(in oklab,var(--hc) 80%,transparent)}
-.hero .wm{position:absolute;z-index:-1;right:-6%;top:50%;height:200%;aspect-ratio:1;translate:0 -50%;rotate:-14deg;color:#fff;opacity:.16;pointer-events:none;animation:nv-wm 1.1s var(--jelly-soft) .05s both}
-.hero .wm svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round}
-.hero .tile{animation:nv-tile .9s var(--jelly) .08s both}
-.hero .htx{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
-.eyebrow{font:800 10.5px/1 var(--head);letter-spacing:.16em;text-transform:uppercase;color:color-mix(in oklab,var(--hc) 40%,#fff)}
-.hero h1,.hero .h1{margin:0;font:800 34px/1.02 var(--head);letter-spacing:-.045em;padding-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  background:linear-gradient(100deg,#fff 40%,color-mix(in oklab,var(--hc) 45%,#fff));-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 2px 10px rgba(20,0,60,.35))}
-.hero p,.hero small{margin:0;font:600 12.5px/1.35 var(--body);color:rgba(246,240,255,.78)}
-.hero .big{margin-left:auto;font:800 58px/1 var(--head);letter-spacing:-.06em;font-variant-numeric:tabular-nums;background:linear-gradient(180deg,#fff 30%,rgba(255,255,255,.35));-webkit-background-clip:text;background-clip:text;color:transparent}
+/* ───────── the section hero (pages41): ink body, the hue washing in from the left, four light pools, a bright rim,
+   a gem on a lit plinth, a huge white title and a giant three-layer glyph bleeding off the right edge */
+.hero{position:relative;isolation:isolate;overflow:hidden;contain:paint;display:flex;align-items:center;gap:22px;padding:24px 26px;border-radius:30px;color:#fff;
+  /* the four light pools of pages41 are painted into the hero's own background (one paint, no extra layers) */
+  background:radial-gradient(45% 75% at 2% 50%,color-mix(in srgb,var(--ic3) 75%,transparent),color-mix(in srgb,var(--ic) 30%,transparent) 50%,transparent),
+    radial-gradient(55% 60% at 92% 118%,color-mix(in srgb,var(--hc2) 80%,transparent),color-mix(in srgb,var(--hc2) 24%,transparent) 55%,transparent),
+    radial-gradient(35% 45% at 58% -12%,color-mix(in srgb,var(--ic) 60%,transparent),transparent),
+    radial-gradient(22% 40% at 68% 108%,rgba(255,255,255,.22),transparent),
+    linear-gradient(100deg,color-mix(in srgb,var(--ic) 92%,transparent) 0%,color-mix(in srgb,var(--ic) 58%,transparent) 26%,color-mix(in srgb,var(--ic) 16%,transparent) 56%,transparent 78%),
+    radial-gradient(120% 140% at 100% 0%,color-mix(in srgb,var(--hc2) 30%,transparent),transparent 55%),
+    linear-gradient(160deg,color-mix(in srgb,var(--ic) 34%,#12152c),#0a0c1c 70%,#070814);
+  box-shadow:inset 0 1.5px 0 rgba(255,255,255,.4),inset 0 0 0 1px rgba(255,255,255,.12),inset 0 -60px 100px -60px color-mix(in srgb,var(--hc2) 70%,transparent),
+    0 2px 4px rgba(10,12,30,.2),0 26px 50px -24px color-mix(in srgb,var(--ic) 75%,transparent),0 40px 80px -40px color-mix(in srgb,var(--hc2) 60%,transparent)}
+.hero::before{content:"";position:absolute;inset:0;z-index:5;border-radius:inherit;padding:1.5px;pointer-events:none;
+  background:linear-gradient(125deg,#fff,color-mix(in srgb,var(--ic3) 80%,#fff) 12%,rgba(255,255,255,.08) 34%,transparent 60%,color-mix(in srgb,var(--hc2) 70%,transparent) 86%,color-mix(in srgb,var(--hc2) 40%,#fff));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+.hero>*{position:relative;z-index:3}
+.hero>.hero-orb,.hero>.hero-art,.hero>.hero-dots,.hero>.hero-glint,.hero>.wm{position:absolute}
+.hero-orb{z-index:-1;border-radius:50%;pointer-events:none}
+.hero-orb.a{width:90%;aspect-ratio:1;left:-32%;top:50%;translate:0 -50%;background:radial-gradient(closest-side,color-mix(in srgb,var(--ic3) 75%,transparent),color-mix(in srgb,var(--ic) 30%,transparent) 50%,transparent)}
+.hero-orb.b{width:110%;aspect-ratio:1.6;right:-24%;bottom:-70%;background:radial-gradient(closest-side,color-mix(in srgb,var(--hc2) 80%,transparent),color-mix(in srgb,var(--hc2) 24%,transparent) 55%,transparent)}
+.hero-orb.c{width:70%;aspect-ratio:1.6;left:36%;top:-64%;background:radial-gradient(closest-side,color-mix(in srgb,var(--ic) 60%,transparent),transparent)}
+.hero-orb.d{width:42%;aspect-ratio:1;right:24%;bottom:-48%;background:radial-gradient(closest-side,rgba(255,255,255,.22),transparent)}
+.hero.enter .hero-orb{animation:lightup 1.4s var(--ease) both}
+.hero.enter .hero-orb.b{animation-delay:.12s}.hero.enter .hero-orb.c{animation-delay:.22s}.hero.enter .hero-orb.d{animation-delay:.3s}
+@keyframes lightup{from{opacity:0}}
+/* the giant glyph: a broad soft stroke, a deep shadow copy and the crisp lit outline */
+.hero-art{z-index:1!important;right:-6%;top:50%;height:150%;aspect-ratio:1;margin-top:-75%;margin-top:0;translate:0 -50%;color:rgba(255,255,255,.3);transform:rotate(-12deg);pointer-events:none}
+.hero-art svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:.5;stroke-linecap:round;stroke-linejoin:round}
+.hero-art.glow{color:color-mix(in srgb,var(--ic3) 22%,transparent)}.hero-art.glow svg{stroke-width:2.2}
+.hero-art.depth{color:rgba(0,0,0,.4);translate:4% calc(-50% + 5%)}.hero-art.depth svg{stroke-width:.8}
+.hero.enter .hero-art{animation:glyphdrift 1.5s .08s var(--spring) both}
+.hero.enter .hero-art.depth{animation-delay:.14s}.hero.enter .hero-art.glow{animation-delay:.02s}
+@keyframes glyphdrift{from{opacity:0;transform:translate(26%,8%) rotate(-30deg) scale(.82)}to{opacity:1;transform:rotate(-12deg)}}
+/* the gem on a lit plinth */
+.hero>.tile{--ts:64px;border-radius:calc(var(--ts)*.3);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.85),inset 0 0 0 1px rgba(255,255,255,.4),inset 0 -8px 16px rgba(0,0,0,.2),0 0 0 8px rgba(255,255,255,.07),0 0 0 17px rgba(255,255,255,.035),0 18px 36px rgba(0,0,0,.45),0 0 70px color-mix(in srgb,var(--ic3) 80%,transparent)}
+.hero>.tile svg{width:46%;height:46%;stroke-width:1.8}
+.hero.enter>.tile{animation:gempop .62s var(--jelly) .08s both}
+@keyframes gempop{from{opacity:0;transform:scale(.55) rotate(-24deg)}}
+.hero .htx{display:flex;flex-direction:column;gap:5px;min-width:0;flex:1}
+.hero.enter .htx{animation:herotx .9s var(--spring) .1s both}
+@keyframes herotx{from{opacity:0;transform:translateX(-18px)}}
+.eyebrow{display:flex;align-items:center;gap:10px;font:800 10.5px/1 var(--display);letter-spacing:.22em;text-transform:uppercase;color:color-mix(in srgb,var(--ic3) 50%,#fff)}
+.eyebrow::after{content:"";width:34px;height:2px;border-radius:2px;background:linear-gradient(90deg,#fff,transparent)}
+.eyebrow b{order:2;letter-spacing:.08em;padding:5px 9px;border-radius:999px;color:#fff;background:rgba(255,255,255,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),inset 0 0 0 1px rgba(255,255,255,.18);font-variant-numeric:tabular-nums}
+.hero h1,.hero .h1{margin:0;padding-bottom:4px;font:900 38px/.98 var(--display);letter-spacing:-.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  background:linear-gradient(172deg,#fff 40%,color-mix(in srgb,var(--ic3) 45%,#fff) 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p,.hero small{margin:0;font:500 13px/1.5 var(--font);color:rgba(255,255,255,.8)}
+.hero .big{margin-left:auto;font:900 60px/1 var(--display);letter-spacing:-.06em;font-variant-numeric:tabular-nums;background:linear-gradient(180deg,#fff 30%,rgba(255,255,255,.4));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero .btn:not(.pri){color:#fff;background:rgba(255,255,255,.12);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),inset 0 0 0 1px rgba(255,255,255,.18)}
+/* tiny drifting dots (pages41): two pre-painted layers drift on the compositor, transform and opacity only, over the
+   right side; a still dot field on the left, a faint still constellation, a glint along the rim once. Paused when the
+   hero is off screen (.dots-off), the window is hidden (.lm-hidden) or not focused (.lm-blur), and under reduced motion. */
+.hero-dots{inset:0;z-index:0!important;pointer-events:none;border-radius:inherit;overflow:hidden}
+.hero-dots>i{position:absolute;top:-30px;bottom:-30px;left:36%;right:-30px;will-change:transform,opacity;background-repeat:repeat}
+/* stepped: the drift is a few sub-pixel nudges a second, not a 60 fps repaint (about a third of the cost) */
+.hero-dots .hd1{animation:hd-a 16s steps(40) infinite alternate}
+.hero-dots .hd3{animation:hd-c 11s steps(32) infinite alternate}
+.hero-dots::before{content:"";position:absolute;inset:0;right:64%;opacity:.5;background:radial-gradient(circle,color-mix(in srgb,var(--ic3) 60%,#fff) 1px,transparent 1.8px) 0 0/34px 30px,radial-gradient(circle,rgba(255,255,255,.8) 1.2px,transparent 2px) 17px 13px/97px 83px;-webkit-mask:linear-gradient(90deg,transparent,#000 60%)}
+@keyframes hd-a{0%{transform:translate3d(0,0,0);opacity:.5}50%{opacity:.9}100%{transform:translate3d(-28px,-16px,0);opacity:.6}}
+@keyframes hd-c{0%{transform:translate3d(0,6px,0);opacity:.3}45%{opacity:1}100%{transform:translate3d(-14px,-12px,0);opacity:.5}}
+.hd-cons{position:absolute;inset:0;background:center/cover no-repeat;opacity:.9;-webkit-mask:linear-gradient(90deg,transparent 38%,#000 70%)}
+.hero.enter .hd-cons{animation:nv-fade 2s .6s both}
+.hero-glint{left:30px;right:30px;top:0;height:2px;z-index:6!important;pointer-events:none;overflow:hidden}
+.hero-glint::before{content:"";position:absolute;top:0;bottom:0;left:0;width:22%;border-radius:2px;opacity:0;transform:translateX(-110%);background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--ic3) 40%,#fff),#fff,transparent)}
+.hero.enter .hero-glint::before{animation:rimglint 2.6s 1s cubic-bezier(.4,0,.2,1) both}
+@keyframes rimglint{0%{transform:translateX(-110%);opacity:0}12%{opacity:1}85%{opacity:1}100%{transform:translateX(460%);opacity:0}}
+.hero.dots-off .hero-dots>i,.lm-hidden .hero-dots>i,.lm-blur .hero-dots>i,.lm-still .hero-dots>i{animation-play-state:paused}
+@media (prefers-reduced-motion:reduce){.hero-dots>i{animation:none!important;will-change:auto;opacity:.7}}
+.hero.mini .hero-dots,.hero.mini .hero-glint{display:none}
 
-/* ───────────────────────── type */
-.title{font:800 22px/1.05 var(--head);letter-spacing:-.04em;margin:0}
-.grad{background:linear-gradient(100deg,#fff 30%,color-mix(in oklab,var(--hc) 55%,#fff));-webkit-background-clip:text;background-clip:text;color:transparent}
-.sech{display:flex;align-items:center;gap:10px;font:800 19px/1 var(--head);letter-spacing:-.035em;margin:22px 2px 12px}
-.sech::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,color-mix(in oklab,var(--hc) 60%,transparent),transparent)}
-.badge{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:999px;font:750 11px/1 var(--head);letter-spacing:0;color:var(--tx2);background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}
-.badge i{width:6px;height:6px;border-radius:50%;background:var(--hc);box-shadow:0 0 8px var(--hc)}
+/* ───────── type */
+.title{font:850 22px/1.05 var(--display);letter-spacing:-.04em;margin:0}
+.grad{background:linear-gradient(120deg,var(--accent),var(--accent2) 50%,var(--accent3));-webkit-background-clip:text;background-clip:text;color:transparent}
+.sech{display:flex;align-items:center;gap:12px;font:850 21px/1 var(--display);letter-spacing:-.035em;margin:24px 2px 12px}
+.sech::before{content:"";width:5px;height:22px;border-radius:4px;background:linear-gradient(180deg,var(--accent),var(--accent3));box-shadow:0 0 12px color-mix(in srgb,var(--accent) 60%,transparent)}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font:750 11px/1 var(--display);color:var(--ink);background:color-mix(in srgb,var(--accent) 12%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 22%,transparent)}
+.badge i{width:7px;height:7px;border-radius:50%;background:#5ff0b0;box-shadow:0 0 0 3px rgba(95,240,176,.2),0 0 10px #5ff0b0}
 
-/* ───────────────────────── buttons */
-.btn{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;height:34px;padding:0 15px;border-radius:999px;white-space:nowrap;
-  font:750 12.5px/1 var(--head);letter-spacing:-.01em;color:var(--tx);background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.05));
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 0 0 1px rgba(255,255,255,.1),0 6px 14px -10px rgba(0,0,0,.8);transition:transform .5s var(--jelly)}
+/* ───────── buttons (Lumen: glass buttons, the primary is the nova gradient pill) */
+.btn{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;height:36px;padding:0 16px;border-radius:999px;white-space:nowrap;
+  font:750 13px/1 var(--display);letter-spacing:-.01em;color:var(--fg);background:var(--field);box-shadow:inset 0 0 0 1px var(--fieldrim),inset 0 1px 0 rgba(255,255,255,.4);transition:transform .62s var(--jelly)}
+@media (prefers-color-scheme:dark){.btn{box-shadow:inset 0 0 0 1px var(--fieldrim),inset 0 1px 0 rgba(255,255,255,.1)}}
 .btn svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.btn:hover{transform:translateY(-1px)}
-.btn:active{transform:scale(.95);transition-duration:.12s}
+.btn:hover{transform:translateY(-1px)}.btn:active{transform:scale(.96);transition-duration:.12s}
 .btn[disabled]{opacity:.45;pointer-events:none}
-.btn.pri{color:#fff;text-shadow:0 1px 2px rgba(30,0,40,.35);
-  background:radial-gradient(90% 140% at 30% -30%,rgba(255,255,255,.55),transparent 55%),linear-gradient(135deg,var(--hc),var(--hc2));
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -8px 14px -8px rgba(20,0,50,.5),0 0 0 4px color-mix(in oklab,var(--hc) 20%,transparent),0 12px 24px -10px var(--hc)}
+.btn.pri{color:#fff;background:radial-gradient(90% 140% at 30% -30%,rgba(255,255,255,.4),transparent 55%),linear-gradient(120deg,var(--accent),var(--accent2) 55%,var(--accent3));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5),inset 0 -14px 26px -18px rgba(0,0,0,.3),0 0 0 4px color-mix(in srgb,var(--accent) 14%,transparent),0 14px 30px -14px color-mix(in srgb,var(--accent) 90%,transparent)}
+.btn.pri.hue{background:radial-gradient(90% 140% at 30% -30%,rgba(255,255,255,.4),transparent 55%),linear-gradient(120deg,var(--ic),var(--hc2));box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 0 0 4px color-mix(in srgb,var(--ic) 16%,transparent),0 14px 30px -14px var(--ic)}
 .btn.lg{height:42px;padding:0 22px;font-size:14px}
-.btn.icon{width:36px;height:36px;padding:0;border-radius:13px}
-.btn.icon svg{width:17px;height:17px}
-.lnk{all:unset;cursor:pointer;padding:7px 10px;border-radius:10px;font:650 12px/1 var(--body);color:var(--mut);transition:transform .45s var(--jelly),opacity .2s}
-.lnk:hover{opacity:1;color:var(--tx)}.lnk:active{transform:scale(.94)}
+.btn.icon{width:36px;height:36px;padding:0;border-radius:12px}.btn.icon svg{width:17px;height:17px}
+.lnk{all:unset;cursor:pointer;padding:7px 10px;border-radius:10px;font:650 12px/1 var(--font);color:var(--fg3);transition:transform .5s var(--jelly)}
+.lnk:hover{color:var(--fg);background:var(--hover)}.lnk:active{transform:scale(.94)}
 
-/* ───────────────────────── switch (the knob springs across) */
-.tg{position:relative;width:44px;height:26px;flex:none;border-radius:999px;cursor:pointer;background:rgba(255,255,255,.12);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12),inset 0 2px 4px rgba(0,0,0,.35)}
-.tg::before{content:"";position:absolute;inset:0;border-radius:inherit;opacity:0;background:radial-gradient(80% 120% at 30% 0%,rgba(255,255,255,.45),transparent 60%),linear-gradient(135deg,var(--hc),var(--hc2));box-shadow:0 0 16px -4px var(--hc);transition:opacity .25s}
-.tg::after{content:"";position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:radial-gradient(circle at 35% 25%,#fff,#e9e4ff);box-shadow:0 2px 6px rgba(0,0,0,.45),inset 0 -1px 2px rgba(80,60,140,.25);transition:transform .55s var(--jelly)}
+/* ───────── switch */
+.tg{position:relative;width:46px;height:28px;flex:none;border-radius:999px;cursor:pointer;background:var(--press);box-shadow:inset 0 0 0 1px var(--fieldrim)}
+.tg::before{content:"";position:absolute;inset:0;border-radius:inherit;opacity:0;background:radial-gradient(80% 120% at 30% 0%,rgba(255,255,255,.4),transparent 60%),linear-gradient(120deg,var(--accent),var(--accent3));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent),0 6px 16px -6px var(--accent);transition:opacity .2s}
+.tg::after{content:"";position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 2px 6px rgba(10,14,40,.3),inset 0 -1px 2px rgba(80,90,140,.18);transition:transform .62s var(--jelly)}
 .tg.on::before{opacity:1}.tg.on::after{transform:translateX(18px)}
 .tg:active::after{transform:scale(.88)}.tg.on:active::after{transform:translateX(18px) scale(.88)}
 
-/* ───────────────────────── segmented + chips */
-.seg{display:inline-flex;gap:3px;padding:3px;border-radius:13px;background:rgba(0,0,0,.28);box-shadow:inset 0 0 0 1px rgba(255,255,255,.07),inset 0 1px 3px rgba(0,0,0,.4);flex-wrap:wrap}
-.seg button{all:unset;cursor:pointer;padding:6px 11px;border-radius:10px;font:700 12px/1.1 var(--head);color:var(--mut);transition:transform .45s var(--jelly)}
-.seg button:hover{color:var(--tx)}
-.seg button:active{transform:scale(.93)}
-.seg button.on{color:#fff;background:radial-gradient(90% 140% at 30% -30%,rgba(255,255,255,.45),transparent 55%),linear-gradient(135deg,var(--hc),var(--hc2));box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 6px 14px -8px var(--hc)}
-.chip{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:999px;font:700 12px/1 var(--head);color:var(--tx2);background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px rgba(255,255,255,.09);transition:transform .45s var(--jelly)}
-.chip i{width:9px;height:9px;border-radius:50%;background:var(--c,var(--hc));box-shadow:0 0 8px var(--c,var(--hc))}
+/* ───────── segmented + chips */
+.seg{display:inline-flex;gap:3px;padding:3px;border-radius:14px;background:var(--field);box-shadow:inset 0 0 0 1px var(--fieldrim);flex-wrap:wrap}
+.seg button{all:unset;cursor:pointer;padding:7px 12px;border-radius:11px;font:700 12px/1.1 var(--display);color:var(--fg2);transition:transform .5s var(--jelly)}
+.seg button:hover{color:var(--fg)}.seg button:active{transform:scale(.94)}
+.seg button.on{color:#fff;background:linear-gradient(120deg,var(--accent),var(--accent3));box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 6px 14px -8px var(--accent)}
+.chip{all:unset;cursor:pointer;display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border-radius:999px;font:700 12px/1 var(--display);color:var(--fg2);background:var(--field);box-shadow:inset 0 0 0 1px var(--fieldrim);transition:transform .5s var(--jelly)}
+.chip i{width:9px;height:9px;border-radius:50%;background:var(--c,var(--accent))}
 .chip:active{transform:scale(.94)}
-.chip.on{color:#fff;background:linear-gradient(135deg,color-mix(in oklab,var(--c,var(--hc)) 40%,transparent),color-mix(in oklab,var(--c,var(--hc)) 16%,transparent));box-shadow:inset 0 0 0 1px color-mix(in oklab,var(--c,var(--hc)) 70%,transparent),0 0 18px -6px var(--c,var(--hc))}
+.chip.on{color:var(--fg);background:color-mix(in srgb,var(--c,var(--accent)) 18%,transparent);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--c,var(--accent)) 70%,transparent)}
 
-/* ───────────────────────── range */
+/* ───────── range */
 input[type=range]{-webkit-appearance:none;appearance:none;height:8px;border-radius:999px;outline:none;cursor:pointer;margin:0;
-  background:linear-gradient(90deg,var(--hc),var(--hc2) var(--p,50%),rgba(255,255,255,.1) var(--p,50%));box-shadow:inset 0 1px 2px rgba(0,0,0,.4)}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:radial-gradient(circle at 35% 25%,#fff,#e6e0ff);box-shadow:0 0 0 4px color-mix(in oklab,var(--hc) 30%,transparent),0 3px 10px rgba(0,0,0,.5);transition:transform .45s var(--jelly)}
-input[type=range]:active::-webkit-slider-thumb{transform:scale(1.2)}
+  background:linear-gradient(90deg,var(--accent),var(--accent3) var(--p,50%),var(--press) var(--p,50%))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 22%,transparent),0 3px 10px rgba(10,14,40,.35);transition:transform .5s var(--jelly)}
+input[type=range]:active::-webkit-slider-thumb{transform:scale(1.18)}
 
-/* ───────────────────────── inputs */
-.field{all:unset;box-sizing:border-box;height:36px;padding:0 13px;border-radius:12px;font:600 13px/1 var(--body);color:var(--tx);background:rgba(0,0,0,.3);box-shadow:inset 0 0 0 1px rgba(255,255,255,.09),inset 0 1px 3px rgba(0,0,0,.45);-webkit-user-select:text;user-select:text}
-.field:focus{box-shadow:inset 0 0 0 1px color-mix(in oklab,var(--hc) 70%,transparent),0 0 0 4px color-mix(in oklab,var(--hc) 18%,transparent)}
-.field::placeholder{color:var(--mut)}
+/* ───────── inputs */
+.field{all:unset;box-sizing:border-box;height:38px;padding:0 14px;border-radius:13px;font:600 13px/1 var(--font);color:var(--fg);background:var(--field);box-shadow:inset 0 0 0 1px var(--fieldrim);-webkit-user-select:text;user-select:text}
+.field:focus{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 70%,transparent),0 0 0 4px color-mix(in srgb,var(--accent) 22%,transparent)}
+.field::placeholder{color:var(--fg3)}
+kbd{font:650 10.5px/1 var(--font);min-width:18px;height:19px;padding:0 6px;border-radius:6px;display:inline-grid;place-items:center;color:var(--fg2);background:var(--field);box-shadow:inset 0 0 0 1px var(--fieldrim)}
 
-/* ───────────────────────── toast */
-.toast{position:fixed;left:50%;bottom:22px;z-index:50;translate:-50% 0;padding:9px 15px;border-radius:999px;font:750 12px/1 var(--head);color:#fff;pointer-events:none;opacity:0;transform:translateY(14px) scale(.9);transition:transform .55s var(--jelly),opacity .2s;
-  background:radial-gradient(90% 140% at 30% -30%,rgba(255,255,255,.35),transparent 55%),linear-gradient(135deg,color-mix(in oklab,var(--hc) 80%,#140a2a),color-mix(in oklab,var(--hc2) 80%,#140a2a));box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 14px 30px -12px var(--hc)}
+/* ───────── toast (Lumen's #toast) */
+.toast{position:fixed;left:50%;bottom:22px;z-index:50;translate:-50% 0;padding:10px 16px;border-radius:999px;font:750 12.5px/1 var(--display);color:var(--fg);pointer-events:none;opacity:0;transform:translateY(14px) scale(.9);transition:transform .62s var(--jelly),opacity .2s;
+  background:var(--surface);box-shadow:var(--surface-sh)}
 .toast.show{opacity:1;transform:none}
 
-/* ───────────────────────── one-shot motion */
+/* ───────── one-shot motion */
 @keyframes nv-in{from{opacity:0;transform:translateY(12px) scale(.97)}}
-@keyframes nv-pop{from{opacity:0;transform:scale(.86) translateY(-10px)}}
+@keyframes nv-pop{from{opacity:0;transform:scale(.9) translateY(-8px)}}
 @keyframes nv-tile{from{opacity:0;transform:scale(.45) rotate(-16deg)}}
-@keyframes nv-wm{from{opacity:0;rotate:-36deg;scale:.75}}
 @keyframes nv-fade{from{opacity:0}}
-.stage>*{animation:nv-in .7s var(--jelly-soft) both;animation-delay:calc(min(var(--i,0),14) * 38ms)}
+.stage>*{animation:nv-in .62s var(--jelly-soft) both;animation-delay:calc(min(var(--i,0),14) * 45ms)}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
-/* scrolling: never stretchy, thin rail */
 *{overscroll-behavior:none}
-::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:10px;border:3px solid transparent;background-clip:padding-box}::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:var(--press);border-radius:10px;border:3px solid transparent;background-clip:padding-box}::-webkit-scrollbar-track{background:transparent}
 svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}

@@ -1,27 +1,29 @@
 <!DOCTYPE html><html><head><meta charset="utf-8"><link rel="stylesheet" href="nova.css"><style>
   html,body{height:100%;overflow:hidden}
   body{padding:8px}
-  .win{height:100%;display:flex;flex-direction:column;border-radius:26px;overflow:hidden;isolation:isolate;position:relative;
-    background:radial-gradient(90% 40% at 0% 0%,rgba(255,165,20,.16),transparent 70%),linear-gradient(180deg,#151029,#08060f);box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 0 0 1px rgba(255,255,255,.08),0 22px 46px -22px rgba(0,0,0,.95);animation:nv-pop .55s var(--jelly) both}
-  header.hero{margin:8px;padding:12px 12px 12px 14px;border-radius:20px;gap:12px;-webkit-app-region:drag}
+  .win{height:100%;display:flex;flex-direction:column;border-radius:26px;overflow:hidden;isolation:isolate;position:relative;animation:nv-pop .55s var(--jelly) both}
+  header.hero{margin:8px;padding:12px 12px 12px 14px;border-radius:22px;gap:12px;-webkit-app-region:drag}
+  header.hero>.tile{--ts:40px;box-shadow:inset 0 1.5px 0 rgba(255,255,255,.85),inset 0 0 0 1px rgba(255,255,255,.4),0 0 0 5px rgba(255,255,255,.08),0 10px 20px rgba(0,0,0,.35)}
+  header.hero .hero-art{height:200%}
   header .tile{--ts:38px}
-  header h1{font-size:21px}
-  header .x{-webkit-app-region:no-drag;width:28px;height:28px;border-radius:10px;background:rgba(0,0,30,.25)}
+  header.hero h1{font-size:23px}
+  header .x{-webkit-app-region:no-drag;width:28px;height:28px;border-radius:10px}
   header .x svg{width:12px;height:12px}
   textarea{flex:1;resize:none;border:0;outline:0;background:transparent;padding:6px 18px 10px;font:500 14px/1.6 var(--body);color:var(--tx);-webkit-user-select:text;user-select:text}
   textarea::placeholder{color:var(--mut)}
   footer{display:flex;justify-content:space-between;align-items:center;padding:9px 16px 12px;border-top:1px solid var(--line);font:650 11.5px/1 var(--body);color:var(--mut)}
   .sv{display:inline-flex;align-items:center;gap:6px;font:750 11.5px/1 var(--head)}
   .sv svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;opacity:0}
-  .sv.ok{color:var(--mint)}.sv.ok svg{opacity:1}
+  .sv.ok{color:var(--mint)}
+  textarea{color:var(--fg)}.sv.ok svg{opacity:1}
   .sv.pop svg{animation:nv-tile .5s var(--jelly) both}
 </style><script src="nova.js"></script>
-</head><body><div class="win h-amber">
-<header class="hero h-amber"><div class="wm"></div><div class="tile"></div><div class="htx"><span class="eyebrow">Surge</span><h1>Quick Notes</h1></div><button class="btn icon x" id="x" title="Hide"></button></header>
+</head><body><div class="win surface h-amber">
+<header class="hero mini h-amber" data-glyph="notes"><div class="tile"></div><div class="htx"><span class="eyebrow">Surge</span><h1>Quick Notes</h1></div><button class="btn icon x" id="x" title="Hide"></button></header>
 <textarea id="t" placeholder="Jot anything. It saves as you type. Command Shift N shows and hides it."></textarea>
 <footer><span id="count"></span><span id="sv" class="sv ok"><svg viewBox="0 0 12 12"><path d="M2 6.5l2.7 2.7L10 3.5"/></svg><b>Saved</b></span></footer></div>
 <script>
-document.querySelector('header .tile').innerHTML=Nova.ic('notes'); document.querySelector('header .wm').innerHTML=Nova.ic('notes'); document.getElementById('x').innerHTML=Nova.ic('x');
+document.querySelector('header .tile').innerHTML=Nova.ic('notes'); Nova.upgrade(); document.getElementById('x').innerHTML=Nova.ic('x');
 const t=document.getElementById('t'), c=document.getElementById('count'), sv=document.getElementById('sv'); let timer;
 const cnt=()=>{ const w=t.value.trim().split(/\s+/).filter(Boolean).length; c.textContent=w+(w===1?' word':' words')+', '+t.value.length+' characters'; };
 window.surge?.notesLoad().then(v=>{ t.value=v||''; cnt(); });

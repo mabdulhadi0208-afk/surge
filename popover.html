@@ -3,106 +3,112 @@
 <link rel="stylesheet" href="nova.css">
 <style>
   html,body{height:auto;overflow:hidden}
-  body{padding:8px 8px 10px}
-  .panel{position:relative;border-radius:30px;padding:10px;overflow:hidden;isolation:isolate;transform-origin:50% 0;
-    background:radial-gradient(120% 40% at 50% 0%,rgba(255,46,138,.16),transparent 70%),radial-gradient(90% 34% at 100% 100%,rgba(123,61,255,.16),transparent 70%),linear-gradient(180deg,#14102a,#08060f 72%);
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 0 0 1px rgba(255,255,255,.07),0 30px 70px -26px rgba(0,0,0,.95),0 0 60px -30px var(--pink)}
+  body{padding:8px 8px 12px}
+  .panel{padding:9px;transform-origin:50% 0}
   body.bottom .panel{transform-origin:50% 100%}
-  .panel.show{animation:nv-pop .55s var(--jelly) both}
+  .panel.show{animation:nv-pop .62s var(--jelly) both}
   .panel>*{position:relative}
-  /* hero */
-  #hero{padding:18px 16px 24px 18px;gap:14px;min-height:118px}
-  #hero .tile{--ts:56px}
-  #pct{font-size:40px;font-variant-numeric:tabular-nums}
-  #status{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .hb{display:flex;flex-direction:column;gap:8px;align-self:flex-start}
-  .hb .btn{background:rgba(255,255,255,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),inset 0 0 0 1px rgba(255,255,255,.14)}
-  .lvl{position:absolute;left:18px;right:18px;bottom:10px;height:5px;border-radius:9px;background:rgba(0,0,20,.35);box-shadow:inset 0 1px 1px rgba(0,0,0,.4);overflow:hidden}
-  .lvl i{display:block;height:100%;width:100%;border-radius:inherit;transform-origin:0 50%;transform:scaleX(var(--lv,0));transition:transform 1.1s var(--jelly-soft);
-    background:linear-gradient(90deg,rgba(255,255,255,.75),#fff);box-shadow:0 0 10px rgba(255,255,255,.8)}
-  #hero .badge{margin-top:4px;align-self:flex-start;background:rgba(255,255,255,.14)}
-  #hero .badge i{background:#fff;box-shadow:0 0 8px #fff}
+  /* the header (Lumen's menu header): a soft wash of the accent, the gem, the big title, a faint watermark */
+  .mhead{position:relative;overflow:hidden;isolation:isolate;display:flex;align-items:center;gap:13px;padding:14px 14px 22px 14px;border-radius:24px;
+    background:radial-gradient(70% 120% at 100% 0%,color-mix(in srgb,var(--accent3) 34%,transparent),transparent 70%),radial-gradient(80% 140% at 0% 100%,color-mix(in srgb,var(--accent) 30%,transparent),transparent 70%),linear-gradient(135deg,color-mix(in srgb,var(--accent) 14%,rgba(255,255,255,.7)),color-mix(in srgb,var(--accent3) 16%,rgba(255,255,255,.6)));
+    box-shadow:inset 0 1px 0 #fff,inset 0 0 0 1px rgba(255,255,255,.7),0 10px 26px -16px color-mix(in srgb,var(--accent) 70%,transparent)}
+  @media (prefers-color-scheme:dark){.mhead{background:radial-gradient(70% 120% at 100% 0%,color-mix(in srgb,var(--accent3) 34%,transparent),transparent 70%),radial-gradient(80% 140% at 0% 100%,color-mix(in srgb,var(--accent) 36%,transparent),transparent 70%),linear-gradient(135deg,rgba(40,46,84,.9),rgba(24,22,50,.9));box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 0 0 1px rgba(255,255,255,.08),0 10px 26px -16px color-mix(in srgb,var(--accent) 70%,transparent)}}
+  .mhead .wm{position:absolute;right:-14px;top:-18px;width:120px;height:120px;color:color-mix(in srgb,var(--accent3) 45%,transparent);opacity:.55;transform:rotate(-12deg);pointer-events:none;z-index:-1}
+  .mhead .wm svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.1;stroke-linecap:round;stroke-linejoin:round}
+  .mhead.show .wm{animation:wmIn .9s var(--spring) both}
+  @keyframes wmIn{from{opacity:0;transform:translate(20px,6px) rotate(-30deg) scale(.8)}}
+  .mhead .tile{--ts:54px;--ic:var(--accent)}
+  .htx{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+  .eye{font:800 10.5px/1 var(--display);letter-spacing:.18em;text-transform:uppercase;color:var(--ink)}
+  #pct{font:900 34px/1 var(--display);letter-spacing:-.05em;font-variant-numeric:tabular-nums;color:var(--fg)}
+  #status{font:500 12px/1.3 var(--font);color:var(--fg2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hb{display:flex;flex-direction:column;gap:7px;align-self:flex-start}
+  .hb .btn{width:32px;height:32px;border-radius:11px;background:rgba(255,255,255,.5);box-shadow:inset 0 1px 0 #fff,0 0 0 1px color-mix(in srgb,var(--accent) 18%,transparent)}
+  @media (prefers-color-scheme:dark){.hb .btn{background:rgba(255,255,255,.1);box-shadow:inset 0 1px 0 rgba(255,255,255,.2),inset 0 0 0 1px rgba(255,255,255,.1)}}
+  .lvl{position:absolute;left:14px;right:14px;bottom:9px;height:5px;border-radius:9px;background:color-mix(in srgb,var(--accent) 14%,transparent);overflow:hidden}
+  .lvl i{display:block;height:100%;width:100%;border-radius:inherit;transform-origin:0 50%;transform:scaleX(var(--lv,0));transition:transform 1.1s var(--jelly-soft);background:linear-gradient(90deg,var(--accent),var(--accent2),var(--accent3));box-shadow:0 0 10px color-mix(in srgb,var(--accent) 60%,transparent)}
+  #live{display:none}
+  /* big action tiles (Lumen's New Tab / New Window / Private) */
+  .quick{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:8px}
+  .q{all:unset;cursor:pointer;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;height:74px;border-radius:20px;color:#fff;font:750 11.5px/1.1 var(--display);
+    background:linear-gradient(180deg,rgba(255,255,255,.3),rgba(255,255,255,0) 50%),linear-gradient(150deg,var(--ic3),var(--ic) 60%,color-mix(in srgb,var(--ic) 70%,black));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 -10px 18px -12px rgba(0,0,0,.3),0 12px 24px -14px var(--ic);transition:transform .62s var(--jelly)}
+  .q svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .q .tile{all:unset;display:contents}
+  .q:hover{transform:translateY(-2px)}.q:active{transform:scale(.95);transition-duration:.12s}
+  .q:not(.live){filter:none}
+  .q.live{box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 0 0 3px #fff,0 0 0 5px var(--ic),0 12px 24px -12px var(--ic)}
+  @media (prefers-color-scheme:dark){.q.live{box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 0 0 2px rgba(255,255,255,.8),0 0 0 5px color-mix(in srgb,var(--ic) 50%,transparent),0 12px 24px -12px var(--ic)}}
+  .q .lbl{font-variant-numeric:tabular-nums}
   /* alert rows */
-  .row{display:none;align-items:center;gap:11px;margin-top:8px;padding:9px 10px 9px 9px;border-radius:18px;font:650 12px/1.3 var(--body);color:var(--tx2)}
-  .row.show{display:flex;animation:nv-in .6s var(--jelly) both}
+  .row{display:none;align-items:center;gap:11px;margin-top:8px;padding:9px 10px 9px 9px;border-radius:20px;font:500 12px/1.3 var(--font);color:var(--fg2)}
+  .row.show{display:flex;animation:nv-in .62s var(--jelly) both}
   .row>span{flex:1;min-width:0}
-  .row b{display:block;font:800 13px/1.2 var(--head);color:var(--tx);letter-spacing:-.02em}
-  .row .btn{height:30px;padding:0 13px;font-size:12px}
-  /* the update card (inline): a ring that follows the download */
-  #upd .ring{--p:0;position:absolute;inset:0;border-radius:50%;
-    background:conic-gradient(from -90deg,#fff 0,color-mix(in oklab,var(--hc) 60%,#fff) calc(var(--p)*1%),rgba(255,255,255,.1) 0);
-    -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3.5px),#000 calc(100% - 3px));mask:radial-gradient(farthest-side,transparent calc(100% - 3.5px),#000 calc(100% - 3px))}
+  .row b{display:block;font:800 13px/1.2 var(--display);color:var(--fg);letter-spacing:-.02em}
+  .row .btn{height:30px;padding:0 14px;font-size:12px}
   #upd .rwrap{position:relative;width:40px;height:40px;flex:none}
+  #upd .ring{--p:0;position:absolute;inset:0;border-radius:50%;background:conic-gradient(from -90deg,var(--accent),var(--accent3) calc(var(--p)*1%),var(--press) 0);
+    -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3.5px),#000 calc(100% - 3px));mask:radial-gradient(farthest-side,transparent calc(100% - 3.5px),#000 calc(100% - 3px))}
   #upd .rwrap .tile{position:absolute;inset:6px;--ts:28px;border-radius:50%}
-  #upd .bar{height:4px;border-radius:4px;margin-top:6px;background:rgba(255,255,255,.1);overflow:hidden}
-  #upd .bar i{display:block;height:100%;transform-origin:0 50%;transform:scaleX(var(--f,0));transition:transform .6s var(--out);background:linear-gradient(90deg,var(--hc),var(--hc2))}
-  /* section titles */
-  .sec{display:flex;align-items:center;gap:9px;padding:16px 6px 9px;font:800 19px/1 var(--head);letter-spacing:-.04em}
-  .sec small{font:700 11.5px/1 var(--head);letter-spacing:0;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .sec::after{content:"";flex:1;min-width:20px;height:1px;background:linear-gradient(90deg,rgba(255,46,138,.6),transparent)}
-  /* module grid */
-  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-  .m{all:unset;cursor:pointer;position:relative;display:flex;align-items:center;gap:8px;height:44px;padding:0 8px 0 6px;border-radius:16px;font:750 11.5px/1.1 var(--head);letter-spacing:-.02em;color:var(--tx2);
-    background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.02));box-shadow:inset 0 0 0 1px rgba(255,255,255,.07),inset 0 1px 0 rgba(255,255,255,.08);transition:transform .5s var(--jelly)}
-  .m span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .m .tile{--ts:31px;border-radius:11px}
-  .m:hover{transform:translateY(-1px)}.m:active{transform:scale(.95);transition-duration:.12s}
-  .m.on{color:#fff;background:radial-gradient(120% 140% at 0% 0%,color-mix(in oklab,var(--hc) 46%,transparent),transparent 70%),linear-gradient(135deg,color-mix(in oklab,var(--hc) 22%,#120d26),color-mix(in oklab,var(--hc2) 16%,#0c0a1a));
-    box-shadow:inset 0 0 0 1px color-mix(in oklab,var(--hc) 60%,transparent),inset 0 1px 0 rgba(255,255,255,.2),0 10px 22px -14px var(--hc)}
-  .m.need::after{content:"";position:absolute;top:6px;right:6px;width:7px;height:7px;border-radius:50%;background:var(--amber);box-shadow:0 0 0 2px #15102a,0 0 8px var(--amber)}
-  /* volume + sound check */
-  .vol{display:flex;align-items:center;gap:11px;margin-top:10px;padding:9px 14px 9px 9px;border-radius:18px}
+  #upd .bar{height:4px;border-radius:4px;margin-top:6px;background:var(--press);overflow:hidden}
+  #upd .bar i{display:block;height:100%;transform-origin:0 50%;transform:scaleX(var(--f,0));transition:transform .6s var(--out);background:linear-gradient(90deg,var(--accent),var(--accent3))}
+  /* volume (Lumen's zoom row) */
+  .vol{display:flex;align-items:center;gap:11px;margin-top:8px;padding:7px 14px 7px 7px;border-radius:18px;background:var(--field);box-shadow:inset 0 0 0 1px var(--fieldrim)}
   .vol input{flex:1}
-  .vol output{width:44px;text-align:right;font:800 15px/1 var(--head);letter-spacing:-.03em;font-variant-numeric:tabular-nums}
-  #mute{width:34px;height:34px;border-radius:12px}
+  .vol output{min-width:44px;text-align:center;padding:4px 8px;border-radius:999px;font:800 12px/1 var(--display);font-variant-numeric:tabular-nums;color:var(--ink);background:color-mix(in srgb,var(--accent) 12%,transparent)}
+  #mute{width:30px;height:30px;border-radius:10px;color:var(--ink);background:color-mix(in srgb,var(--accent) 12%,transparent);box-shadow:none}
   .vol.muted #mute{color:var(--red)}
-  .chk{display:flex;align-items:center;gap:8px;margin-top:6px;padding:7px 8px 7px 14px;border-radius:15px;font:600 11.5px/1.35 var(--body);color:var(--mut);background:rgba(255,255,255,.03);box-shadow:inset 0 0 0 1px rgba(255,255,255,.05)}
-  .chk span{flex:1}.chk b{color:var(--tx);font-weight:750}
+  /* the module group (Lumen's YOUR THINGS card) */
+  .grp{margin-top:8px;padding:10px 8px 8px;border-radius:22px;background:var(--field);box-shadow:inset 0 0 0 1px var(--fieldrim)}
+  .gh{display:flex;align-items:center;gap:8px;padding:2px 6px 9px;font:800 10.5px/1 var(--display);letter-spacing:.18em;text-transform:uppercase;color:var(--ink)}
+  .gh::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent)}
+  .gh small{margin-left:auto;letter-spacing:0;text-transform:none;font:650 11px/1 var(--font);color:var(--fg3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60%}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px}
+  .m{all:unset;cursor:pointer;position:relative;display:flex;align-items:center;gap:8px;height:38px;padding:0 6px;border-radius:12px;font:600 12px/1.1 var(--font);color:var(--fg);transition:transform .5s var(--jelly)}
+  .m span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .m .tile{--ts:26px;border-radius:8px}
+  .m .tile svg{width:56%;height:56%}
+  .m:hover{background:var(--hover)}.m:active{transform:scale(.95);transition-duration:.12s}
+  .m:not(.on){color:var(--fg2)}
+  .m.on{font-weight:700}
+  .m.need::after{content:"";position:absolute;top:5px;left:25px;width:7px;height:7px;border-radius:50%;background:var(--amber);box-shadow:0 0 0 2px var(--page),0 0 8px var(--amber)}
+  .chk{display:flex;align-items:center;gap:8px;margin:8px 2px 0;padding:0 4px 0 8px;font:500 11.5px/1.35 var(--font);color:var(--fg3)}
+  .chk span{flex:1}.chk b{color:var(--fg);font-weight:700}
   .chk .btn{height:28px;font-size:11.5px;padding:0 12px}
-  /* quick actions */
-  .quick{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
-  .q{all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 4px 11px;border-radius:20px;font:750 11.5px/1.1 var(--head);letter-spacing:-.02em;color:var(--tx2);transition:transform .5s var(--jelly)}
-  .q .tile{--ts:42px}
-  .q:hover{transform:translateY(-2px)}.q:active{transform:scale(.94);transition-duration:.12s}
-  .q.live{color:#fff}
-  .q.live .lbl{font-variant-numeric:tabular-nums}
-  /* footer */
-  footer{display:flex;align-items:center;gap:6px;margin-top:10px;padding:8px 6px 2px 12px;border-top:1px solid var(--line);font:600 11.5px/1 var(--body);color:var(--mut)}
+  footer{display:flex;align-items:center;gap:6px;margin-top:8px;padding:9px 4px 1px 10px;border-top:1px solid var(--line);font:500 11.5px/1 var(--font);color:var(--fg3)}
   footer #clip{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  footer .badge{cursor:pointer;color:var(--tx)}
+  footer .badge{cursor:pointer}
   .toast{bottom:auto;top:16px}
 </style>
 <script src="nova.js"></script>
 </head>
 <body>
-<div class="panel" id="panel">
-  <header class="hero h-pink" id="hero">
-    <div class="wm"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></div>
+<div class="panel surface" id="panel">
+  <header class="mhead" id="hero">
+    <div class="wm" id="hwm"></div>
     <div class="tile" id="htile"></div>
-    <div class="htx"><span class="eyebrow" id="eye">Surge</span><span class="h1" id="pct">Surge</span><small id="status">Your Mac, turned up</small><span class="badge" id="live"><i></i><span id="liveT">0 modules on</span></span></div>
+    <div class="htx"><span class="eye" id="eye">Surge</span><span id="pct">Surge</span><small id="status">Your Mac, turned up</small><span class="badge" id="live"><i></i><span id="liveT">0 modules on</span></span></div>
     <div class="hb"><button class="btn icon" id="glowBtn" title="Preview the glow"></button><button class="btn icon" id="gear" title="Settings"></button></div>
     <div class="lvl"><i id="lvl"></i></div>
   </header>
-  <div class="row glass h-mint" id="upd"><div class="rwrap"><div class="ring" id="uring"></div><div class="tile" id="utile"></div></div><span><b id="updT">Surge update</b><span id="updS"></span><div class="bar" id="ubar"><i id="ufill"></i></div></span><button class="btn pri" id="updBtn">Update</button></div>
+  <div class="quick" id="quick">
+    <button class="q h-orange" id="qCaf"><div class="tile"></div><span class="lbl">Caffeine</span></button>
+    <button class="q h-pink" id="qFocus"><div class="tile"></div><span class="lbl">Focus</span></button>
+    <button class="q h-cyan" id="qSpot"><div class="tile"></div><span class="lbl">Spotlight</span></button>
+    <button class="q h-violet" id="qNotes"><div class="tile"></div><span class="lbl">Notes</span></button>
+  </div>
+  <div class="row glass h-green" id="upd"><div class="rwrap"><div class="ring" id="uring"></div><div class="tile" id="utile"></div></div><span><b id="updT">Surge update</b><span id="updS"></span><div class="bar" id="ubar"><i id="ufill"></i></div></span><button class="btn pri" id="updBtn">Update</button></div>
   <div class="row glass h-red" id="snd"><div class="tile sm" id="sndI"></div><span><b>No sound</b><span id="sndT"></span></span><button class="btn pri" id="sndBtn"></button></div>
   <div class="row glass h-amber" id="ax"><div class="tile sm" id="axI"></div><span><b id="axT">Keyboard and mouse need permission</b><span id="axS">One click, nothing leaves your Mac</span></span><button class="btn pri" id="axBtn">Allow</button></div>
-  <div class="sec" id="secM">Modules <small id="secX"></small></div>
-  <div class="grid" id="grid"></div>
-  <div class="vol glass flat h-pink" id="vol"><button class="btn icon" id="mute" title="Mute all"></button><input type="range" id="master" min="0" max="1" step=".01"><output id="mout">100%</output></div>
+  <div class="grp"><div class="gh">Modules <small id="secX"></small></div><div class="grid" id="grid"></div></div>
+  <div class="vol" id="vol"><button class="btn icon" id="mute" title="Mute all"></button><input type="range" id="master" min="0" max="1" step=".01"><output id="mout">100%</output></div>
   <div class="chk" id="chk"><span id="chkT"></span><button class="btn" id="chkBtn">Test sound</button></div>
-  <div class="sec">Quick actions</div>
-  <div class="quick" id="quick">
-    <button class="q glass flat h-amber" id="qCaf"><div class="tile"></div><span class="lbl">Caffeine</span></button>
-    <button class="q glass flat h-pink" id="qFocus"><div class="tile"></div><span class="lbl">Focus</span></button>
-    <button class="q glass flat h-cyan" id="qSpot"><div class="tile"></div><span class="lbl">Spotlight</span></button>
-    <button class="q glass flat h-violet" id="qNotes"><div class="tile"></div><span class="lbl">Notes</span></button>
-  </div>
   <footer><span id="clip">Clipboard is empty</span><span class="badge" id="ver" title="Check for updates">v</span><button class="lnk" id="quit">Quit</button></footer>
 </div>
 <div class="toast h-pink" id="toast"></div>
 <script>
 const $=s=>document.querySelector(s), api=window.surge, N=window.Nova;
-$('#htile').innerHTML=N.ic('bolt'); $('#glowBtn').innerHTML=N.ic('spark'); $('#gear').innerHTML=N.ic('gear'); $('#mute').innerHTML=N.ic('speaker');
+$('#htile').innerHTML=N.ic('bolt'); $('#hwm').innerHTML=N.ic('spark'); $('#glowBtn').innerHTML=N.ic('spark'); $('#gear').innerHTML=N.ic('gear'); $('#mute').innerHTML=N.ic('speaker');
 $('#sndI').innerHTML=N.ic('mute'); $('#axI').innerHTML=N.ic('shield'); $('#utile').innerHTML=N.ic('down');
 [['#qCaf','coffee'],['#qFocus','timer'],['#qSpot','spot'],['#qNotes','notes']].forEach(([s,i])=>$(s+' .tile').innerHTML=N.ic(i));
 let S={modules:{}}, MODS=[], hook='ready', U=null;
@@ -110,9 +116,10 @@ function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show')
 function build(){ $('#grid').innerHTML=MODS.map(m=>`<button class="m ${N.hue(m.id)}" data-m="${m.id}" title="${N.esc(m.desc)}"><div class="tile dim">${N.ic(m.icon)}</div><span>${N.esc(N.short(m.name))}</span></button>`).join('');
   document.querySelectorAll('.m').forEach(b=>{ b.onclick=()=>{ const id=b.dataset.m, on=!S.modules[id].enabled; S.modules[id].enabled=on; paint(); api?.setSettings({modules:{[id]:{enabled:on}}}); toast(`${N.short(MODS.find(m=>m.id===id).name)} ${on?'on':'off'}`); };
     b.onmouseenter=()=>{ const m=MODS.find(x=>x.id===b.dataset.m); $('#secX').textContent=m?`${m.name} is ${b.classList.contains('on')?'on':'off'}`:''; }; });
-  $('#grid').onmouseleave=()=>$('#secX').textContent=''; }
+  $('#grid').onmouseleave=()=>$('#secX').textContent=window._onTxt||''; }
 function paint(){ let n=0; for(const m of MODS){ const on=!!S.modules[m.id]?.enabled; if(on) n++; const b=document.querySelector(`.m[data-m="${m.id}"]`); if(!b) continue; b.classList.toggle('on',on); b.querySelector('.tile').classList.toggle('dim',!on); b.classList.toggle('need',!!(m.needsHook&&on&&hook!=='running')); }
   $('#liveT').textContent=`${n} module${n===1?'':'s'} on`;
+  window._onTxt=`${n} of ${MODS.length} on`; if(!$('#grid').matches(':hover')) $('#secX').textContent=window._onTxt;
   const v=S.masterVolume??1, mv=$('#master'); if(document.activeElement!==mv){ mv.value=v; mv.style.setProperty('--p',v*100+'%'); $('#mout').textContent=Math.round(v*100)+'%'; }
   $('#vol').classList.toggle('muted',!!S.muted); $('#mute').innerHTML=N.ic(S.muted?'mute':'speaker'); }
 async function batt(){ const b=await api?.getBattery(); const h=$('#hero');
@@ -120,7 +127,6 @@ async function batt(){ const b=await api?.getBattery(); const h=$('#hero');
   $('#lvl').parentNode.style.display=''; $('#pct').textContent=b.level+'%';
   $('#eye').textContent=b.charged?'Fully charged':b.charging?'Charging':b.level<=20?'Battery low':'On battery';
   $('#status').textContent=b.charged?'Unplug any time':b.holding?'Plugged in, charging on hold':b.charging?(b.remaining?`${b.remaining} to full`:'Filling up'):(b.remaining?`${b.remaining} left`:'Running on battery');
-  h.classList.remove('h-pink','h-red','h-amber','h-violet'); h.classList.add(b.charged||b.level>=100?'h-amber':!b.charging&&b.level<=20?'h-red':b.charging?'h-pink':'h-violet');
   $('#lvl').style.setProperty('--lv',Math.max(.04,b.level/100)); }
 function paintUpd(u){ U=u; if(!u) return; $('#ver').textContent='v'+u.current; const box=$('#upd'), st=u.status;
   const show=['available','downloading','unpacking','ready','installing'].includes(st)||(st==='error'&&u.latest);
@@ -163,7 +169,7 @@ new ResizeObserver(fit).observe($('#panel'));
 // live only while open: one 2 s tick (focus countdown, caffeine, sound check) that stops the moment the menu hides
 let tick=0; const live=on=>{ clearInterval(tick); tick=0; if(on) tick=setInterval(()=>{ if(document.hidden) return live(false); state(); sndCheck(); },2000); };
 document.addEventListener('visibilitychange',()=>live(!document.hidden));
-function opened(){ const p=$('#panel'); p.classList.remove('show'); void p.offsetWidth; p.classList.add('show'); N.stage($('#grid')); N.stage($('#quick')); batt(); state(); sndCheck(); live(true); }
+function opened(){ const p=$('#panel'), h=$('#hero'); p.classList.remove('show'); h.classList.remove('show'); void p.offsetWidth; p.classList.add('show'); h.classList.add('show'); N.stage($('#grid')); N.stage($('#quick')); batt(); state(); sndCheck(); live(true); }
 addEventListener('keydown',e=>{ if(e.key==='Escape') api?.hide(); });
 (async()=>{ MODS=await api?.listModules()||[]; S=await api?.getSettings()||S; hook=await api?.hookState()||hook; build(); paint(); batt(); state(); sndCheck();
   api?.on('settings:update',s=>{ S=s; paint(); }); api?.on('updater:state',paintUpd);

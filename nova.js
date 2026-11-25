@@ -48,12 +48,47 @@
     heart: '<path d="M12 20.5s-8-4.6-8-10.5a4.5 4.5 0 0 1 8-2.8 4.5 4.5 0 0 1 8 2.8c0 5.9-8 10.5-8 10.5z"/>',
     github: '<path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"/>',
   };
-  // every module wears its own deep colour
-  const HUE = { updater: 'mint', glow: 'pink', keys: 'violet', mouse: 'violet', ripple: 'cyan', spotlight: 'amber', tint: 'amber', caps: 'amber', caffeine: 'amber', clip: 'cyan', focus: 'pink', breaks: 'cyan', chime: 'violet', stats: 'cyan', net: 'cyan', dark: 'violet', typing: 'pink', hotkeys: 'violet', snap: 'cyan', dock: 'pink' };
+  // every module wears its own section hue, from Lumen's SEC_HUE family
+  const HUE = { updater: 'green', glow: 'pink', net: 'cyan', keys: 'violet', mouse: 'indigo', chime: 'amber', ripple: 'cyan', spotlight: 'orange', tint: 'amber', caps: 'lime', dock: 'blue', snap: 'indigo', caffeine: 'orange', clip: 'cyan', focus: 'pink', breaks: 'green', typing: 'violet', stats: 'blue', dark: 'indigo', hotkeys: 'violet' };
   const SHORT = { 'Keyboard Sounds': 'Keyboard', 'Mouse Sounds': 'Mouse', 'Cursor Spotlight': 'Spotlight', 'Clipboard History': 'Clipboard', 'Break Reminder': 'Breaks', 'Auto Dark Mode': 'Dark Mode', 'Typing Stats': 'Typing', 'Caps Lock HUD': 'Caps Lock', 'Hourly Chime': 'Chime', 'Charge Glow': 'Glow', 'Network Glow': 'Network', 'Click Ripple': 'Ripple', 'System Stats': 'Stats', 'Focus Timer': 'Focus', 'Surge Dock': 'Dock', 'Auto Update': 'Updates', 'Window Snap': 'Snap' };
   const ic = (n, cls = '') => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n] || ICONS.bolt}</svg>`;
   const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   // one entrance: number the children and replay the staggered spring (called on open, never on a timer)
   function stage(el, sel) { if (!el) return; const kids = sel ? el.querySelectorAll(sel) : el.children; let i = 0; for (const k of kids) k.style.setProperty('--i', i++); el.classList.remove('stage'); void el.offsetWidth; el.classList.add('stage'); }
-  window.Nova = { ICONS, HUE, SHORT, ic, esc, stage, hue: id => 'h-' + (HUE[id] || 'pink'), short: n => SHORT[n] || n };
+  // ---- Lumen's hero backdrop (pages/app.js heroBack + heroDots): four light pools, seeded drifting dots, a faint
+  // constellation, a rim glint, and the giant glyph in three layers (glow, deep shadow, crisp outline)
+  function heroDots(seed) {
+    let h = 2166136261; for (const c of String(seed)) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
+    const rnd = () => ((h = Math.imul(h ^ (h >>> 15), 2246822507) ^ Math.imul(h ^ (h >>> 13), 3266489909)) >>> 0) / 4294967296;
+    // the fine dots are painted ONCE into a small tile image (a canvas), so showing a hero costs one image fill instead of
+    // fifteen gradient layers; the tile is tinted white and the layer's colour comes from a soft overlay mix
+    const dotsLayer = sets => { const W = 300, H = 240, d = Math.min(2, window.devicePixelRatio || 1), c = document.createElement('canvas'); c.width = W * d; c.height = H * d; const x = c.getContext('2d'); x.scale(d, d);
+      for (const [n, , r, alpha] of sets) for (let i = 0; i < n * 2; i++) { const cx = rnd() * W, cy = rnd() * H; const g = x.createRadialGradient(cx, cy, 0, cx, cy, r + 1.2); g.addColorStop(0, `rgba(255,255,255,${alpha})`); g.addColorStop(r / (r + 1.2), `rgba(255,255,255,${alpha})`); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.beginPath(); x.arc(cx, cy, r + 1.2, 0, Math.PI * 2); x.fill(); }
+      return `background-image:url(${c.toDataURL()});background-size:${W}px ${H}px;background-position:${Math.round(rnd() * W)}px ${Math.round(rnd() * H)}px`; };
+    const svg = x => `url('data:image/svg+xml,${encodeURIComponent(x)}')`;
+    const star = (x, y, r) => `M${x} ${(y - r).toFixed(1)}Q${x} ${y} ${(x + r).toFixed(1)} ${y}Q${x} ${y} ${x} ${(y + r).toFixed(1)}Q${x} ${y} ${(x - r).toFixed(1)} ${y}Q${x} ${y} ${x} ${(y - r).toFixed(1)}Z`;
+    let sp = '', specks = '';
+    for (let i = 0; i < 3; i++) sp += star(Math.round(20 + rnd() * 340), Math.round(20 + rnd() * 260), 3.5 + rnd() * 4);
+    for (let i = 0; i < 4; i++) { const x = Math.round(10 + rnd() * 360), y = Math.round(10 + rnd() * 280); specks += `<circle cx="${x}" cy="${y}" r="5" fill="white" fill-opacity=".12"/><circle cx="${x}" cy="${y}" r="1.7" fill="white"/>`; }
+    const bright = `<svg xmlns="http://www.w3.org/2000/svg" width="380" height="300">${specks}<path d="${sp}" fill="white"/></svg>`;
+    const pts = []; for (let i = 0; i < 6; i++) pts.push([Math.round(480 + rnd() * 470), Math.round(40 + rnd() * 240)]); pts.sort((a, b) => a[0] - b[0]);
+    const cons = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 320" preserveAspectRatio="xMidYMid slice"><path d="M${pts.map(q => q.join(' ')).join('L')}" fill="none" stroke="white" stroke-opacity=".24" stroke-width=".9" stroke-dasharray="2 4"/>${pts.map(([x, y], i) => `<circle cx="${x}" cy="${y}" r="${i % 3 ? 1.5 : 2.4}" fill="white" fill-opacity="${i % 3 ? .5 : .85}"/>`).join('')}</svg>`;
+    return `<i class="hero-dots" aria-hidden="true"><b class="hd-cons" style="background-image:${svg(cons)}"></b><i class="hd1" style="${dotsLayer([[9, 0, 1, .85], [6, 0, 1.4, .7]])}"></i><i class="hd3" style="background-image:${svg(bright)};background-size:380px 300px;background-position:${Math.round(rnd() * 380)}px ${Math.round(rnd() * 300)}px"></i></i><i class="hero-glint" aria-hidden="true"></i>`;
+  }
+  const heroBack = (glyph, seed, dots = true) => { const g = ic(glyph); return `${dots ? heroDots(seed || glyph) : ''}<span class="hero-art glow" aria-hidden="true">${g}</span><span class="hero-art depth" aria-hidden="true">${g}</span><span class="hero-art" aria-hidden="true">${g}</span>`; };
+  // the dots stop when a hero is off screen, the window is hidden, or the window is not focused
+  const dotsIO = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => e.target.classList.toggle('dots-off', !e.isIntersecting))) : null;
+  const R = document.documentElement;
+  document.addEventListener('visibilitychange', () => R.classList.toggle('lm-hidden', document.hidden));
+  addEventListener('blur', () => R.classList.add('lm-blur')); addEventListener('focus', () => R.classList.remove('lm-blur'));
+  if (!document.hasFocus()) R.classList.add('lm-blur');
+  // ...and settle 20 s after you last moved the pointer, scrolled or typed in the window (they wake on the next touch)
+  let stillT = 0, lastPoke = 0; const poke = () => { const n = Date.now(); if (n - lastPoke < 2000) return; lastPoke = n; R.classList.remove('lm-still'); clearTimeout(stillT); stillT = setTimeout(() => R.classList.add('lm-still'), 20000); };
+  for (const ev of ['pointermove', 'pointerdown', 'wheel', 'keydown', 'focus']) addEventListener(ev, poke, { passive: true, capture: true }); poke();
+  // turn every <div class="hero"> holding a <div class="wm" data-g="glyph"> into a full Lumen hero, and play its entrance
+  function hero(el, glyph, seed, opts = {}) { if (!el) return; el.querySelectorAll(':scope > .hero-orb, :scope > .hero-dots, :scope > .hero-glint, :scope > .hero-art, :scope > .wm').forEach(n => n.remove());
+    el.insertAdjacentHTML('afterbegin', heroBack(glyph, seed, opts.dots !== false && !el.classList.contains('mini'))); dotsIO?.observe(el); replay(el); }
+  function replay(el) { if (!el) return; el.classList.remove('enter'); void el.offsetWidth; el.classList.add('enter'); }
+  function upgrade(root = document) { root.querySelectorAll('.hero').forEach(el => { const wm = el.querySelector(':scope > .wm'); const g = el.dataset.glyph || wm?.dataset.g; if (g && !el.querySelector(':scope > .hero-art')) hero(el, g, el.dataset.seed || g); }); }
+  window.Nova = { ICONS, HUE, SHORT, ic, esc, stage, hero, heroBack, upgrade, replay, hue: id => 'h-' + (HUE[id] || 'blue'), short: n => SHORT[n] || n };
 })();

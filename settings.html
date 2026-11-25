@@ -6,180 +6,187 @@
 <link rel="stylesheet" href="nova.css">
 <style>
   html,body{height:100%;overflow:hidden}
-  .win{height:100%;display:grid;grid-template-columns:232px minmax(0,1fr);grid-template-rows:100%;border-radius:14px;overflow:hidden;position:relative;isolation:isolate;
-    background:radial-gradient(70% 50% at 100% 0%,rgba(123,61,255,.18),transparent 70%),radial-gradient(60% 50% at 0% 100%,rgba(255,46,138,.14),transparent 70%),linear-gradient(180deg,rgba(17,13,34,.96),rgba(7,6,14,.97));
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.12),inset 0 0 0 1px rgba(255,255,255,.07)}
+  .win{height:100%;display:grid;grid-template-columns:262px minmax(0,1fr);grid-template-rows:100%;border-radius:14px;overflow:hidden;position:relative;isolation:isolate;background:var(--page)}
   .aura{display:none}
-  /* sidebar */
-  aside{position:relative;display:flex;flex-direction:column;padding:44px 12px 14px;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;
-    background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.01));box-shadow:inset -1px 0 0 rgba(255,255,255,.06)}
+  /* the ink command rail (Lumen Settings): always dark, section-coloured gems, a lit active row */
+  aside{--fg:#f4f6ff;--fg2:rgba(232,236,255,.74);--fg3:rgba(214,222,255,.46);--field:rgba(255,255,255,.07);--fieldrim:rgba(255,255,255,.1);--press:rgba(255,255,255,.12);--hover:rgba(255,255,255,.06);
+    color-scheme:dark;color:var(--fg);position:relative;z-index:2;display:flex;flex-direction:column;padding:44px 12px 14px;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;border-radius:0 30px 30px 0;
+    background:radial-gradient(130% 38% at 0% 0%,color-mix(in srgb,var(--accent) 46%,transparent),transparent 62%),radial-gradient(110% 30% at 100% 102%,color-mix(in srgb,var(--accent3) 36%,transparent),transparent 66%),radial-gradient(80% 26% at 100% 46%,color-mix(in srgb,var(--accent2) 16%,transparent),transparent 70%),linear-gradient(180deg,#151935,#0b0d1c 58%,#090b17);
+    box-shadow:inset -1px 0 0 rgba(255,255,255,.08),inset 0 1px 0 rgba(255,255,255,.1),18px 0 60px -10px rgba(10,12,34,.28),40px 0 120px -40px color-mix(in srgb,var(--accent) 36%,transparent)}
   aside::-webkit-scrollbar{display:none}
-  body.winos aside{padding-top:16px}
-  .brand{display:flex;align-items:center;gap:11px;padding:2px 6px 14px;font:800 22px/1 var(--head);letter-spacing:-.045em}
-  .brand .dot{--ts:36px;border-radius:12px}
-  .brand span{background:linear-gradient(100deg,#fff 30%,#ffb3d6);-webkit-background-clip:text;background-clip:text;color:transparent}
-  .nsearch{display:flex;align-items:center;gap:8px;height:34px;margin:0 2px 10px;padding:0 11px;border-radius:12px;background:rgba(0,0,0,.3);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),inset 0 1px 3px rgba(0,0,0,.4);-webkit-app-region:no-drag;cursor:text}
-  .nsearch:focus-within{box-shadow:inset 0 0 0 1px rgba(255,46,138,.7),0 0 0 4px rgba(255,46,138,.16)}
-  .nsearch svg{width:15px;height:15px;flex:none;fill:none;stroke:var(--tx2);stroke-width:2.2;stroke-linecap:round;display:block}
-  .nsearch input{all:unset;flex:1;font:600 13px/1 var(--body);color:var(--tx)}
-  .nsearch input::placeholder{color:var(--mut)}
+  body.winos aside{padding-top:18px}
+  .brand{display:flex;align-items:center;gap:12px;margin:0 6px 18px;font:850 28px/1 var(--display);letter-spacing:-.045em}
+  .brand .dot{--ts:40px;--ic:var(--accent);box-shadow:0 0 0 1px rgba(255,255,255,.14),0 10px 26px color-mix(in srgb,var(--accent) 60%,transparent),0 0 40px color-mix(in srgb,var(--accent) 40%,transparent),inset 0 1.5px 0 rgba(255,255,255,.85)}
+  .brand span{background:linear-gradient(120deg,#fff 20%,color-mix(in srgb,var(--accent3) 55%,#fff) 70%,color-mix(in srgb,var(--accent) 60%,#fff));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .nsearch{display:flex;align-items:center;gap:9px;height:40px;margin:0 2px 8px;padding:0 13px;border-radius:14px;background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1),inset 0 1px 0 rgba(255,255,255,.08);-webkit-app-region:no-drag;cursor:text}
+  .nsearch:focus-within{background:rgba(255,255,255,.1);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 70%,transparent),0 0 0 4px color-mix(in srgb,var(--accent) 26%,transparent)}
+  .nsearch svg{width:15px;height:15px;flex:none;fill:none;stroke:var(--fg2);stroke-width:2.2;stroke-linecap:round;display:block}
+  .nsearch input{all:unset;flex:1;font:600 13px/1 var(--font);color:var(--fg)}
+  .nsearch input::placeholder{color:var(--fg3)}
   nav{display:flex;flex-direction:column;gap:2px;position:relative}
-  .grp{font:800 10.5px/1 var(--head);letter-spacing:.15em;text-transform:uppercase;color:var(--mut);padding:14px 10px 6px}
-  nav button{all:unset;position:relative;z-index:1;height:34px;padding:0 8px 0 5px;border-radius:12px;display:flex;align-items:center;gap:9px;cursor:pointer;font:700 13px/1 var(--head);letter-spacing:-.015em;color:var(--tx2);transition:transform .45s var(--jelly)}
-  nav button .ic{--ts:24px;width:24px;height:24px;border-radius:8px;display:grid;place-items:center;flex:none;color:var(--tx2);background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
-  nav button .ic svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-  nav button:hover{transform:translateX(2px);color:var(--tx)}
+  .grp{display:flex;align-items:center;gap:10px;margin:16px 10px 7px;font:800 10.5px/1 var(--display);letter-spacing:.2em;text-transform:uppercase;color:var(--fg3)}
+  .grp::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,rgba(255,255,255,.14),transparent)}
+  nav button{all:unset;position:relative;height:40px;padding:0 10px 0 6px;border-radius:14px;display:flex;align-items:center;gap:11px;cursor:pointer;font:620 13.5px/1 var(--font);color:var(--fg2);transition:transform .5s var(--jelly)}
+  nav button .ic{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;flex:none;color:#fff;
+    background:linear-gradient(180deg,rgba(255,255,255,.5),rgba(255,255,255,.06) 50%,rgba(255,255,255,.14)),linear-gradient(145deg,var(--ic3),var(--ic) 55%,color-mix(in srgb,var(--ic) 60%,black));
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 4px 14px color-mix(in srgb,var(--ic) 50%,transparent)}
+  nav button .ic svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  nav button:hover{color:#fff;background:linear-gradient(90deg,color-mix(in srgb,var(--ic) 22%,transparent),transparent 90%)}
   nav button:active{transform:scale(.97)}
-  nav button.on{color:#fff}
-  nav button.on .ic,nav button.live .ic{color:#fff;background:radial-gradient(120% 80% at 30% 0%,rgba(255,255,255,.55),transparent 50%),linear-gradient(150deg,var(--hc),var(--hc2));box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 4px 12px -4px var(--hc)}
-  nav button .led{margin-left:auto;width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.14)}
-  nav button.live .led{background:var(--hc);box-shadow:0 0 8px var(--hc)}
+  nav button.on{color:#fff;font-weight:780;background:linear-gradient(180deg,rgba(255,255,255,.14),transparent 80%),linear-gradient(90deg,color-mix(in srgb,var(--ic) 58%,transparent),color-mix(in srgb,var(--ic) 16%,transparent) 85%);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 0 0 0 1px color-mix(in srgb,var(--ic) 60%,rgba(255,255,255,.1)),0 10px 30px color-mix(in srgb,var(--ic) 42%,transparent)}
+  nav button.on::before{content:"";position:absolute;left:-12px;top:9px;bottom:9px;width:4px;border-radius:0 4px 4px 0;background:#fff;box-shadow:0 0 12px #fff,0 0 26px var(--ic)}
+  nav button .led{margin-left:auto;width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.16)}
+  nav button.live .led{background:#5ff0b0;box-shadow:0 0 0 3px rgba(95,240,176,.18),0 0 10px #5ff0b0}
+  nav button.on .led{background:#fff;box-shadow:0 0 0 3px rgba(255,255,255,.22),0 0 12px #fff}
   nav .nhide{display:none}
-  #navInd{position:absolute;left:12px;right:12px;top:0;height:34px;border-radius:12px;z-index:0;pointer-events:none;opacity:0;transition:transform .55s var(--jelly),opacity .2s;
-    background:radial-gradient(120% 160% at 0% 0%,rgba(255,46,138,.36),transparent 70%),linear-gradient(135deg,rgba(255,46,138,.2),rgba(123,61,255,.16));box-shadow:inset 0 0 0 1px rgba(255,46,138,.4),inset 0 1px 0 rgba(255,255,255,.12)}
+  #navInd{display:none}
   .spacer{flex:1;min-height:14px}
-  .vol{-webkit-app-region:no-drag;padding:12px;border-radius:16px;display:flex;flex-direction:column;gap:10px}
-  .vol .vt{display:flex;justify-content:space-between;align-items:center;font:750 12px/1 var(--head);color:var(--tx2)}
-  #mute{cursor:pointer;display:grid;place-items:center;width:26px;height:26px;border-radius:9px;background:rgba(255,255,255,.08)}
-  #mute svg{width:15px;height:15px;fill:none;stroke:var(--tx);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .vol{-webkit-app-region:no-drag;padding:12px 13px;border-radius:18px;display:flex;flex-direction:column;gap:10px;background:rgba(255,255,255,.06)!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.1),inset 0 1px 0 rgba(255,255,255,.08)!important;border:0!important}
+  .vol .vt{display:flex;justify-content:space-between;align-items:center;font:750 12px/1 var(--display);color:var(--fg2)}
+  #mute{cursor:pointer;display:grid;place-items:center;width:26px;height:26px;border-radius:9px;background:rgba(255,255,255,.1)}
+  #mute svg{width:15px;height:15px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
   #mute .x{display:none}.vol.muted #mute .x{display:inline}.vol.muted #mute .w1,.vol.muted #mute .w2{display:none}.vol.muted #mute svg{stroke:var(--red)}
-  .vol input{width:100%}
-  .status{margin-top:8px;padding:10px 12px;border-radius:14px;display:flex;align-items:center;gap:9px;font:600 12px/1.2 var(--body);color:var(--mut);background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px rgba(255,255,255,.06)}
-  .status b{color:var(--tx);font:800 13px/1 var(--head)}
-  .status .led{width:8px;height:8px;border-radius:50%;flex:none;background:var(--pink);box-shadow:0 0 10px var(--pink)}
-  /* main column */
+  .vol input{width:100%;background:linear-gradient(90deg,var(--accent),var(--accent3) var(--p,50%),rgba(255,255,255,.14) var(--p,50%))}
+  .status{margin-top:8px;display:flex;align-items:center;gap:9px;font:700 12px/1.2 var(--display);color:var(--fg3)}
+  .status b{display:inline-flex;align-items:center;height:26px;padding:0 11px;border-radius:999px;color:#fff;font-weight:750;background:linear-gradient(180deg,rgba(255,255,255,.16),transparent),color-mix(in srgb,var(--accent) 34%,rgba(255,255,255,.06));box-shadow:inset 0 0 0 1px rgba(255,255,255,.14)}
+  .status .led{width:8px;height:8px;border-radius:50%;flex:none;background:#5ff0b0;box-shadow:0 0 0 3px rgba(95,240,176,.2),0 0 10px #5ff0b0}
+  /* the stage */
   main{position:relative;display:flex;flex-direction:column;min-width:0}
-  main>header{height:56px;display:flex;align-items:center;padding:0 24px;gap:10px;flex:none}
-  main>header h1{margin:0;font:800 15px/1 var(--head);letter-spacing:-.02em;color:var(--tx2)}
+  main>header{height:58px;display:flex;align-items:center;padding:0 26px;gap:10px;flex:none}
+  main>header h1{margin:0;font:800 14px/1 var(--display);letter-spacing:.14em;text-transform:uppercase;color:var(--fg3)}
   main>header .grow{flex:1}
   .wc{display:none;gap:4px}
   body.winos .wc{display:flex}
-  .wc button{all:unset;cursor:pointer;width:34px;height:28px;border-radius:9px;display:grid;place-items:center;color:var(--mut)}
-  .wc button:hover{background:rgba(255,255,255,.08);color:var(--tx)}.wc button.x:hover{background:var(--red);color:#fff}
+  .wc button{all:unset;cursor:pointer;width:34px;height:28px;border-radius:9px;display:grid;place-items:center;color:var(--fg3)}
+  .wc button:hover{background:var(--hover);color:var(--fg)}.wc button.x:hover{background:var(--red);color:#fff}
   .wc svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round}
   .panes{position:relative;flex:1;min-height:0}
-  .pane{position:absolute;inset:0;padding:2px 26px 30px;overflow-y:auto;overflow-x:hidden;display:none}
-  .pane.on{display:block;animation:paneIn .55s var(--jelly-soft) both}
-  @keyframes paneIn{from{opacity:0;transform:translateX(calc(var(--dir,1)*18px))}}
-  .pane.enter .hero,.pane.enter .theme,.pane.enter .mod,.pane.enter .card,.pane.enter .step{animation:nv-in .7s var(--jelly-soft) both;animation-delay:calc(var(--i,0)*34ms)}
-  /* hero banners (the 'all' page, every module page, the tour, about, updates) */
-  .pane .hero{margin-bottom:16px;min-height:132px;padding:24px 26px}
-  .pane .hero .tile{--ts:64px}
-  .pane .hero h1{font-size:40px}
-  .pane .hero p{max-width:560px;font-size:13px;line-height:1.45;white-space:normal}
-  .pane .hero .big small{font-size:24px;opacity:.55}
-  .hero .tg{margin-left:auto;align-self:center;transform:scale(1.25);transform-origin:100% 50%}
-  .hero .mst{display:inline-flex;align-items:center;gap:6px;margin-left:10px;vertical-align:middle;padding:4px 9px;border-radius:999px;font:800 10.5px/1 var(--head);letter-spacing:.1em;text-transform:uppercase;background:rgba(0,0,30,.3);box-shadow:inset 0 0 0 1px rgba(255,255,255,.16);-webkit-text-fill-color:#fff}
-  .hero .mhook{display:block;margin-top:4px;font:650 11.5px/1.35 var(--body);color:rgba(255,240,250,.72)}
-  .note{display:none;margin-bottom:14px;padding:12px 14px;border-radius:16px;font:600 12.5px/1.45 var(--body);color:var(--tx2)}
+  .pane{position:absolute;inset:0;padding:2px 26px 40px;overflow-y:auto;overflow-x:hidden;display:none}
+  .pane.on{display:block;animation:paneIn .62s var(--jelly-soft) both}
+  @keyframes paneIn{from{opacity:0;transform:translateY(10px)}}
+  .pane.enter .theme,.pane.enter .mod,.pane.enter .card,.pane.enter .step,.pane.enter .gl{animation:nv-in .62s var(--jelly-soft) both;animation-delay:calc(min(var(--i,0),14)*45ms)}
+  /* the section hero, as big as Lumen's */
+  .pane .hero{margin:0 0 22px;min-height:210px;padding:34px 36px;gap:30px;border-radius:36px}
+  .pane .hero>.tile{--ts:96px;border-radius:30px}
+  .pane .hero h1{font-size:54px;white-space:normal;line-height:.98}
+  .pane .hero p{max-width:540px;font-size:14.5px;line-height:1.5}
+  .pane .hero .htx{max-width:640px;padding-right:120px}
+  .pane .hero .big small{font-size:26px;opacity:.55}
+  .hero>.tg{margin-left:auto;align-self:center;transform:scale(1.3);transform-origin:100% 50%;background:rgba(255,255,255,.2)}
+  .hero .mst{display:none}
+  .hero .mhook{display:block;margin-top:6px;font:600 12px/1.4 var(--font);color:rgba(255,255,255,.75)}
+  .note{display:none;margin-bottom:16px;padding:14px 16px;border-radius:20px;font:600 12.5px/1.45 var(--font);color:var(--fg)}
   .note.show{display:block}
-  .note a{color:#ffd28a!important;font-weight:750}
-  .sech{font-size:20px}
-  /* themes */
-  .themes{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:10px;margin-bottom:6px}
-  .theme{all:unset;cursor:pointer;position:relative;overflow:hidden;isolation:isolate;border-radius:20px;padding:12px 12px 13px;display:flex;flex-direction:column;gap:5px;transition:transform .5s var(--jelly);
-    background:linear-gradient(180deg,rgba(255,255,255,.07),rgba(255,255,255,.02));box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),inset 0 1px 0 rgba(255,255,255,.1)}
-  .theme i{display:block;height:52px;border-radius:13px;margin-bottom:4px;position:relative;overflow:hidden;background:radial-gradient(80% 120% at 20% 0%,rgba(255,255,255,.5),transparent 55%),linear-gradient(135deg,var(--c1),var(--c2));box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 10px 22px -12px var(--c1)}
-  .theme b{font:800 14px/1 var(--head);letter-spacing:-.025em}
-  .theme small{font:600 11.5px/1.35 var(--body);color:var(--mut)}
-  .theme:hover{transform:translateY(-2px)}.theme:active{transform:scale(.97)}
-  .theme.on{box-shadow:inset 0 0 0 1.5px var(--c1),0 0 0 4px color-mix(in oklab,var(--c1) 18%,transparent),0 14px 30px -16px var(--c1)}
-  /* module cards */
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:11px}
-  .mod{position:relative;cursor:pointer;border-radius:22px;padding:14px 14px 14px;display:flex;flex-direction:column;gap:8px;transition:transform .5s var(--jelly)}
-  .mod:hover{transform:translateY(-2px)}.mod:active{transform:scale(.98)}
-  .mod .top{display:flex;align-items:center;gap:11px;padding-right:50px}
-  .mod .ic{--ts:40px}
-  .mod h4{margin:0;font:800 15px/1.1 var(--head);letter-spacing:-.03em}
-  .mod p{margin:0;font:600 12px/1.45 var(--body);color:var(--mut);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-  .mod .tg{position:absolute;top:16px;right:14px}
-  .mod .need{display:none;font:700 11px/1 var(--head);color:var(--amber)}
-  .mod:not(.on) .ic{background:linear-gradient(180deg,rgba(255,255,255,.1),rgba(255,255,255,.04));color:var(--mut);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),inset 0 0 0 1px rgba(255,255,255,.06)}
-  .mod:not(.on) .ic svg{filter:none}
-  /* option cards */
-  .card{border-radius:24px;padding:18px 20px;margin-bottom:14px}
-  .card h3{margin:0 0 12px;font:800 17px/1 var(--head);letter-spacing:-.03em}
-  .row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 0;border-top:1px solid rgba(255,255,255,.06)}
-  .card h3+.row{border-top:0;padding-top:2px}
-  .row .l{display:flex;flex-direction:column;gap:3px;min-width:0;font:700 13px/1.25 var(--head);letter-spacing:-.01em}
-  .row .l small{font:600 11.5px/1.4 var(--body);color:var(--mut);letter-spacing:0}
+  .note a{color:var(--ink)!important;font-weight:750}
+  /* deep stat tiles (Lumen .gl) */
+  .glance{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin:0 0 24px}
+  .gl{--ic2:oklch(from var(--ic) l c calc(h + 60));position:relative;overflow:hidden;contain:paint;display:flex;flex-direction:column;justify-content:space-between;gap:18px;min-height:150px;padding:20px 22px;border-radius:28px;color:#fff;
+    background:linear-gradient(118deg,rgba(255,255,255,.16),transparent 30%),radial-gradient(90% 80% at 0% 0%,color-mix(in srgb,var(--ic) 72%,transparent),transparent 66%),radial-gradient(80% 70% at 105% 110%,color-mix(in srgb,var(--ic2) 55%,transparent),transparent 70%),linear-gradient(160deg,color-mix(in srgb,var(--ic) 28%,#14172e),#0a0c1c);
+    box-shadow:inset 0 1.5px 0 rgba(255,255,255,.38),inset 0 0 0 1px rgba(255,255,255,.1),inset 0 -20px 40px -24px color-mix(in srgb,var(--ic2) 80%,transparent),0 2px 4px rgba(10,12,30,.15),0 24px 50px -20px color-mix(in srgb,var(--ic) 70%,transparent)}
+  .gl::before{content:"";position:absolute;right:-40px;top:-60px;width:190px;height:190px;border-radius:50%;background:radial-gradient(rgba(255,255,255,.35) 1px,transparent 1.4px) 0 0/14px 14px;-webkit-mask:radial-gradient(closest-side,#000,transparent)}
+  .gl::after{content:"";position:absolute;left:22px;right:22px;bottom:0;height:3px;border-radius:3px 3px 0 0;background:linear-gradient(90deg,#fff,var(--ic) 40%,transparent);opacity:.7}
+  .gl .tile{--ts:46px}
+  .gl b{display:block;font:870 34px/1 var(--display);letter-spacing:-.05em;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .gl span{font:650 12.5px/1.3 var(--font);color:rgba(255,255,255,.72)}
+  .gl b span{font:inherit;color:inherit}
+  /* cards */
+  .card{border-radius:30px;padding:8px 26px 14px;margin-bottom:22px}
+  .card h3{display:flex;align-items:center;gap:13px;margin:0;padding:20px 0 10px;font:820 20px/1.15 var(--display);letter-spacing:-.025em}
+  .card h3::before{content:"";width:6px;height:22px;border-radius:8px;background:linear-gradient(180deg,var(--ic3),var(--ic));box-shadow:0 0 0 4px color-mix(in srgb,var(--ic) 16%,transparent),0 0 18px color-mix(in srgb,var(--ic) 60%,transparent)}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 0;border-top:1px solid var(--line)}
+  .card h3+.row{border-top:0}
+  .row .l{display:flex;flex-direction:column;gap:4px;min-width:0;font:650 14px/1.25 var(--font);color:var(--fg)}
+  .row .l small{font:500 12.5px/1.45 var(--font);color:var(--fg3)}
   .sl{display:flex;align-items:center;gap:12px;min-width:260px}
   .sl input{flex:1}
-  .sl output{width:52px;text-align:right;font:800 13px/1 var(--head);font-variant-numeric:tabular-nums;color:var(--tx2)}
+  .sl output{width:52px;text-align:right;font:800 13px/1 var(--display);font-variant-numeric:tabular-nums;color:var(--fg2)}
   .chips{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
   .sw{display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end;align-items:center}
-  .sw b{width:26px;height:26px;border-radius:50%;cursor:pointer;background:radial-gradient(circle at 35% 25%,rgba(255,255,255,.55),transparent 45%),var(--c);box-shadow:inset 0 0 0 1px rgba(255,255,255,.25),0 4px 10px -4px var(--c);transition:transform .45s var(--jelly)}
+  .sw b{width:26px;height:26px;border-radius:50%;cursor:pointer;background:radial-gradient(circle at 35% 25%,rgba(255,255,255,.55),transparent 45%),var(--c);box-shadow:inset 0 0 0 1px rgba(255,255,255,.3),0 4px 10px -4px var(--c);transition:transform .5s var(--jelly)}
   .sw b:hover{transform:scale(1.12)}
-  .sw b.on{box-shadow:0 0 0 2px #0c0a1a,0 0 0 4px var(--c),0 0 16px -2px var(--c)}
+  .sw b.on{box-shadow:0 0 0 2px var(--page),0 0 0 4px var(--c),0 0 14px -2px var(--c)}
   .sw .custom{position:relative;overflow:hidden;background:conic-gradient(var(--pink),var(--amber),var(--mint),var(--cyan),var(--violet),var(--pink))}
   .sw .custom input{position:absolute;inset:-6px;opacity:0;cursor:pointer}
-  .preview{position:relative;aspect-ratio:16/9;max-width:460px;border-radius:18px;overflow:hidden;cursor:pointer;background:radial-gradient(80% 80% at 50% 120%,rgba(123,61,255,.25),transparent),linear-gradient(180deg,#0c0a1a,#06050e);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+  .preview{position:relative;aspect-ratio:16/9;max-width:460px;border-radius:22px;overflow:hidden;cursor:pointer;margin-bottom:10px;background:radial-gradient(80% 80% at 50% 120%,color-mix(in srgb,var(--accent2) 30%,transparent),transparent),linear-gradient(180deg,#0f1226,#070814);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1),0 14px 30px -16px color-mix(in srgb,var(--accent) 60%,transparent)}
   .preview canvas{position:absolute;inset:0;width:100%;height:100%}
-  .preview::after{content:"Click to replay";position:absolute;right:12px;bottom:10px;font:750 11px/1 var(--head);color:var(--mut)}
+  .preview::after{content:"Click to replay";position:absolute;right:14px;bottom:12px;font:750 11px/1 var(--display);color:rgba(255,255,255,.55)}
+  /* themes: little deep tiles */
+  .themes{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:6px}
+  .theme{all:unset;cursor:pointer;position:relative;overflow:hidden;isolation:isolate;border-radius:24px;padding:13px 13px 15px;display:flex;flex-direction:column;gap:5px;transition:transform .62s var(--jelly);
+    background:var(--lq-sheen) padding-box,var(--lq-fill) padding-box,var(--lq-ring) border-box;border:1.5px solid transparent;box-shadow:var(--lq-sh)}
+  .theme i{display:block;height:54px;border-radius:15px;margin-bottom:5px;background:radial-gradient(80% 120% at 20% 0%,rgba(255,255,255,.5),transparent 55%),linear-gradient(135deg,var(--c1),var(--c2));box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 10px 22px -12px var(--c1)}
+  .theme b{font:820 14.5px/1 var(--display);letter-spacing:-.025em;color:var(--fg)}
+  .theme small{font:500 11.5px/1.35 var(--font);color:var(--fg3)}
+  .theme:hover{transform:translateY(-2px)}.theme:active{transform:scale(.97)}
+  .theme.on{box-shadow:var(--lq-sh),0 0 0 2px var(--c1),0 0 0 6px color-mix(in srgb,var(--c1) 18%,transparent)}
+  /* module tiles (Lumen feature tiles) */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(236px,1fr));gap:14px}
+  .mod{position:relative;cursor:pointer;border-radius:26px;padding:16px 16px 16px;display:flex;flex-direction:column;gap:9px;transition:transform .62s var(--jelly)}
+  .mod:hover{transform:translateY(-2px)}.mod:active{transform:scale(.98)}
+  .mod .top{display:flex;align-items:center;gap:12px;padding-right:52px}
+  .mod .ic{--ts:42px}
+  .mod h4{margin:0;font:820 15.5px/1.15 var(--display);letter-spacing:-.025em;color:var(--fg)}
+  .mod p{margin:0;font:500 12.5px/1.45 var(--font);color:var(--fg3);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .mod .tg{position:absolute;top:18px;right:16px}
+  .mod .need{display:none}
+  .mod:not(.on) .ic{color:var(--ic);background:color-mix(in srgb,var(--ic) 13%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ic) 24%,transparent)}
   /* sound picker */
   .sp .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
-  .sp .tab{all:unset;cursor:pointer;display:flex;align-items:center;gap:7px;padding:7px 12px;border-radius:999px;font:750 12px/1 var(--head);color:var(--tx2);background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);transition:transform .45s var(--jelly)}
+  .sp .tab{all:unset;cursor:pointer;display:flex;align-items:center;gap:7px;padding:8px 13px;border-radius:999px;font:700 12px/1 var(--display);color:var(--fg2);background:var(--field);box-shadow:inset 0 0 0 1px var(--fieldrim);transition:transform .5s var(--jelly)}
   .sp .tab i{width:8px;height:8px;border-radius:50%;background:var(--c)}
   .sp .tab svg{width:12px;height:12px;fill:currentColor;stroke:none}
-  .sp .tab.on{color:#fff;background:linear-gradient(135deg,var(--violet),var(--pink));box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 6px 14px -8px var(--pink)}
-  .sp .q{all:unset;margin-left:auto;height:32px;padding:0 12px;border-radius:11px;min-width:180px;font:600 12.5px/1 var(--body);background:rgba(0,0,0,.3);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
-  .sp .cat{font:800 12px/1 var(--head);letter-spacing:.12em;text-transform:uppercase;color:var(--mut);margin:14px 2px 8px}
+  .sp .tab.on{color:#fff;background:linear-gradient(120deg,var(--accent),var(--accent3));box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 6px 14px -8px var(--accent)}
+  .sp .q{all:unset;margin-left:auto;height:34px;padding:0 13px;border-radius:12px;min-width:180px;font:600 12.5px/1 var(--font);background:var(--field);box-shadow:inset 0 0 0 1px var(--fieldrim)}
+  .sp .cat{font:800 11px/1 var(--display);letter-spacing:.16em;text-transform:uppercase;color:var(--fg3);margin:16px 2px 9px}
   .sp .list{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
-  .pr{all:unset;cursor:pointer;position:relative;display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:13px;font:700 12.5px/1.2 var(--head);letter-spacing:-.01em;color:var(--tx2);background:rgba(255,255,255,.045);box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);transition:transform .45s var(--jelly)}
+  .pr{all:unset;cursor:pointer;position:relative;display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:13px;font:650 12.5px/1.2 var(--font);color:var(--fg2);background:var(--field);box-shadow:inset 0 0 0 1px var(--fieldrim);transition:transform .5s var(--jelly)}
   .pr i{width:8px;height:8px;border-radius:50%;flex:none;background:var(--c)}
-  .pr.on i{box-shadow:0 0 8px var(--c)}
-  .pr:hover{transform:translateY(-1px);color:var(--tx)}.pr:active{transform:scale(.96)}
-  .pr.on{color:#fff;background:linear-gradient(135deg,color-mix(in oklab,var(--c) 36%,transparent),color-mix(in oklab,var(--c) 12%,transparent));box-shadow:inset 0 0 0 1.5px color-mix(in oklab,var(--c) 80%,transparent),0 8px 18px -10px var(--c)}
-  .pr .fav{margin-left:auto;display:grid;place-items:center;width:20px;height:20px;border-radius:7px;color:rgba(255,255,255,.25)}
-  /* one shared star image (a mask), not an SVG per row: the list of 145 sounds lays out fast */
-  .pr .fav::before{content:"";width:13px;height:13px;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m12 3.2 2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 17l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z'/%3E%3C/svg%3E") center/contain no-repeat}
-  .pr .fav.on{color:var(--amber)}
-  .sp .meta{display:flex;gap:16px;justify-content:space-between;margin-top:12px;font:600 11.5px/1 var(--body);color:var(--mut)}
-  .sp .meta b{color:var(--tx)}
-  .sp .meta [data-rand]{color:#ffb3d6;font-weight:750}
+  .pr:hover{transform:translateY(-1px);color:var(--fg)}.pr:active{transform:scale(.96)}
+  .pr.on{color:var(--fg);background:color-mix(in srgb,var(--accent) 16%,transparent);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--accent) 70%,transparent),0 8px 18px -10px var(--accent)}
+  .pr .fav{margin-left:auto;display:grid;place-items:center;width:20px;height:20px;border-radius:7px;color:var(--fg3);opacity:.6}
+  .pr .fav.on{color:var(--amber);opacity:1}
+  .sp .meta{display:flex;gap:16px;justify-content:space-between;margin-top:12px;font:500 12px/1 var(--font);color:var(--fg3)}
+  .sp .meta b{color:var(--fg)}
+  .sp .meta [data-rand]{color:var(--ink);font-weight:750}
   /* widgets + apps */
   .wl{display:flex;flex-wrap:wrap;gap:7px}
   .wl .al{display:flex;flex-wrap:wrap;gap:7px;max-height:260px;overflow:auto;width:100%}
-  .wi{cursor:pointer;display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;font:700 12.5px/1 var(--head);color:var(--tx2);background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);transition:transform .45s var(--jelly)}
-  .wi i{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.25)}
-  .wi.on{color:#fff;background:linear-gradient(135deg,rgba(255,46,138,.34),rgba(123,61,255,.22));box-shadow:inset 0 0 0 1px rgba(255,46,138,.6)}
-  .wi.on i{background:var(--pink);box-shadow:0 0 8px var(--pink)}
+  .wi{cursor:pointer;display:flex;align-items:center;gap:8px;padding:8px 13px;border-radius:999px;font:700 12.5px/1 var(--display);color:var(--fg2);background:var(--field);box-shadow:inset 0 0 0 1px var(--fieldrim);transition:transform .5s var(--jelly)}
+  .wi i{width:8px;height:8px;border-radius:50%;background:var(--fg3)}
+  .wi.on{color:var(--fg);background:color-mix(in srgb,var(--accent) 16%,transparent);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--accent) 60%,transparent)}
+  .wi.on i{background:var(--accent)}
   .wi:active{transform:scale(.95)}
   /* the tour */
-  .steps{display:grid;gap:11px}
-  .step{display:flex;gap:16px;align-items:flex-start;padding:18px;border-radius:22px}
-  .step .num{--ts:44px;font:800 18px/1 var(--head)}
+  .steps{display:grid;gap:14px}
+  .step{display:flex;gap:18px;align-items:flex-start;padding:20px 22px;border-radius:28px}
+  .step .num{--ts:46px;font:850 19px/1 var(--display)}
   .step .b{flex:1;min-width:0}
-  .step h4{margin:2px 0 6px;font:800 17px/1.1 var(--head);letter-spacing:-.03em}
-  .step p{margin:0 0 12px;font:600 12.5px/1.5 var(--body);color:var(--mut);max-width:620px}
+  .step h4{margin:3px 0 6px;font:820 18px/1.15 var(--display);letter-spacing:-.025em;color:var(--fg)}
+  .step p{margin:0 0 12px;font:500 13px/1.5 var(--font);color:var(--fg3);max-width:620px}
   .step .chips{justify-content:flex-start}
-  .step .themes{margin-top:4px}
-  .step.done .num{background:radial-gradient(120% 80% at 30% 0%,rgba(255,255,255,.6),transparent 46%),linear-gradient(150deg,var(--mint),var(--mint2));box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 0 0 4px rgba(25,214,154,.2),0 10px 22px -10px var(--mint)}
-  .ok{display:inline-flex;align-items:center;gap:6px;font:750 12px/1 var(--head);color:var(--mint)}
+  .step.done .num{--ic:#10b981}
+  .ok{display:inline-flex;align-items:center;gap:6px;font:750 12px/1 var(--display);color:var(--mint)}
   .ok svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
   /* about */
-  .about .hero{min-height:230px;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px;padding:34px}
-  .about .hero .tile{--ts:96px;border-radius:30px}
-  .about .hero .tile svg{width:50%;height:50%}
-  .about .hero h1{font-size:58px}
-  .about .hero .wm{right:-10%;height:260%}
-  .about .facts{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin-bottom:14px}
-  .about .fact{border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:6px}
-  .about .fact b{font:800 30px/1 var(--head);letter-spacing:-.05em}
-  .about .fact span{font:650 12px/1.35 var(--body);color:var(--mut)}
+  .about .hero{min-height:280px}
+  .about .hero h1{font-size:76px}
   .about .links{display:flex;gap:8px;flex-wrap:wrap}
   /* updates page */
-  .upc .hero{margin-bottom:0}
-  .upc .prog{display:none;align-items:center;gap:16px;padding:16px 4px 2px}
+  .upc{padding:12px!important}
+  .upc .hero{margin:0!important;min-height:150px!important}
+  .upc .hero h1{font-size:40px!important}
+  .upc .prog{display:none;align-items:center;gap:16px;padding:18px 10px 4px}
   .upc .prog.show{display:flex}
-  .upc .pct{font:800 34px/1 var(--head);letter-spacing:-.05em;font-variant-numeric:tabular-nums;min-width:92px}
-  .upc .bar{flex:1;height:12px;border-radius:999px;background:rgba(255,255,255,.08);box-shadow:inset 0 1px 3px rgba(0,0,0,.5);overflow:hidden;position:relative}
-  .upc .bar i{position:absolute;inset:0;transform-origin:0 50%;transform:scaleX(var(--f,0));transition:transform .7s var(--out);background:linear-gradient(180deg,rgba(255,255,255,.45),transparent 55%),linear-gradient(90deg,var(--hc),var(--hc2))}
-  .upc .acts{display:flex;align-items:center;gap:8px;padding:16px 2px 0}
+  .upc .pct{font:870 34px/1 var(--display);letter-spacing:-.05em;font-variant-numeric:tabular-nums;min-width:92px}
+  .upc .bar{flex:1;height:12px;border-radius:999px;background:var(--press);overflow:hidden;position:relative}
+  .upc .bar i{position:absolute;inset:0;transform-origin:0 50%;transform:scaleX(var(--f,0));transition:transform .7s var(--out);background:linear-gradient(180deg,rgba(255,255,255,.45),transparent 55%),linear-gradient(90deg,var(--accent),var(--accent3))}
+  .upc .acts{display:flex;align-items:center;gap:8px;padding:16px 10px 6px}
   .upc .acts .grow{flex:1}
-  .upc .meta{font:650 12px/1.4 var(--body);color:var(--mut)}
-  /* toast */
+  .upc .meta{font:500 12.5px/1.4 var(--font);color:var(--fg3)}
   .toast{position:absolute}
+  /* one shared star image (a mask), not an SVG per row: the list of 145 sounds lays out fast */
+  .pr .fav::before{content:"";width:13px;height:13px;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m12 3.2 2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 17l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z'/%3E%3C/svg%3E") center/contain no-repeat}
 </style>
 <script src="nova.js"></script>
 </head>
@@ -187,7 +194,7 @@
 <div class="win">
   <div class="aura"></div>
   <aside>
-    <div class="brand drag"><div class="dot tile h-pink"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></div><span>Surge</span></div>
+    <div class="brand drag"><div class="dot tile h-accent"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg></div><span>Surge</span></div>
     <nav id="nav"></nav>
     <div class="spacer"></div>
     <div class="vol glass flat h-pink" id="vol"><div class="vt"><span>Master volume</span><span id="mute" title="Mute all (⌘⇧M)"><svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path class="w1" d="M16.5 8.5a5 5 0 0 1 0 7"/><path class="w2" d="M19 6a9 9 0 0 1 0 12"/><path class="x" d="M17 9l5 6M22 9l-5 6"/></svg></span></div><input type="range" min="0" max="1" step=".01" id="master"></div>
@@ -205,7 +212,7 @@
 const $ = s => document.querySelector(s), api = window.surge;
 const ICONS = Nova.ICONS;
 const ic = n => Nova.ic(n), H = id => Nova.hue(id), esc = Nova.esc;
-const WM = n => `<div class="wm">${ic(n)}</div>`;
+const WM = n => `<div class="wm" data-g="${n}"></div>`;   // Nova.upgrade turns it into Lumen's hero backdrop
 let S = {}, MODS = [], hook = 'unavailable', cur = 'all', mini = null, pkind = 'plug';
 const fmt = (f, v) => f==='pct' ? Math.round(v*100)+'%' : f==='px' ? v+'px' : f==='s' ? (+v).toFixed(1)+'s' : f==='x' ? (+v).toFixed(2)+'×' : v;
 function toast(m,ms=1000){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),ms); }
@@ -216,34 +223,35 @@ function set(id, patch){ S.modules[id] = { ...S.modules[id], ...patch }; pending
 /* ---------- build UI ---------- */
 function build(){
   const groups = ['Glow','Sound','Screen','Productivity','System'];
-  let nav = `<button data-p="welcome" class="h-violet"><span class="ic">${ic('rocket')}</span>Welcome</button><button data-p="all" class="on h-pink"><span class="ic">${ic('grid')}</span>All modules</button>`;
+  let nav = `<button data-p="welcome" class="h-violet"><span class="ic">${ic('rocket')}</span>Welcome</button><button data-p="all" class="on h-accent"><span class="ic">${ic('grid')}</span>All modules</button>`;
   for (const g of groups){ const ms = MODS.filter(m=>m.group===g); if(!ms.length) continue; nav += `<div class="grp">${g}</div>` + ms.map(m=>`<button data-p="${m.id}" class="${H(m.id)}"><span class="ic">${ic(m.icon)}</span>${esc(m.name)}<span class="led"></span></button>`).join(''); }
-  nav += `<div class="grp">App</div><button data-p="about" class="h-pink"><span class="ic">${ic('info')}</span>About</button>`;
+  nav += `<div class="grp">App</div><button data-p="about" class="h-accent"><span class="ic">${ic('info')}</span>About</button>`;
   $('#nav').innerHTML = `<label class="nsearch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><input id="nq" placeholder="Search" spellcheck="false"></label>` + nav;
   { const nq=$('#nq'); nq.oninput=()=>{ const q=nq.value.trim().toLowerCase(); let any=false; document.querySelectorAll('#nav button').forEach(b=>{ const m=MODS.find(x=>x.id===b.dataset.p); const hit=!q||b.textContent.toLowerCase().includes(q)||(m&&(m.desc||'').toLowerCase().includes(q)); b.classList.toggle('nhide',!hit); if(hit) any=true; }); document.querySelectorAll('#nav .grp').forEach(g=>{ let n=g.nextElementSibling, vis=false; while(n&&n.tagName==='BUTTON'){ if(!n.classList.contains('nhide')) vis=true; n=n.nextElementSibling; } g.classList.toggle('nhide',!vis); }); setTimeout(navInd,60); };
     nq.onkeydown=e=>{ if(e.key==='Enter'){ const b=document.querySelector('#nav button:not(.nhide)'); if(b){ b.click(); nq.value=''; nq.oninput(); nq.blur(); } } if(e.key==='Escape'){ nq.value=''; nq.oninput(); nq.blur(); } }; }
   let panes = `<section class="pane on" id="pane-all">
-    <div class="hero h-pink">${WM('bolt')}<div class="tile">${ic('bolt')}</div><div class="htx"><span class="eyebrow">Surge 3</span><h1 id="heroT">Your Mac, turned up.</h1><p>Flip anything on. Every module is its own tiny tool, and Surge sleeps when you are not using it.</p></div><div class="big"><span id="onCount">0</span><small>/${MODS.length}</small></div></div>
+    <div class="hero h-accent" data-seed="all">${WM('bolt')}<div class="tile">${ic('bolt')}</div><div class="htx"><span class="eyebrow">Surge 3<b>${MODS.length} modules</b></span><h1 id="heroT">Your Mac, turned up.</h1><p>Flip anything on. Every module is its own tiny tool, and Surge sleeps when you are not using it.</p></div></div>
+    <div class="glance"><div class="gl h-blue"><div class="tile">${ic('grid')}</div><div><b><span id="onCount">0</span> on</b><span>of ${MODS.length} modules</span></div></div><div class="gl h-pink"><div class="tile">${ic('bolt')}</div><div><b id="glBatt">Desktop</b><span id="glBattS">Battery</span></div></div><div class="gl h-violet"><div class="tile">${ic('keyboard')}</div><div><b id="glKeys">0</b><span>Keys today</span></div></div><div class="gl h-green"><div class="tile">${ic('refresh')}</div><div><b id="glVer">3.0</b><span>Up to date</span></div></div></div>
     <div class="note glass h-amber" id="hookNote"></div>
     <div class="sech">Themes</div>${themeHTML()}<div class="sech">Modules</div><div class="grid">${MODS.map((m,i)=>`<div class="mod glass ${H(m.id)} ${m.needsHook?'needs':''}" data-m="${m.id}"><div class="top"><div class="ic tile">${ic(m.icon)}</div><h4>${esc(m.name)}</h4></div><p>${esc(m.desc)}</p><div class="need">Needs Accessibility permission</div><div class="tg" data-m="${m.id}"></div></div>`).join('')}</div></section>`;
-  for (const m of MODS) panes += `<section class="pane ${H(m.id)}" id="pane-${m.id}"><div class="hero mh ${H(m.id)}" data-mh="${m.id}">${WM(m.icon)}<div class="tile">${ic(m.icon)}</div><div class="htx"><span class="eyebrow">${esc(m.group)}</span><h1>${esc(m.name)}<span class="mst"></span></h1><p>${esc(m.desc)}</p>${m.needsHook?'<small class="mhook" id="hook-'+m.id+'"></small>':''}</div><div class="tg" data-m="${m.id}"></div></div>${m.id==='updater'?updHTML():''}${m.id==='glow'?'<div class="card glass flat"><h3>Live preview</h3><div class="preview" id="preview"><canvas id="pc"></canvas></div></div>':''}${m.schema.length?'<div class="card glass flat '+H(m.id)+'"><h3>Options</h3>'+m.schema.map(f=>field(m,f)).join('')+'</div>':''}</section>`;
+  for (const m of MODS) panes += `<section class="pane ${H(m.id)}" id="pane-${m.id}"><div class="hero mh ${H(m.id)}" data-mh="${m.id}" data-seed="${m.id}">${WM(m.icon)}<div class="tile">${ic(m.icon)}</div><div class="htx"><span class="eyebrow">${esc(m.group)}<b>${String(MODS.indexOf(m) + 1).padStart(2, '0')} / ${MODS.length}</b></span><h1>${esc(m.name)}<span class="mst"></span></h1><p>${esc(m.desc)}</p>${m.needsHook?'<small class="mhook" id="hook-'+m.id+'"></small>':''}</div><div class="tg" data-m="${m.id}"></div></div>${m.id==='updater'?updHTML():''}${m.id==='glow'?'<div class="card glass h-pink"><h3>Live preview</h3><div class="preview" id="preview"><canvas id="pc"></canvas></div></div>':''}${m.schema.length?'<div class="card glass '+H(m.id)+'"><h3>Options</h3>'+m.schema.map(f=>field(m,f)).join('')+'</div>':''}</section>`;
   const mac = !document.body.classList.contains('winos');
   const step = (id, n, hue, title, body) => `<div class="step glass ${hue}" id="${id}"><div class="num tile ${hue}">${n}</div><div class="b"><h4>${title}</h4>${body}</div></div>`;
-  panes += `<section class="pane" id="pane-welcome"><div class="hero h-violet">${WM('rocket')}<div class="tile">${ic('rocket')}</div><div class="htx"><span class="eyebrow">Welcome</span><h1>Let's set up Surge</h1><p>Four quick things and you're done. Everything here can be changed later.</p></div></div><div class="steps">
+  panes += `<section class="pane" id="pane-welcome"><div class="hero h-violet" data-seed="welcome">${WM('rocket')}<div class="tile">${ic('rocket')}</div><div class="htx"><span class="eyebrow">Welcome<b>4 steps</b></span><h1>Let's set up Surge</h1><p>Four quick things and you're done. Everything here can be changed later.</p></div></div><div class="steps">
     ${mac ? step('st-ax', 1, 'h-amber', 'Allow keyboard and mouse', `<p>Key sounds, click ripples and the Caps Lock capsule need macOS Accessibility permission. One click on Allow. Nothing leaves your Mac.</p><button class="btn pri" id="stAx">Allow in System Settings</button> <span id="stAxT" style="margin-left:8px"></span>`) : ''}
     ${step('st-vibe', ic('spark'), 'h-pink', 'Pick a vibe', `<p>One click sets the glow, the key sounds and the click ripple. Try a few, you will hear each one.</p>${themeHTML()}`)}
     ${step('st-key', mac ? 2 : 1, 'h-violet', 'Pick your keyboard sound', `<p>145 switches, all synthesised live. Holy Panda is the default. Try Box Jade if you like clicky, Topre if you like thock.</p><button class="btn" data-go="keys">Browse sounds</button> <button class="btn" id="stRand">Surprise me</button>`)}
     ${step('st-mods', mac ? 3 : 2, 'h-cyan', 'Turn things on', `<p>Charge Glow is on. Popular extras:</p><div class="chips" id="stMods"></div>`)}
     ${step('st-login', mac ? 4 : 3, 'h-mint', `Start with your ${mac ? 'Mac' : 'computer'}`, `<p>Surge lives in the ${mac ? 'menu bar' : 'system tray'} and sleeps when you are not using it. Click the Surge mark up there any time.</p><button class="btn pri" id="stLogin"></button>`)}
   </div></section>`;
-  panes += `<section class="pane about" id="pane-about"><div class="hero h-pink">${WM('bolt')}<div class="tile">${ic('bolt')}</div><span class="eyebrow" id="aboutVer">Version</span><h1>Surge</h1><p>Your Mac, turned up. Every sound is synthesised, every glow is drawn live, and nothing phones home.</p></div>
-    <div class="facts"><div class="fact glass h-pink"><b class="grad">${MODS.length}</b><span>modules, each one tiny and optional</span></div><div class="fact glass h-violet"><b class="grad">145</b><span>keyboard sounds, made live with no recordings</span></div><div class="fact glass h-cyan"><b class="grad">Zero lag</b><span>Surge sleeps while you are not using it</span></div></div>
-    <div class="card glass flat h-pink"><h3>App</h3>
+  panes += `<section class="pane about" id="pane-about"><div class="hero h-accent" data-seed="about">${WM('bolt')}<div class="tile">${ic('bolt')}</div><div class="htx"><span class="eyebrow" id="aboutVer">Version</span><h1>Surge</h1><p>Your Mac, turned up. Every sound is synthesised, every glow is drawn live, and nothing phones home.</p></div></div>
+    <div class="glance"><div class="gl h-pink"><div class="tile">${ic('grid')}</div><div><b>${MODS.length}</b><span>Modules, each one tiny and optional</span></div></div><div class="gl h-violet"><div class="tile">${ic('keyboard')}</div><div><b>145</b><span>Keyboard sounds, made live</span></div></div><div class="gl h-cyan"><div class="tile">${ic('spark')}</div><div><b>Zero lag</b><span>Surge sleeps while you are not using it</span></div></div></div>
+    <div class="card glass h-accent"><h3>App</h3>
       <div class="row"><div class="l">Interface sounds<small>Soft glassy taps when you open the menu and flip switches. Off by default.</small></div><div class="tg" id="uiSnd"></div></div>
       <div class="row"><div class="l">Updates<small>Surge updates itself from its GitHub releases</small></div><div class="links"><button class="btn" data-go="updater">Open Updates</button><button class="btn" id="relNotes">Release notes</button></div></div>
       <div class="row"><div class="l">Start over<small>Puts every module and option back the way it came</small></div><button class="btn" id="reset">Reset all settings</button></div>
     </div></section>`;
-  $('#panes').innerHTML = panes;
+  $('#panes').innerHTML = panes; Nova.upgrade($('#panes'));
   // wire
   document.querySelectorAll('#nav button').forEach(b => b.onclick = () => go(b.dataset.p));
   document.querySelectorAll('.tg[data-m]').forEach(t => t.onclick = (e) => { e.stopPropagation(); set(t.dataset.m, { enabled: !S.modules[t.dataset.m].enabled }); });
@@ -269,12 +277,12 @@ function build(){
     $('#upGo').onclick = () => { const st = UPD?.status; api?.action('updater', st==='ready'?'install':st==='available'?'download':st==='error'?'check':'cancel'); }; }
 }
 // the Updates page: the same update card as the floating one, live from the updater (no polling)
-function updHTML(){ return `<div class="card glass upc h-mint" id="upc"><div class="hero h-mint" id="upHero">${WM('refresh')}<div class="tile" id="upTile">${ic('check')}</div><div class="htx"><span class="eyebrow" id="upEye">Surge update</span><h1 id="upT">Checking</h1><p id="upS"></p></div></div>
+function updHTML(){ return `<div class="card glass upc h-green" id="upc"><div class="hero h-green" id="upHero" data-seed="upd">${WM('refresh')}<div class="tile" id="upTile">${ic('check')}</div><div class="htx"><span class="eyebrow" id="upEye">Surge update</span><h1 id="upT">Checking</h1><p id="upS"></p></div></div>
   <div class="prog" id="upProg"><div class="pct" id="upPct">0%</div><div class="bar"><i id="upFill"></i></div></div>
   <div class="acts"><span class="meta" id="upMeta"></span><div class="grow"></div><button class="btn" id="upCheck">Check now</button><button class="btn pri" id="upGo" style="display:none">Update</button></div></div>`; }
 let UPD = null;
-function paintUpd(u){ UPD = u = u || UPD; if (!u || !$('#upc')) return; const st = u.status, L = String(u.latest||'').replace(/^v/,''), cur = u.current;
-  const hue = st==='error'?'h-amber':st==='ready'||st==='installing'?'h-pink':'h-mint'; for (const el of [$('#upc'),$('#upHero')]) { el.classList.remove('h-mint','h-amber','h-pink'); el.classList.add(hue); }
+function paintUpd(u){ UPD = u = u || UPD; if (u) { const gv=$('#glVer'); if (gv) { gv.textContent=u.current; gv.nextElementSibling.textContent = ['available','downloading','unpacking','ready'].includes(u.status) ? 'Update ready soon' : 'Up to date'; } } if (!u || !$('#upc')) return; const st = u.status, L = String(u.latest||'').replace(/^v/,''), cur = u.current;
+  const hue = st==='error'?'h-amber':st==='ready'||st==='installing'?'h-accent':'h-green'; for (const el of [$('#upc'),$('#upHero')]) { el.classList.remove('h-green','h-amber','h-accent'); el.classList.add(hue); }
   const T = { available:['New version',`Surge ${L} is here`,'It downloads in the background. You choose when to restart.'], checking:['Surge update','Checking GitHub','One moment'], downloading:['Downloading',`Getting Surge ${L}`,u.eta?`About ${u.eta>=60?Math.round(u.eta/60)+' min':u.eta+' s'} left`:'In the background'],
     unpacking:['Almost there',`Checking Surge ${L}`,'Making sure the download is complete and signed'], ready:['Ready when you are',`Surge ${L} is ready`,'Restarting takes about 3 seconds. Your settings stay as they are.'], installing:['Hold tight','Restarting Surge','Back in a moment'],
     error:['Update paused','Not this time',u.error||'Surge will try again on its own.'], uptodate:['All good','Surge is up to date',u.noBuild?'Updates for Intel Macs come from the website.':`You have Surge ${cur}, the newest one.`], updated:["You're on the new version",`Welcome to Surge ${cur}`,(u.whatsNew||[]).join('. ')] }[st] || ['Surge update',`Surge ${cur}`,'Checks GitHub every 30 minutes, on wake and when you open the menu.'];
@@ -366,11 +374,11 @@ function buildWidgets(el, mid, k){
   el._render = render; render();
 }
 function syncRange(r){ r.style.setProperty('--p', (r.value-r.min)/(r.max-r.min)*100+'%'); r.nextElementSibling.value = fmt(r.dataset.fmt, +r.value); }
-function stage(p){ const el=document.getElementById('pane-'+p); if(!el) return; let i=0; el.querySelectorAll('.hero,.theme,.mod,.card,.step').forEach(x=>x.style.setProperty('--i',Math.min(i++,22))); el.classList.remove('enter'); void el.offsetWidth; el.classList.add('enter'); }
+function stage(p){ const el=document.getElementById('pane-'+p); if(!el) return; let i=0; el.querySelectorAll('.theme,.mod,.card,.step,.gl').forEach(x=>x.style.setProperty('--i',Math.min(i++,22))); el.classList.remove('enter'); void el.offsetWidth; el.classList.add('enter'); }
 function navInd(){ const b=document.querySelector('#nav button.on'), a=document.querySelector('aside'); if(!a) return; if(!b||!b.offsetParent){ const i0=document.getElementById('navInd'); if(i0) i0.style.opacity=0; return; } let ind=document.getElementById('navInd'); if(!ind){ ind=document.createElement('div'); ind.id='navInd'; a.appendChild(ind); } const r=b.getBoundingClientRect(), ar=a.getBoundingClientRect(); ind.style.transform=`translateY(${Math.round(r.top-ar.top+a.scrollTop)}px)`; ind.style.opacity=1; }
 addEventListener('resize',()=>navInd()); setTimeout(navInd,400); setTimeout(navInd,1200);
 function go(p){ { const order=[...document.querySelectorAll('#nav button')].map(b=>b.dataset.p), a=order.indexOf(cur), b=order.indexOf(p), dir=b>=a?1:-1; const out=document.getElementById('pane-'+cur), inn=document.getElementById('pane-'+p); if(out&&inn&&out!==inn){ out.style.setProperty('--dir',-dir); inn.style.transition='none'; inn.style.setProperty('--dir',dir); void inn.offsetWidth; inn.style.transition=''; } }
-  stage(p); setTimeout(navInd,0); cur = p; document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on', b.dataset.p===p)); document.querySelectorAll('.pane').forEach(x=>x.classList.toggle('on', x.id===`pane-${p}`));
+  stage(p); setTimeout(navInd,0); cur = p; { const h=document.querySelector('#pane-'+p+' .hero'); if(h&&!h.dataset.seen){ h.dataset.seen=1; Nova.replay(h); } } /* the hero's entrance plays on the first visit; later visits are instant */ document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on', b.dataset.p===p)); document.querySelectorAll('.pane').forEach(x=>x.classList.toggle('on', x.id===`pane-${p}`));
   $('#title').textContent = p==='all' ? 'Modules' : p==='about' ? 'About' : p==='welcome' ? 'Welcome' : MODS.find(m=>m.id===p)?.name || ''; if (p==='glow') replay(); }
 function paint(){
   let on = 0;
@@ -391,7 +399,7 @@ function paint(){
   }
   { const h=document.querySelector('#pane-all .hero'); if(h&&$('#onCount').textContent!==String(on)&&$('#onCount').textContent!=='—'){ h.classList.remove('slosh'); void h.offsetWidth; h.classList.add('slosh'); } }
   document.querySelectorAll('.mh').forEach(h=>{ const on2=!!S.modules[h.dataset.mh]?.enabled; h.classList.toggle('on',on2); const st=h.querySelector('.mst'); if(st&&st.textContent!==(on2?'On':'Off')) st.textContent=on2?'On':'Off'; });
-  $('#onCount').textContent = on; document.querySelector('#pane-all .hero')?.style.setProperty('--lv', Math.max(8, Math.round(on / Math.max(1, MODS.length) * 100)) + '%');
+  $('#onCount').textContent = on; api?.action('keys','stats').then(n => { const k = $('#glKeys'); if (k) k.textContent = (n || 0).toLocaleString(); }); document.querySelector('#pane-all .hero')?.style.setProperty('--lv', Math.max(8, Math.round(on / Math.max(1, MODS.length) * 100)) + '%');
   const mv = $('#master'); if (document.activeElement !== mv) { mv.value = S.masterVolume ?? 1; mv.style.setProperty('--p', (S.masterVolume ?? 1)*100+'%'); }
   $('#vol').classList.toggle('muted', !!S.muted); 
   const note = $('#hookNote'); note.classList.toggle('show', hook==='error' || hook==='unavailable' || hook==='needs-accessibility' || hook==='stale'); note.innerHTML = hook==='stale' ? 'macOS shows Surge as allowed, but isn\'t delivering keyboard &amp; mouse events (a stuck permission entry). <a id="axFix" style="color:#FFD37A;text-decoration:underline;cursor:pointer">Repair it</a> — Surge restarts and asks once.' : hook==='needs-accessibility' ? 'Keyboard &amp; mouse modules need <b>Accessibility</b> permission. <a id="axBtn" style="color:#FFD37A;text-decoration:underline;cursor:pointer">Open Accessibility settings</a> → turn on Surge. They start automatically once granted.' : hook==='error' ? 'Hook failed to start. Enable Surge under Privacy &amp; Security → <a id="axBtn" style="color:#FFD37A;text-decoration:underline;cursor:pointer">Accessibility</a> and <a id="imBtn" style="color:#FFD37A;text-decoration:underline;cursor:pointer">Input Monitoring</a>, then relaunch.' : hook==='unavailable' ? 'Keyboard/mouse modules are unavailable in this build (native hook missing).' : '';
@@ -409,10 +417,10 @@ function replay(kind){ if (kind) pkind = kind; if (!mini) return; mini.assign(S.
   if (!/Mac/.test(navigator.platform)) document.body.classList.add('winos');
   MODS = await api?.listModules() || []; S = await api?.getSettings() || { modules:{} }; hook = await api?.hookState() || 'unavailable';
   build(); paint(); replay();
-  api?.action('updater','state').then(u=>{ const v=document.getElementById('aboutVer'); if(v&&u?.current) v.textContent='Version '+u.current; paintUpd(u); });
+  api?.action('updater','state').then(u=>{ const v=document.getElementById('aboutVer'); if(v&&u?.current) v.innerHTML='Version<b>'+esc(u.current)+'</b>'; paintUpd(u); });
   api?.on('updater:state', paintUpd);
   api?.on('settings:update', s => { S = s; paint(); }); api?.on('nav', go);
-  async function batt(){ const b = await api?.getBattery(); if (!/Mac/.test(navigator.platform)) { const t = b ? 'Your laptop, turned up.' : 'Your PC, turned up.'; if ($('#heroT').textContent !== t) $('#heroT').textContent = t; if (!b) $('#batt').innerHTML = '<b>Desktop</b> no battery'; } if (b) { $('#batt').innerHTML = `<b>${b.level}%</b> ${b.charged?'full':b.charging?'charging':'on battery'}${b.remaining?', '+b.remaining:''}`; $('#led').style.background = b.charging ? '' : 'var(--amber)'; } hook = await api?.hookState() || hook; }
+  async function batt(){ const b = await api?.getBattery(); if (!/Mac/.test(navigator.platform)) { const t = b ? 'Your laptop, turned up.' : 'Your PC, turned up.'; if ($('#heroT').textContent !== t) $('#heroT').textContent = t; if (!b) $('#batt').innerHTML = '<b>Desktop</b> no battery'; } if ($('#glBatt')) { $('#glBatt').textContent = b ? b.level + '%' : 'Desktop'; $('#glBattS').textContent = b ? (b.charged ? 'Fully charged' : b.charging ? 'Charging' : 'On battery') : 'No battery'; } if (b) { $('#batt').innerHTML = `<b>${b.level}%</b> ${b.charged?'full':b.charging?'charging':'on battery'}${b.remaining?', '+b.remaining:''}`; $('#led').style.background = b.charging ? '' : 'var(--amber)'; } hook = await api?.hookState() || hook; }
   // the battery line only refreshes while Settings is on screen
   batt(); setInterval(() => { if (!document.hidden) batt(); }, 5000);
 })();

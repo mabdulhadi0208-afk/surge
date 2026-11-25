@@ -2,24 +2,29 @@
 <link rel="stylesheet" href="nova.css">
 <style>
   html,body{height:auto;overflow:hidden}
-  body{padding:10px 12px 28px}
-  .card{border-radius:28px;padding:9px;position:relative;isolation:isolate;overflow:hidden;
-    background:linear-gradient(180deg,#151029,#09070f);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),inset 0 0 0 1px rgba(255,255,255,.08),0 26px 50px -22px rgba(0,0,0,.95),0 18px 50px -28px var(--hc);animation:nv-pop .6s var(--jelly) both}
-  .hero{padding:18px;border-radius:22px}
-  .hero .tile{--ts:52px}
-  .hero h1{font-size:22px;white-space:normal;line-height:1.1}
-  .detail{padding:14px 10px 2px;font:600 13px/1.5 var(--body);color:var(--tx2);white-space:pre-line}
-  .row{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px;padding:14px 4px 2px}
+  body{padding:10px 14px 30px}
+  .card{padding:22px 22px 18px;border-radius:30px;animation:nv-pop .62s var(--jelly) both}
+  .card>*{position:relative}
+  .card .wm{position:absolute;right:-26px;top:-30px;width:170px;height:170px;color:color-mix(in srgb,var(--ic) 26%,transparent);transform:rotate(-12deg);z-index:0;animation:wmIn 1.2s var(--spring) .1s both}
+  .card .wm svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.2;stroke-linecap:round;stroke-linejoin:round}
+  @keyframes wmIn{from{opacity:0;transform:translate(30px,10px) rotate(-30deg) scale(.8)}}
+  .card .pool{position:absolute;left:-60px;top:-80px;width:300px;height:220px;border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,var(--ic) 26%,transparent),transparent);z-index:0}
+  .tile{--ts:56px;margin-bottom:14px;animation:gempop .62s var(--jelly) .06s both}
+  @keyframes gempop{from{opacity:0;transform:scale(.55) rotate(-20deg)}}
+  h1{margin:0 0 6px;font:900 24px/1.1 var(--display);letter-spacing:-.04em;color:var(--fg)}
+  h1 em{font-style:normal;background:linear-gradient(120deg,var(--ic),var(--accent3));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .detail{font:500 13px/1.5 var(--font);color:var(--fg2);white-space:pre-line}
+  .row{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px;padding-top:18px}
 </style>
 <script src="nova.js"></script>
 </head><body>
-<div class="card" id="card"><div class="hero drag" id="hero"><div class="wm" id="wm"></div><div class="tile" id="tile"></div><div class="htx"><span class="eyebrow">Surge</span><h1 id="msg"></h1></div></div><div class="detail" id="detail"></div><div class="row" id="row"></div></div>
+<div class="card surface drag" id="card"><i class="pool"></i><div class="wm" id="wm"></div><div class="tile" id="tile"></div><h1 id="msg"></h1><div class="detail" id="detail"></div><div class="row nodrag" id="row"></div></div>
 <script>
 const api=window.nova||{answer(){},dsize(){}}, N=window.Nova, $=s=>document.querySelector(s);
 let o={}; try{ o=JSON.parse(decodeURIComponent(location.hash.slice(1))); }catch{}
-const hue=o.type==='warning'||o.type==='error'?'h-amber':o.type==='question'?'h-violet':'h-pink', icon=o.type==='warning'||o.type==='error'?'alert':o.type==='question'?'dock':'rocket';
-$('#card').classList.add(hue); $('#hero').classList.add(hue); $('#tile').innerHTML=N.ic(icon); $('#wm').innerHTML=N.ic(icon);
-$('#msg').textContent=o.message||''; $('#detail').textContent=o.detail||''; if(!o.detail) $('#detail').style.display='none';
+const hue=o.type==='warning'||o.type==='error'?'h-amber':o.type==='question'?'h-violet':'h-accent', icon=o.type==='warning'||o.type==='error'?'alert':o.type==='question'?'dock':'rocket';
+$('#card').classList.add(hue); $('#tile').innerHTML=N.ic(icon); $('#wm').innerHTML=N.ic(icon);
+{ const w=String(o.message||'').split(' '); const k=Math.max(1,w.length-2); $('#msg').innerHTML=Nova.esc(w.slice(0,k).join(' '))+(w.length>1?' <em>'+Nova.esc(w.slice(k).join(' '))+'</em>':''); } $('#detail').textContent=o.detail||''; if(!o.detail) $('#detail').style.display='none';
 const bs=o.buttons||['OK']; $('#row').innerHTML=bs.map((b,i)=>({b,i})).sort((a,b)=>(a.i===o.defaultId)-(b.i===o.defaultId)).map(({b,i})=>`<button class="btn lg ${i===o.defaultId?'pri':''}" data-i="${i}">${N.esc(b)}</button>`).join('');
 document.querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>api.answer(+b.dataset.i));
 addEventListener('keydown',e=>{ if(e.key==='Escape') api.answer(o.cancelId??bs.length-1); if(e.key==='Enter') api.answer(o.defaultId??0); });

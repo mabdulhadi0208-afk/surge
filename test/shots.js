@@ -16,6 +16,7 @@ async function shot(name, w, settle = 1400) {
 }
 const js = (w, code) => w.webContents.executeJavaScript(code).catch(e => LOG('js ' + e.message));
 app.whenReady().then(async () => {
+  if (process.env.SURGE_SHOT_THEME) require('electron').nativeTheme.themeSource = process.env.SURGE_SHOT_THEME;   // light | dark
   await wait(5000);
   // pretend a laptop: battery state the panels can show
   try { const ctxBatt = { level: 78, charging: true, charged: false, holding: false, remaining: '0:42' }; ipcMain.removeHandler('battery:get'); ipcMain.handle('battery:get', () => ctxBatt); } catch {}
