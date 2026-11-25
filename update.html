@@ -104,12 +104,12 @@ function paint(u){ U=u||{}; const st=U.status||'idle', L=String(U.latest||'').re
   const news=(st==='available'||st==='ready'||st==='updated')&&U.whatsNew?.length; $('#notes').classList.toggle('show',!!news);
   if(news){ $('#nh').innerHTML=`What is new in ${N.esc(st==='updated'?C:L)} <span>${U.whatsNew.length} changes</span>`; $('#news').innerHTML=U.whatsNew.map((t,i)=>`<li class="${['h-blue','h-violet','h-pink'][i%3]}"><b>${i+1}</b>${N.esc(t)}</li>`).join(''); }
   const b=$('#go'); b.disabled=false;
-  if(st==='ready') b.textContent='Restart now'; else if(st==='downloading'||st==='unpacking') b.textContent='Cancel'; else if(st==='error') b.textContent='Try again';
-  else if(st==='checking'||st==='installing'){ b.textContent=st==='installing'?'Restarting':'Checking'; b.disabled=true; } else if(st==='updated'||st==='uptodate') b.textContent='Nice'; else b.textContent='Update now';
+  if(st==='ready') b.textContent='Restart now'; else if(st==='downloading') b.textContent='Cancel'; else if(st==='error') b.textContent='Try again';
+  else if(st==='checking'||st==='installing'||st==='unpacking'){ b.textContent=st==='installing'?'Restarting':st==='unpacking'?'Verifying':'Checking'; b.disabled=true; } else if(st==='updated'||st==='uptodate') b.textContent='Nice'; else b.textContent='Update now';
   b.classList.toggle('pri',!(st==='downloading'||st==='unpacking'));
   $('#skip').style.visibility=(st==='available'||st==='ready')?'visible':'hidden'; $('#later').style.visibility=['updated','uptodate','installing'].includes(st)?'hidden':'visible';
   requestAnimationFrame(()=>api?.updHeight?.(Math.ceil($('#card').offsetHeight+40))); }
-$('#go').onclick=()=>{ const st=U.status; if(st==='ready') api?.action('updater','install'); else if(st==='downloading'||st==='unpacking') api?.action('updater','cancel'); else if(st==='error') api?.action('updater','check'); else if(st==='updated'||st==='uptodate') api?.action('updater','close'); else api?.action('updater','download'); };
+$('#go').onclick=()=>{ const st=U.status; if(st==='ready') api?.action('updater','install'); else if(st==='downloading') api?.action('updater','cancel'); else if(st==='unpacking'||st==='checking'||st==='installing') return; else if(st==='error') api?.action('updater','check'); else if(st==='updated'||st==='uptodate') api?.action('updater','close'); else api?.action('updater','download'); };
 $('#later').onclick=()=>api?.action('updater','later'); $('#skip').onclick=()=>api?.action('updater','skip');
 $('#x').onclick=()=>api?.action('updater',U.status==='updated'||U.status==='uptodate'?'close':'later');
 addEventListener('keydown',e=>{ if(e.key==='Escape') $('#x').click(); });

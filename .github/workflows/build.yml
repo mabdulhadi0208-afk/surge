@@ -127,16 +127,18 @@ jobs:
         env: { CSC_IDENTITY_AUTO_DISCOVERY: "false" }
       - id: v
         run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
-      - uses: softprops/action-gh-release@v2
+      # Upload to a DRAFT release. Every installed Surge (2.x polls GitHub every second and cannot be changed) sees a release the
+      # moment it is published; publishing only after every file is up means none of them ever finds a release with files missing
+      # (2.x then fell back to the ad-hoc DMG, which changes Surge's identity and drops its permissions).
+      - name: Upload to a draft release
         if: github.ref == 'refs/heads/main'
-        with:
-          tag_name: v${{ steps.v.outputs.version }}
-          name: Surge ${{ steps.v.outputs.version }}
-          files: |
-            dist/*.dmg
-            dist/*.zip
-          # the user-facing notes live in RELEASE_NOTES.md (rewritten for every version)
-          body_path: RELEASE_NOTES.md
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          T=v${{ steps.v.outputs.version }}
+          # the in-app updater of every Surge since 2.x downloads exactly these names; refuse to publish anything else
+          for f in dist/Surge-mac-arm64.zip dist/Surge-mac-arm64.dmg; do test -s "$f" || { echo "✗ $f missing"; exit 1; }; done
+          if gh release view "$T" >/dev/null 2>&1; then gh release upload "$T" dist/Surge-mac-arm64.zip dist/Surge-mac-arm64.dmg --clobber
+          else gh release create "$T" --draft --target "$GITHUB_SHA" --title "Surge ${{ steps.v.outputs.version }}" --notes-file RELEASE_NOTES.md dist/Surge-mac-arm64.zip dist/Surge-mac-arm64.dmg; fi
 
   win:
     runs-on: windows-latest
@@ -189,7 +191,43 @@ jobs:
       - id: v
         shell: bash
         run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
-      - uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ steps.v.outputs.version }}
-          files: dist/*.exe
+      - name: Upload to the draft release
+        shell: bash
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          test -s dist/Surge-win-x64.exe || { echo "✗ dist/Surge-win-x64.exe missing (the Windows updater downloads exactly this name)"; ls dist; exit 1; }
+          gh release upload "v${{ steps.v.outputs.version }}" dist/Surge-win-x64.exe --clobber
+
+  # Publish once the files are up (the Mac files are enough: a Windows failure must not hold back the Mac update), then check the
+  # release from the outside exactly the way installed copies of Surge 2.x and 3.x read it.
+  publish:
+    runs-on: ubuntu-latest
+    needs: [mac, win]
+    if: always() && github.ref == 'refs/heads/main' && needs.mac.result == 'success'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          T=v$(node -p "require('./package.json').version")
+          gh release edit "$T" --draft=false --latest
+      - name: Updater contract (what Surge 2.x and 3.x on users' machines read)
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          T=v$(node -p "require('./package.json').version"); R=${{ github.repository }}
+          # 1. the newest tag, from the redirect of /releases/latest (anonymous, like the app)
+          for i in $(seq 1 20); do L=$(curl -sI -o /dev/null -w '%{redirect_url}' "https://github.com/$R/releases/latest"); case "$L" in */tag/$T) break;; esac; sleep 6; done
+          case "$L" in */tag/$T) echo "✓ releases/latest -> $T";; *) echo "✗ releases/latest points at '$L', not $T"; exit 1;; esac
+          # 2. every asset: a HEAD (Surge 2.x) and a ranged GET (3.0.1+) end in 200/206 with the size GitHub lists
+          for f in Surge-mac-arm64.zip Surge-mac-arm64.dmg Surge-win-x64.exe; do
+            want=$(gh release view "$T" --json assets -q ".assets[] | select(.name==\"$f\") | .size")
+            [ -n "$want" ] || { [ "$f" = Surge-win-x64.exe ] && { echo "! $f not in the release (Windows build failed?)"; continue; }; echo "✗ $f missing from $T"; exit 1; }
+            U="https://github.com/$R/releases/download/$T/$f"
+            H=$(curl -sIL "$U"); hc=$(echo "$H" | grep -E '^HTTP/' | tail -1 | awk '{print $2}'); hl=$(echo "$H" | grep -i '^content-length:' | tail -1 | tr -dc '0-9')
+            G=$(curl -sL -r 0-0 -o /dev/null -D - "$U"); gc=$(echo "$G" | grep -E '^HTTP/' | tail -1 | awk '{print $2}'); gl=$(echo "$G" | grep -i '^content-range:' | tail -1 | sed 's#.*/##' | tr -dc '0-9')
+            [ "$hc" = 200 ] && [ "$hl" = "$want" ] && echo "✓ $f HEAD 200, $hl bytes (Surge 2.x)" || { echo "✗ $f HEAD gave $hc / $hl, want 200 / $want"; exit 1; }
+            [ "$gc" = 206 ] && [ "$gl" = "$want" ] && echo "✓ $f ranged GET 206, $gl bytes (Surge 3.0.1+)" || { echo "✗ $f ranged GET gave $gc / $gl, want 206 / $want"; exit 1; }
+          done
+          # 3. the zip holds Surge.app at the top with this exact version (2.x refuses anything else)
+          curl -sL -o z.zip "https://github.com/$R/releases/download/$T/Surge-mac-arm64.zip"
+          unzip -p z.zip Surge.app/Contents/Info.plist | grep -A1 CFBundleShortVersionString | grep -q "<string>${T#v}</string>" && echo "✓ zip has Surge.app ${T#v}" || { echo "✗ zip does not hold Surge.app ${T#v}"; exit 1; }
