@@ -128,7 +128,11 @@ module.exports = {
     const s = ctx.mod('dock'); const data = { t: Date.now() };
     if (s.widgets.includes('battery')) data.battery = ctx.battery;
     if (s.widgets.includes('stats')) data.stats = { cpu: cpu(ctx.os), mem: 1 - ctx.os.freemem() / ctx.os.totalmem() };
-    if (s.widgets.includes('media')) { let m = null; for (const app of ['Spotify', 'Music']) { const r = await osa(`application "${app}" is running`); if (r === 'true') { const info = await osa(`tell application "${app}" to if player state is playing then return (name of current track) & "|" & (artist of current track) & "|playing" else return (name of current track) & "|" & (artist of current track) & "|paused"`); if (info) { const [name, artist, st] = info.split('|'); m = { app, name, artist, playing: st === 'playing' }; break; } } } data.media = m; }
+    // Now Playing used to ask osascript "is Spotify running?" and "is Music running?" every 5 s (two AppleScript processes per tick,
+    // even with no music app open). The running apps are already known from the one shared lsappinfo look the Dock makes anyway,
+    // so osascript now only runs for a player that is actually open. Same scripts, same answers.
+    if (s.widgets.includes('media')) { let m = null; let open = null; try { const l = await ctx.runningApps(); open = new Set(l.map(a => a.name)); } catch {}
+      for (const app of ['Spotify', 'Music']) { const r = open ? (open.has(app) ? 'true' : 'false') : await osa(`application "${app}" is running`); if (r === 'true') { const info = await osa(`tell application "${app}" to if player state is playing then return (name of current track) & "|" & (artist of current track) & "|playing" else return (name of current track) & "|" & (artist of current track) & "|paused"`); if (info) { const [name, artist, st] = info.split('|'); m = { app, name, artist, playing: st === 'playing' }; break; } } } data.media = m; }
     if (s.widgets.includes('volume')) { const v = await osa('output volume of (get volume settings)'); data.volume = v == null ? null : +v; }
     if (s.widgets.includes('focus')) { try { data.focus = require('./10-focus.js').actions.state(); data.focusOn = !!ctx.mod('focus').enabled; } catch {} }
     if (s.widgets.includes('caffeine')) { try { data.caffeine = require('./08-caffeine.js').actions.state(); } catch {} }

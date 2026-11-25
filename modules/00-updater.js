@@ -14,7 +14,7 @@ const IS_WIN = process.platform === 'win32';
 let timer = null, popup = null, snoozedUntil = 0, skipVersion = null, polling = false, misses = 0, lastTag = null, lastCheck = 0, dlProc = null, lastPeek = 0, retryT = null, fails = 0;
 let checkP = null, dlP = null, dlCancelled = false;   // single-flight: one check and one download at a time (a second one used to wipe the first one's file)
 // shown on the card right after an update lands (keep it to this version's changes)
-const WHATS_NEW = ['Updates arrive reliably, even if a download is interrupted or you open the menu mid-check', 'If an update cannot be installed, Surge stays open and tells you why', 'Every download is checked against GitHub before it is installed'];
+const WHATS_NEW = ['Auto Dark Mode no longer switches your Mac to light or dark on its own: it only acts at the times you set', 'Settings opens faster and flips pages smoothly, with every animation exactly as before', 'The Dock and Launchpad never freeze Surge while loading app icons'];
 // only an Apple silicon build is published. An Intel Mac gets updates from the website; an Apple silicon Mac running an x64 copy
 // under Rosetta CAN run the arm64 build, so it is not blocked (set in start(), where app is known).
 let NO_BUILD = false;
@@ -256,7 +256,9 @@ module.exports = {
     const staged = path.join(updDir(), 'Surge.app');
     if (fs.existsSync(staged)) { const sv = stagedVersion(staged); if (sv && newer(sv, ctx.app.getVersion())) { state.staged = staged; state.status = 'ready'; state.latest = 'v' + sv; } else clearStaged(); }
     setTimeout(() => check(false), 3000);
-    timer = setInterval(poll, Math.max(900, ctx.mod('updater').pollSeconds || 1800) * 1000);
+    // every 30 minutes by default (never more often than every 15); the interval remembers its length, so saving any other
+    // setting no longer throws the clock away and starts a fresh 30 minutes
+    { const ms = Math.max(900, ctx.mod('updater').pollSeconds || 1800) * 1000; timer = setInterval(poll, ms); timer._ms = ms; }
     try { const { powerMonitor } = require('electron'); powerMonitor.on('resume', () => setTimeout(() => check(false), 8000)); } catch {}
   },
   onSettings(ctx) { const ms = Math.max(900, ctx.mod('updater').pollSeconds || 1800) * 1000; if (timer && timer._ms === ms) return; clearInterval(timer); timer = setInterval(poll, ms); timer._ms = ms; },

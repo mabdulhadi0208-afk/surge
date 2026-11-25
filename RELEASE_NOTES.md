@@ -1,9 +1,15 @@
-## Surge 3.0.1: updates you can count on
+## Surge 3.0.2: your Mac stays the way you set it, and Surge stays smooth
 
 **Download:** Mac (Apple silicon): **Surge-mac-arm64.dmg**, drag Surge to Applications, then right-click it and choose Open the first time. Windows: **Surge-win-x64.exe** (if SmartScreen asks: More info, then Run anyway). Already have Surge? It updates itself.
 
-- **Updates arrive reliably.** Opening the menu while Surge is checking no longer restarts or breaks a download in progress, and a stalled connection is picked up again in under a minute instead of hanging.
-- **Every download is checked against GitHub** (size, SHA-256 and version) before it is installed.
-- **Surge never disappears during an update.** If it cannot replace itself (for example when it is opened from the download instead of Applications), it stays open and tells you what to do. If a swap fails halfway, the version you had opens again.
-- **Cancel means cancel.** Cancelling a download stops it for good, and the update card no longer offers Cancel while it is verifying.
-- **New releases appear only once every file is uploaded**, so no copy of Surge ever finds a half-published update.
+Every animation, glow, ripple and drifting dot looks exactly the way it did. Surge just does far less work to draw them.
+
+- **Auto Dark Mode no longer switches your Mac to light (or dark) by itself.** It used to re-apply its schedule every time Surge started, updated or saved any setting. Now it only acts at the times you set, or once when you turn it on or change its times, and if you change the appearance yourself it leaves it alone until the next scheduled time.
+- **Settings no longer stalls.** Saving one setting used to wake all twenty modules (and Auto Dark Mode answered each save by switching the whole Mac's appearance). Now only the module you changed hears about it, and switching pages never saves or asks Surge for anything.
+- **Settings opens faster and flips pages smoothly.** Page backdrops are painted in the background instead of all 24 at once while the window opens, and the painted dots are kept for next time.
+- **Flipping a switch no longer rebuilds the 145-sound list** (or the app list) behind it.
+- **The Charge Glow preview no longer resizes itself on every frame.**
+- **Surge Dock and Launchpad never freeze Surge while loading app icons**, and the Dock starts far fewer helper processes.
+- **The right-click menu opens every time**, not only the first time.
+- **The menu bar text (Typing Stats words per minute) updates at most four times a second** instead of on every key.
+- **Surge now notes in its log anything that holds it up for more than a tenth of a second**, so any lag that is left can be found.

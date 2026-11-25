@@ -251,7 +251,11 @@ function build(){
       <div class="row"><div class="l">Updates<small>Surge updates itself from its GitHub releases</small></div><div class="links"><button class="btn" data-go="updater">Open Updates</button><button class="btn" id="relNotes">Release notes</button></div></div>
       <div class="row"><div class="l">Start over<small>Puts every module and option back the way it came</small></div><button class="btn" id="reset">Reset all settings</button></div>
     </div></section>`;
-  $('#panes').innerHTML = panes; Nova.upgrade($('#panes'));
+  $('#panes').innerHTML = panes; Nova.upgrade($('#pane-all')); $('#pane-all')._up=1;
+  /* the other pages' heroes are drawn one at a time while Settings is idle (or on their first visit, whichever comes first), never
+     all 24 at once while the window opens, so switching to a page has nothing left to build */
+  { const left=[...document.querySelectorAll('.pane')].filter(x=>!x._up); const idle=window.requestIdleCallback||(f=>setTimeout(()=>f({timeRemaining:()=>8}),200));
+    const next=dl=>{ while(left.length&&dl.timeRemaining()>6){ const pe=left.shift(); if(!pe._up){ pe._up=1; Nova.upgrade(pe); } } if(left.length) idle(next); }; setTimeout(()=>idle(next),1200); }
   // wire
   document.querySelectorAll('#nav button').forEach(b => b.onclick = () => go(b.dataset.p));
   document.querySelectorAll('.tg[data-m]').forEach(t => t.onclick = (e) => { e.stopPropagation(); set(t.dataset.m, { enabled: !S.modules[t.dataset.m].enabled }); });
@@ -345,7 +349,7 @@ function buildPicker(el, mid, k){
       if (el._cat==='all' || el._cat==='fav') html += `<div class="cat">${c.name}${c.desc?' · '+c.desc:''}</div>`;
       html += `<div class="list">${ps.map(p=>`<button class="pr ${s[k]===p.id?'on':''}" data-id="${p.id}" style="--c:${c.color}"><i></i>${p.name}${lib==='keyboard'?`<span class="fav ${favs.has(p.id)?'on':''}" data-fav="${p.id}"></span>`:''}</button>`).join('')}</div>`; }
     html += `<div class="meta"><span>${SurgeSounds.count} keyboard · ${SurgeSounds.mouse.length} mouse</span><span>Selected: <b>${(lib==='keyboard'?SurgeSounds.findKey(s[k]):SurgeSounds.findMouse(s[k])).name}</b></span><span style="cursor:pointer" data-rand="1">Surprise me</span></div>`;
-    el.innerHTML = html;
+    el.innerHTML = html; el._key = JSON.stringify([s[k], s.favorites]);
     el.querySelectorAll('.tab').forEach(b => b.onclick = () => { el._cat = b.dataset.c; render(); });
     const qi = el.querySelector('input.q'); qi.oninput = () => { el._q = qi.value; const pos = qi.selectionStart; render(); const n = el.querySelector('input.q'); n.focus(); n.setSelectionRange(pos,pos); };
     el.querySelectorAll('.pr').forEach(b => b.onclick = (e) => { const fv = e.target.closest('[data-fav]'); if (fv) { const id = fv.dataset.fav; const f = new Set(S.modules[mid].favorites||[]); f.has(id) ? f.delete(id) : f.add(id); set(mid, { favorites: [...f] }); render(); return; }
@@ -358,7 +362,7 @@ function audition(lib, id){ const s = S.modules; if (lib==='keyboard') { api?.te
   else { api?.testSound('click', { preset: id, volume: s.mouse.volume }); setTimeout(()=>api?.testSound('click', { preset: id, volume: s.mouse.volume, up: true }), 80); } }
 async function buildApps(el, mid, k){
   const all = await api?.appsInstalled() || [];
-  const render = () => { const cur = S.modules[mid]?.[k] || []; const items=[...cur.map(p=>({name:all.find(a=>a.path===p)?.name||p.split(/[\\/]/).pop().replace(/\.(app|exe)$/i,''),path:p})), ...all.filter(a=>!cur.includes(a.path))];
+  const render = () => { const cur = S.modules[mid]?.[k] || []; el._key = JSON.stringify([S.modules[mid]?.[k], 0]); const items=[...cur.map(p=>({name:all.find(a=>a.path===p)?.name||p.split(/[\\/]/).pop().replace(/\.(app|exe)$/i,''),path:p})), ...all.filter(a=>!cur.includes(a.path))];
     el.innerHTML = `<input class="q" placeholder="Search apps…" style="all:unset;width:100%;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:13px;color:var(--text);margin-bottom:8px">` + `<div class="al">${items.map(a=>`<div class="wi ${cur.includes(a.path)?'on':''}" data-p="${a.path}"><i></i>${a.name}</div>`).join('')}</div>`;
     el.querySelector('.q').oninput = e => { const q=e.target.value.toLowerCase(); el.querySelectorAll('.wi').forEach(w=>w.style.display=w.textContent.toLowerCase().includes(q)?'':'none'); };
     el.querySelectorAll('.wi').forEach(w=>w.onclick=()=>{ const c=S.modules[mid][k]||[]; set(mid,{[k]: c.includes(w.dataset.p)?c.filter(x=>x!==w.dataset.p):[...c,w.dataset.p]}); render(); }); };
@@ -367,7 +371,7 @@ async function buildApps(el, mid, k){
 const WNAMES={apps:'Apps',launchpad:'Launchpad',clock:'Clock',battery:'Battery',stats:'CPU / Mem',media:'Now Playing',volume:'Volume',focus:'Focus',caffeine:'Caffeine',glow:'Glow',notes:'Notes',spotlight:'Spotlight'};
 function buildWidgets(el, mid, k){
   const all = el.dataset.opts.split(',');
-  const render = () => { const cur = S.modules[mid]?.[k] || []; const items = [...cur, ...all.filter(x=>!cur.includes(x))];
+  const render = () => { const cur = S.modules[mid]?.[k] || []; el._key = JSON.stringify([S.modules[mid]?.[k], 0]); const items = [...cur, ...all.filter(x=>!cur.includes(x))];
     el.innerHTML = items.map(w=>`<div class="wi ${cur.includes(w)?'on':''}" draggable="true" data-w="${w}"><i></i>${WNAMES[w]||w}</div>`).join('');
     let drag=null; el.querySelectorAll('.wi').forEach(d=>{ d.onclick=()=>{ const c=S.modules[mid][k]||[]; set(mid,{[k]: c.includes(d.dataset.w)?c.filter(x=>x!==d.dataset.w):[...c,d.dataset.w]}); render(); };
       d.ondragstart=()=>{ drag=d.dataset.w; }; d.ondragover=e=>e.preventDefault(); d.ondrop=e=>{ e.preventDefault(); if(!drag||drag===d.dataset.w) return; const c=(S.modules[mid][k]||[]).filter(x=>x!==drag); const i=c.indexOf(d.dataset.w); c.splice(i<0?c.length:i,0,drag); set(mid,{[k]:c}); render(); }; }); };
@@ -378,7 +382,7 @@ function stage(p){ const el=document.getElementById('pane-'+p); if(!el) return; 
 function navInd(){ const b=document.querySelector('#nav button.on'), a=document.querySelector('aside'); if(!a) return; if(!b||!b.offsetParent){ const i0=document.getElementById('navInd'); if(i0) i0.style.opacity=0; return; } let ind=document.getElementById('navInd'); if(!ind){ ind=document.createElement('div'); ind.id='navInd'; a.appendChild(ind); } const r=b.getBoundingClientRect(), ar=a.getBoundingClientRect(); ind.style.transform=`translateY(${Math.round(r.top-ar.top+a.scrollTop)}px)`; ind.style.opacity=1; }
 addEventListener('resize',()=>navInd()); setTimeout(navInd,400); setTimeout(navInd,1200);
 function go(p){ { const order=[...document.querySelectorAll('#nav button')].map(b=>b.dataset.p), a=order.indexOf(cur), b=order.indexOf(p), dir=b>=a?1:-1; const out=document.getElementById('pane-'+cur), inn=document.getElementById('pane-'+p); if(out&&inn&&out!==inn){ out.style.setProperty('--dir',-dir); inn.style.transition='none'; inn.style.setProperty('--dir',dir); void inn.offsetWidth; inn.style.transition=''; } }
-  stage(p); setTimeout(navInd,0); cur = p; { const h=document.querySelector('#pane-'+p+' .hero'); if(h&&!h.dataset.seen){ h.dataset.seen=1; Nova.replay(h); } } /* the hero's entrance plays on the first visit; later visits are instant */ document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on', b.dataset.p===p)); document.querySelectorAll('.pane').forEach(x=>x.classList.toggle('on', x.id===`pane-${p}`));
+  { const pe=document.getElementById('pane-'+p); if(pe&&!pe._up){ pe._up=1; Nova.upgrade(pe); } } stage(p); setTimeout(navInd,0); cur = p; { const h=document.querySelector('#pane-'+p+' .hero'); if(h&&!h.dataset.seen){ h.dataset.seen=1; Nova.replay(h); } } /* the hero's entrance plays on the first visit; later visits are instant */ document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on', b.dataset.p===p)); document.querySelectorAll('.pane').forEach(x=>x.classList.toggle('on', x.id===`pane-${p}`));
   $('#title').textContent = p==='all' ? 'Modules' : p==='about' ? 'About' : p==='welcome' ? 'Welcome' : MODS.find(m=>m.id===p)?.name || ''; if (p==='glow') replay(); }
 function paint(){
   let on = 0;
@@ -392,8 +396,8 @@ function paint(){
       if (f.t==='chips') el.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on', c.dataset.v==String(v)));
       if (f.t==='color') el.querySelectorAll('b[data-v]').forEach(b=>b.classList.toggle('on', (b.dataset.v||'').toLowerCase()===(v||'').toLowerCase()));
       if (f.t==='seg') el.querySelectorAll('button').forEach(b=>b.classList.toggle('on', b.dataset.v==String(v)));
-      if (f.t==='soundpicker' && el._render && !el.contains(document.activeElement)) el._render();
-      if ((f.t==='widgets' || f.t==='apps') && el._render && !el.contains(document.activeElement)) el._render();
+      // the sound list (145 buttons) and the app list are rebuilt only when what they show changed, not on every paint
+      if ((f.t==='soundpicker' || f.t==='widgets' || f.t==='apps') && el._render && !el.contains(document.activeElement)) { const key=JSON.stringify([v, f.t==='soundpicker'?s.favorites:0]); if (el._key!==key) el._render(); }
     }
     const h = document.getElementById('hook-'+m.id); if (h) h.textContent = hook==='running' ? 'Input monitoring: active' : hook==='ready' ? 'Turns on when enabled — macOS will ask for Accessibility permission once.' : hook==='needs-accessibility' ? 'Waiting for permission: System Settings → Privacy & Security → Accessibility → turn on Surge. Starts automatically once granted.' : hook==='error' ? 'Hook failed to start. Check Accessibility and Input Monitoring for Surge, then relaunch.' : 'Global input hook not installed in this build (uiohook-napi). Run npm install on a Mac.';
   }

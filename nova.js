@@ -57,14 +57,22 @@
   function stage(el, sel) { if (!el) return; const kids = sel ? el.querySelectorAll(sel) : el.children; let i = 0; for (const k of kids) k.style.setProperty('--i', i++); el.classList.remove('stage'); void el.offsetWidth; el.classList.add('stage'); }
   // ---- Lumen's hero backdrop (pages/app.js heroBack + heroDots): four light pools, seeded drifting dots, a faint
   // constellation, a rim glint, and the giant glyph in three layers (glow, deep shadow, crisp outline)
+  const DOTS = new Map();
   function heroDots(seed) {
     let h = 2166136261; for (const c of String(seed)) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
     const rnd = () => ((h = Math.imul(h ^ (h >>> 15), 2246822507) ^ Math.imul(h ^ (h >>> 13), 3266489909)) >>> 0) / 4294967296;
     // the fine dots are painted ONCE into a small tile image (a canvas), so showing a hero costs one image fill instead of
     // fifteen gradient layers; the tile is tinted white and the layer's colour comes from a soft overlay mix
-    const dotsLayer = sets => { const W = 300, H = 240, d = Math.min(2, window.devicePixelRatio || 1), c = document.createElement('canvas'); c.width = W * d; c.height = H * d; const x = c.getContext('2d'); x.scale(d, d);
-      for (const [n, , r, alpha] of sets) for (let i = 0; i < n * 2; i++) { const cx = rnd() * W, cy = rnd() * H; const g = x.createRadialGradient(cx, cy, 0, cx, cy, r + 1.2); g.addColorStop(0, `rgba(255,255,255,${alpha})`); g.addColorStop(r / (r + 1.2), `rgba(255,255,255,${alpha})`); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.beginPath(); x.arc(cx, cy, r + 1.2, 0, Math.PI * 2); x.fill(); }
-      return `background-image:url(${c.toDataURL()});background-size:${W}px ${H}px;background-position:${Math.round(rnd() * W)}px ${Math.round(rnd() * H)}px`; };
+    // The PNG encode of that tile is the slow part of building a hero, so each finished tile is kept (in memory and in
+    // localStorage, keyed by the seed and the screen scale): the same seed always paints the same dots, so the picture is identical.
+    const dotsLayer = sets => { const W = 300, H = 240, d = Math.min(2, window.devicePixelRatio || 1), pts = [];
+      for (const [n, , r, alpha] of sets) for (let i = 0; i < n * 2; i++) pts.push([rnd() * W, rnd() * H, r, alpha]);
+      const key = `surge-dots-1|${seed}|${d}|${JSON.stringify(sets)}`; let url = DOTS.get(key); if (!url) { try { url = localStorage.getItem(key); } catch {} }
+      if (!url) { const c = document.createElement('canvas'); c.width = W * d; c.height = H * d; const x = c.getContext('2d'); x.scale(d, d);
+        for (const [cx, cy, r, alpha] of pts) { const g = x.createRadialGradient(cx, cy, 0, cx, cy, r + 1.2); g.addColorStop(0, `rgba(255,255,255,${alpha})`); g.addColorStop(r / (r + 1.2), `rgba(255,255,255,${alpha})`); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.beginPath(); x.arc(cx, cy, r + 1.2, 0, Math.PI * 2); x.fill(); }
+        url = c.toDataURL(); try { localStorage.setItem(key, url); } catch {} }
+      DOTS.set(key, url);
+      return `background-image:url(${url});background-size:${W}px ${H}px;background-position:${Math.round(rnd() * W)}px ${Math.round(rnd() * H)}px`; };
     const svg = x => `url('data:image/svg+xml,${encodeURIComponent(x)}')`;
     const star = (x, y, r) => `M${x} ${(y - r).toFixed(1)}Q${x} ${y} ${(x + r).toFixed(1)} ${y}Q${x} ${y} ${x} ${(y + r).toFixed(1)}Q${x} ${y} ${(x - r).toFixed(1)} ${y}Q${x} ${y} ${x} ${(y - r).toFixed(1)}Z`;
     let sp = '', specks = '';

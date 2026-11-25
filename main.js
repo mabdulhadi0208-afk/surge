@@ -14,6 +14,16 @@ let logFile = null; try { const dir = app.getPath('logs'); fs.mkdirSync(dir, { r
 process.on('uncaughtException', e => log('UNCAUGHT', e)); process.on('unhandledRejection', e => log('UNHANDLED', e));
 console.error = (...a) => log('ERR', ...a); console.warn = (...a) => log('WARN', ...a);
 
+/* ------------------------------------------------------------------ lag watch: every IPC handler is timed and the main event loop is
+   watched; anything that holds the main process for more than 100 ms is written to surge.log with what was running (at most one
+   line every 10 s per name). On a Mac, a stalled main process also stalls every Surge window, so this is where lag shows up first. */
+const stats = { patches: 0, saves: 0, ipc: new Map(), stalls: [], current: '' };
+const slowLogged = new Map();
+function noteSlow(name, ms) { const n = Date.now(); if (ms < 100 || n - (slowLogged.get(name) || 0) < 10000) return; slowLogged.set(name, n); log(`lag: ${name} held the main process for ${Math.round(ms)} ms`); }
+function timed(name, fn) { return function (...a) { const t0 = performance.now(), prev = stats.current; stats.current = name; try { return fn.apply(this, a); } finally { const ms = performance.now() - t0; stats.current = prev; const e = stats.ipc.get(name) || { n: 0, total: 0, max: 0 }; e.n++; e.total += ms; e.max = Math.max(e.max, ms); stats.ipc.set(name, e); noteSlow('ipc ' + name, ms); } }; }
+{ const h = ipcMain.handle.bind(ipcMain), o = ipcMain.on.bind(ipcMain); ipcMain.handle = (ch, fn) => h(ch, timed(ch, fn)); ipcMain.on = (ch, fn) => o(ch, timed(ch, fn)); }
+{ let last = performance.now(); const t = setInterval(() => { const n = performance.now(), late = n - last - 250; last = n; if (late > 16) { stats.stalls.push(Math.round(late)); if (stats.stalls.length > 200) stats.stalls.shift(); noteSlow('main event loop (last: ' + (stats.current || 'timer or module') + ')', late); } }, 250); t.unref?.(); }
+
 /* ------------------------------------------------------------------ settings */
 const MODULES = {};                       // id → module
 let settings = { modules: {} };
@@ -33,7 +43,7 @@ function loadSettings() {
   // 3.0: checking GitHub every second spawned a process every second. Updates are now checked every 30 minutes, on wake and when you open the menu.
   if (settings.modules.updater && !(settings.modules.updater.pollSeconds >= 900)) settings.modules.updater.pollSeconds = 1800;
 }
-function saveSettings() { try { fs.mkdirSync(path.dirname(settingsPath()), { recursive: true }); fs.writeFileSync(settingsPath(), JSON.stringify(settings, null, 2)); } catch (e) { console.error(e); } }
+function saveSettings() { stats.saves++; try { fs.mkdirSync(path.dirname(settingsPath()), { recursive: true }); fs.writeFileSync(settingsPath(), JSON.stringify(settings, null, 2)); } catch (e) { console.error(e); } }
 function mod(id) { return settings.modules[id]; }
 
 /* ------------------------------------------------------------------ global input hook (optional native dep) */
@@ -61,7 +71,7 @@ function ensureHook() {
   const t = setTimeout(() => { if (!started) { log(`hook (${mode}) did not start within 5s — stopping it`); try { child.kill(); } catch {} } }, 5000);
   child.on('message', (m) => {
     if (m.alive) { hookEvents++; return; }                      // the hook still hears (a mouse moved); no coordinates, nothing else to do
-    if (m.ev) { lastInputAt = Date.now(); inputCount++; if (m.ev === 'keydown') keyCount++; if (!hookEvents++) log('hook first event'); hookListeners[m.ev]?.forEach(fn => { try { fn(m.e); } catch (err) { console.error(err); } }); return; }
+    if (m.ev) return dispatchInput(m);
     if (m.started) { started = true; clearTimeout(t); hookStarting = false; hookStarted = true; hookState = 'running'; log(`hook started (${mode})`); syncMoves(); setTimeout(() => { if (hookProc === child) hookTries = 0; }, 30000); watchHookAlive(); ctx.broadcast('settings:update', settings); }
     else if (m.error) log('hook host error:', m.error);
   });
@@ -74,6 +84,7 @@ function ensureHook() {
   });
   return false;
 }
+function dispatchInput(m) { lastInputAt = Date.now(); inputCount++; if (m.ev === 'keydown') keyCount++; if (!hookEvents++) log('hook first event'); hookListeners[m.ev]?.forEach(fn => { try { fn(m.e); } catch (err) { console.error(err); } }); }
 function stopHook() { const c = hookProc; hookProc = null; hookStarted = false; hookStarting = false; try { c?.kill(); } catch {} }
 // macOS can leave the hook "running" but silently deliver nothing (stale Accessibility / Input Monitoring entry after an update).
 // Detect it the honest way: the cursor moves (Electron sees that without any permission) but the hook reports no events → the grant is dead.
@@ -259,7 +270,7 @@ function toggleNotes() {
 }
 
 /* ------------------------------------------------------------------ apps (for Surge Dock) */
-const iconCache = new Map();
+const iconCache = new Map(), iconJobs = new Map();
 const winapps = IS_WIN ? require('./winapps') : null;
 const isApp = p => typeof p === 'string' && !!p && (IS_WIN ? /\.(exe|lnk)$/i.test(p) : p.endsWith('.app'));
 let winInstalled = null, winRunning = [];
@@ -285,32 +296,40 @@ function appIcon(appPath) {
     try { const b64 = await winapps.icon(appPath); if (b64 && b64.length > 200) v = 'data:image/png;base64,' + b64; } catch {}
     if (!v) { try { const img = await app.getFileIcon(appPath, { size: 'large' }); if (!img.isEmpty()) v = img.toDataURL(); } catch {} }
     iconCache.set(appPath, v); return v; })();
-  return new Promise((resolve) => {
-    const done = (v) => { iconCache.set(appPath, v); resolve(v); };
-    try {
-      let icns = null;
-      try { icns = require('child_process').execFileSync('plutil', ['-extract', 'CFBundleIconFile', 'raw', '-o', '-', path.join(appPath, 'Contents', 'Info.plist')], { timeout: 3000 }).toString().trim(); } catch {}
-      if (!icns) { try { const plist = fs.readFileSync(path.join(appPath, 'Contents', 'Info.plist'), 'utf8'); icns = /CFBundleIconFile<\/key>\s*<string>([^<]+)/.exec(plist)?.[1]; } catch {} }
-      if (icns && !icns.endsWith('.icns')) icns += '.icns';
-      const src = icns && !icns.includes('..') && path.join(appPath, 'Contents', 'Resources', icns);
-      if (src && fs.existsSync(src)) {
-        const dir = path.join(app.getPath('userData'), 'icons'); fs.mkdirSync(dir, { recursive: true });
-        const out = path.join(dir, Buffer.from(appPath).toString('base64url').slice(-40) + '.png');
-        if (fs.existsSync(out)) return done('data:image/png;base64,' + fs.readFileSync(out).toString('base64'));
-        return execFile('sips', ['-s', 'format', 'png', '--resampleWidth', '128', src, '--out', out], { timeout: 8000 }, (e) => { if (!e && fs.existsSync(out)) done('data:image/png;base64,' + fs.readFileSync(out).toString('base64')); else fallback(); });
-      }
-    } catch {}
-    fallback();
+  // Launchpad and the Dock ask for dozens of icons at once. Nothing here blocks the main process: the converted PNG is looked
+  // up on disk FIRST (it is keyed by the app's path), and only a missing one runs plutil + sips (async helper processes).
+  // Requests for the same app share one job.
+  if (iconJobs.has(appPath)) return iconJobs.get(appPath);
+  const job = new Promise((resolve) => {
+    const done = (v) => { iconCache.set(appPath, v); iconJobs.delete(appPath); resolve(v); };
+    const dir = path.join(app.getPath('userData'), 'icons'), key = Buffer.from(appPath).toString('base64url').slice(-40), out = path.join(dir, key + '.png');
+    const fromDisk = (orElse) => fs.readFile(out, (e, buf) => (!e && buf.length ? done('data:image/png;base64,' + buf.toString('base64')) : orElse()));
+    fromDisk(() => {
+      execFile('plutil', ['-extract', 'CFBundleIconFile', 'raw', '-o', '-', path.join(appPath, 'Contents', 'Info.plist')], { timeout: 3000 }, (pe, po) => {
+        let icns = pe ? null : String(po || '').trim();
+        const next = () => {
+          if (icns && !icns.endsWith('.icns')) icns += '.icns';
+          const src = icns && !icns.includes('..') && path.join(appPath, 'Contents', 'Resources', icns);
+          fs.access(src || '', (ae) => {
+            if (!src || ae) return fallback();
+            fs.mkdir(dir, { recursive: true }, () => execFile('sips', ['-s', 'format', 'png', '--resampleWidth', '128', src, '--out', out], { timeout: 8000 }, (e) => { if (e) return fallback(); fromDisk(fallback); }));
+          });
+        };
+        if (icns) return next();
+        fs.readFile(path.join(appPath, 'Contents', 'Info.plist'), 'utf8', (re, plist) => { if (!re) icns = /CFBundleIconFile<\/key>\s*<string>([^<]+)/.exec(plist)?.[1] || null; next(); });
+      });
+    });
     function fallback() {
       // asset-catalog icons (Assets.car): let Quick Look render the bundle's icon — a separate process, cannot crash us
-      const dir = path.join(app.getPath('userData'), 'icons'); fs.mkdirSync(dir, { recursive: true });
-      const tmp = path.join(dir, 'ql-' + Buffer.from(appPath).toString('base64url').slice(-40)); fs.mkdirSync(tmp, { recursive: true });
-      execFile('qlmanage', ['-t', '-s', '128', '-o', tmp, appPath], { timeout: 8000 }, () => {
-        try { const f = fs.readdirSync(tmp).find(x => x.endsWith('.png')); if (f) { const out = path.join(dir, Buffer.from(appPath).toString('base64url').slice(-40) + '.png'); fs.renameSync(path.join(tmp, f), out); fs.rmSync(tmp, { recursive: true, force: true }); return done('data:image/png;base64,' + fs.readFileSync(out).toString('base64')); } } catch {}
-        fs.rmSync(tmp, { recursive: true, force: true }); done(null);
-      });
+      const tmp = path.join(dir, 'ql-' + key);
+      fs.mkdir(tmp, { recursive: true }, () => execFile('qlmanage', ['-t', '-s', '128', '-o', tmp, appPath], { timeout: 8000 }, () => {
+        fs.readdir(tmp, (de, list) => { const f = !de && (list || []).find(x => x.endsWith('.png'));
+          if (!f) { fs.rm(tmp, { recursive: true, force: true }, () => {}); return done(null); }
+          fs.rename(path.join(tmp, f), out, (rn) => { fs.rm(tmp, { recursive: true, force: true }, () => {}); if (rn) return done(null); fromDisk(() => done(null)); }); });
+      }));
     }
   });
+  iconJobs.set(appPath, job); return job;
 }
 function parseLsappinfo(o) {
   const out = []; let cur = null;
@@ -328,8 +347,16 @@ function parseLsappinfo(o) {
   if (cur) out.push(cur);
   return out;
 }
-let appsWarned = false;
+let appsWarned = false, appsJob = null, appsAt = 0, appsLast = null;
+// The Dock refreshes its apps on its 5 s tick and its own 15 s timer, the clipboard picker asks for the front app: callers that
+// arrive together share one lsappinfo run, and an answer under a second old is reused instead of spawning another process.
 function runningApps() {
+  if (appsLast && Date.now() - appsAt < 1000) return Promise.resolve(appsLast);
+  if (appsJob) return appsJob;
+  appsJob = listRunningApps().then(l => { appsLast = l; appsAt = Date.now(); appsJob = null; return l; }, e => { appsJob = null; throw e; });
+  return appsJob;
+}
+function listRunningApps() {
   if (IS_WIN) return winapps.list().then(l => { if (!l) return winRunning;
     const names = new Map(installedWin().map(a => [a.path, a.name])); const seen = new Map();
     for (const a of l) { const k = a.path.toLowerCase(); if (/\\windows\\systemapps\\|applicationframehost|textinputhost|shellexperiencehost|\\surge\.exe$/.test(k)) continue;
@@ -509,12 +536,16 @@ function onAppearance() { if (!tray || mono()) return; trayIconKey = ''; try { M
 app.whenReady().then(() => { try { nativeTheme.on('updated', onAppearance); } catch {} if (IS_MAC) { try { systemPreferences.subscribeNotification('AppleInterfaceThemeChangedNotification', () => setTimeout(onAppearance, 120)); } catch {} } });
 function setTray(id, extra) { const k = JSON.stringify(extra, (kk, v) => typeof v === 'function' ? undefined : v); if (trayKeys[id] === k) return; trayKeys[id] = k; trayExtras[id] = extra; updateTray(); }
 const trayKeys = {};
-let lastTitle = null;
+let lastTitle = null, titleAt = 0, titleT = null;
 function updateTray() {
   if (!tray) return;
   const titles = Object.values(trayExtras).map(e => e?.title).filter(Boolean); if (settings.muted) titles.push(IS_MAC ? 'Muted' : '(muted)');
   const t = titles.join('  ');
-  if (t === lastTitle) return; lastTitle = t;
+  if (t === lastTitle) return;
+  // Typing Stats changes its "wpm" text on nearly every keystroke, and each setTitle makes macOS lay out the menu bar again.
+  // The text is set at most 4 times a second (a change that arrives sooner is shown 250 ms after the last one, never lost).
+  const since = Date.now() - titleAt; if (since < 250 && lastTitle !== null) { if (!titleT) titleT = setTimeout(() => { titleT = null; updateTray(); }, 250 - since); return; }
+  lastTitle = t; titleAt = Date.now();
   if (IS_MAC) tray.setTitle(t ? ' ' + t : '', { fontType: 'monospacedDigit' }); else tray.setToolTip(['Surge', ...titles].join('  '));
 }
 // the right-click menu, built from the modules' items only when it opens (it used to be rebuilt every time a title changed)
@@ -543,23 +574,26 @@ function openTrayMenu() {
 const ctx = {
   app, screen, clipboard, Notification, nativeTheme, powerSaveBlocker, globalShortcut, execFile, os,
   get settings() { return settings; }, log, mod, fireGlow, overlaySend, setOverlayPersistent, play, sysSound, uiSound, ripple, onInput, hookState: () => hookState,
+  runningApps: () => runningApps(), save: () => saveSettings(), get booting() { return booting; },
   frontApp: async () => { try { return (await runningApps()).find(a => a.front) || null; } catch { return null; } },
   activateApp: (a) => { if (!a) return; if (IS_WIN) { if (a.pid) winapps.activate(a.pid); } else if (a.path) execFile('open', ['-a', a.path], () => {}); },
   setTray, setTrayBattery, openSettings, dialog: (o) => Nova.dialog(o), toggleNotes, readBattery, markCleanExit, bundlePath, stopHook: () => { quitting = true; stopHook(); }, applyPatch: (p) => applyPatch(p), get battery() { return battery; }, set battery(v) { battery = v; },
   notify: (title, body) => { try { new Notification({ title, body, silent: true }).show(); } catch {} },
   broadcast: (ch, p) => { [settingsWin, notesWin, audioWin, popWin, ...overlays].forEach(w => { try { if (w && !w.isDestroyed()) w.webContents.send(ch, p); } catch {} }); },
 };
-const running = new Set();
-if (process.env.SURGE_TEST) global.__surge = { ctx, ripple, MODULES, flow, setTrayBattery, markIcon, trayChip, trayBattery, applyPatch: (p) => applyPatch(p), get tray() { return tray; } };   // tests only
+const running = new Set(); let booting = true;   // true while the modules start at launch
+if (process.env.SURGE_TEST) global.__surge = { ctx, ripple, MODULES, flow, setTrayBattery, markIcon, trayChip, trayBattery, applyPatch: (p) => applyPatch(p), get tray() { return tray; }, stats, input: (ev, e) => dispatchInput({ ev, e }), get listeners() { return hookListeners; } };   // tests only
 function startModule(id) { const m = MODULES[id]; if (!m || running.has(id)) return; try { log('starting', id); m.start?.(ctx); running.add(id); log('start', id); } catch (e) { console.error(`[${id}] start`, e); } }
 function stopModule(id) { const m = MODULES[id]; if (!m || !running.has(id)) return; try { m.stop?.(ctx); } catch (e) { console.error(`[${id}] stop`, e); } running.delete(id); trayExtras[id] = null; delete trayKeys[id]; updateTray(); }
-function reconcile() {
+// changed: the module ids whose settings were just patched (null = all of them). A module only hears onSettings when ITS settings
+// changed: flipping one switch used to wake all twenty modules, and Auto Dark Mode answered every one of them with an osascript call.
+function reconcile(changed = null) {
   if (['keys', 'mouse', 'caps', 'chime'].some(id => mod(id)?.enabled)) setTimeout(ensureAudio, 1500);
   for (const id in MODULES) {
     const want = !!mod(id).enabled;
     if (want && !running.has(id)) startModule(id);
     else if (!want && running.has(id)) stopModule(id);
-    else if (want) { try { MODULES[id].onSettings?.(ctx); } catch (e) { console.error(`[${id}] onSettings`, e); } }
+    else if (want && (!changed || changed.has(id))) { try { MODULES[id].onSettings?.(ctx); } catch (e) { console.error(`[${id}] onSettings`, e); } }
   }
 }
 function applyPatch(patch) {
@@ -568,7 +602,7 @@ function applyPatch(patch) {
   if ('uiSounds' in patch) { settings.uiSounds = !!patch.uiSounds; if (settings.uiSounds) sysSound('tap'); }
   if ('launchAtLogin' in patch) { settings.launchAtLogin = !!patch.launchAtLogin; if (IS_MAC || IS_WIN) app.setLoginItemSettings({ openAtLogin: settings.launchAtLogin, openAsHidden: true }); }
   if (patch.modules) for (const id in patch.modules) settings.modules[id] = { ...settings.modules[id], ...patch.modules[id] };
-  saveSettings(); reconcile(); ctx.broadcast('settings:update', settings); updateTray();
+  stats.patches++; saveSettings(); reconcile(new Set(Object.keys(patch.modules || {}))); ctx.broadcast('settings:update', settings); updateTray();
 }
 
 /* ------------------------------------------------------------------ ipc */
@@ -645,7 +679,9 @@ app.whenReady().then(async () => {
   log('modules', Object.keys(MODULES).join(','), 'hook', hookState);
   const firstRun = !fs.existsSync(settingsPath());
   loadSettings(); if (firstRun) { settings.launchAtLogin = true; settings.welcomed = false; } saveSettings();
-  if ((IS_MAC || IS_WIN) && app.isPackaged) { try { if (app.getLoginItemSettings().openAtLogin !== settings.launchAtLogin) app.setLoginItemSettings({ openAtLogin: settings.launchAtLogin, openAsHidden: true }); } catch {} }
+  // Start at login: registered on the first run; after that, a launch never overrides what you set in System Settings (Login
+  // Items): if you removed Surge there, Surge's own switch follows that instead of quietly adding itself back.
+  if ((IS_MAC || IS_WIN) && app.isPackaged) { try { const sys = app.getLoginItemSettings().openAtLogin; if (firstRun) { if (sys !== settings.launchAtLogin) app.setLoginItemSettings({ openAtLogin: settings.launchAtLogin, openAsHidden: true }); } else if (sys !== settings.launchAtLogin) { settings.launchAtLogin = !!sys; saveSettings(); } } catch {} }
   Menu.setApplicationMenu(Menu.buildFromTemplate([{ label: 'Surge', submenu: [
     { label: 'About Surge', click: () => openSettings('about') },
     { label: 'Check for Updates', click: () => { try { MODULES.updater?._check(ctx, true); MODULES.updater?.actions?.card(); } catch {} } },
@@ -669,7 +705,7 @@ app.whenReady().then(async () => {
   let dispT; const rebuild = () => { clearTimeout(dispT); dispT = setTimeout(() => { createOverlays(); running.forEach(id => MODULES[id].onSettings?.(ctx)); }, 600); };
   screen.on('display-added', rebuild); screen.on('display-removed', rebuild); screen.on('display-metrics-changed', rebuild);
   try { globalShortcut.register('CommandOrControl+Shift+N', toggleNotes); } catch {}
-  reconcile();
+  reconcile(); booting = false;
   // Welcome shows once. A fresh DMG install first swaps itself to the stable-identity build (see updater), so wait for that restart before greeting.
   if (!firstRun && settings.welcomed === undefined) { settings.welcomed = true; saveSettings(); }
   const greet = () => { if (settings.welcomed) return; settings.welcomed = true; saveSettings(); openSettings('welcome'); };

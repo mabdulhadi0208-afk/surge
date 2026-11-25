@@ -57,7 +57,8 @@ new ResizeObserver(fit).observe(document.getElementById('mn'));
 function act(b){ if(!b) return; if(b.dataset.t==='submenu'){ b.classList.toggle('open'); b.nextElementSibling.classList.toggle('show'); requestAnimationFrame(fit); return; }
   if(b.dataset.t==='checkbox'){ const on=b.dataset.c!=='1'; b.querySelector('.sw').classList.toggle('on',on); setTimeout(()=>api.pick(b.dataset.id,on),140); return; } api.pick(b.dataset.id); }
 api.onMenu(d=>{ lastH=0; $('#list').innerHTML=d.items.map(i=>row(i,false)).join(''); sel=-1; const m=$('#mn'); m.classList.remove('show'); void m.offsetWidth; m.classList.add('show');
-  document.querySelectorAll('#list .mi[data-id]').forEach(b=>{ b.onclick=()=>act(b); b.onmouseenter=()=>{ document.querySelectorAll('.mi.sel').forEach(x=>x.classList.remove('sel')); sel=vis().indexOf(b); }; }); requestAnimationFrame(fit); });
+  document.querySelectorAll('#list .mi[data-id]').forEach(b=>{ b.onclick=()=>act(b); b.onmouseenter=()=>{ document.querySelectorAll('.mi.sel').forEach(x=>x.classList.remove('sel')); sel=vis().indexOf(b); }; });
+  /* measured right away: a hidden window gets no animation frames, so waiting for one meant the menu never came back after its first close */ fit(); requestAnimationFrame(fit); });
 addEventListener('keydown',e=>{ const v=vis(); if(e.key==='Escape') return api.close();
   if(e.key==='ArrowDown'||e.key==='ArrowUp'){ e.preventDefault(); sel=(sel+(e.key==='ArrowDown'?1:-1)+v.length)%v.length; v.forEach((b,i)=>b.classList.toggle('sel',i===sel)); }
   if(e.key==='Enter'||e.key===' '||e.key==='ArrowRight'){ e.preventDefault(); act(v[sel]); } if(e.key==='ArrowLeft'){ const o=document.querySelector('.mi.open'); if(o) act(o); } });

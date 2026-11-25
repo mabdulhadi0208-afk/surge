@@ -66,10 +66,12 @@
     const onDone = opts.onDone || (() => {});
 
     function size() {
-      const r = canvas.getBoundingClientRect();
-      const w = r.width || canvas.width, h = r.height || canvas.height;
+      // the canvas's layout size, not its on-screen box: inside an entrance animation the box is scaled every frame, and reading
+      // that made the backing store reallocate on each frame of the Settings preview (same picture, a buffer resize per frame)
+      const cs = canvas.clientWidth ? getComputedStyle(canvas) : null;
+      const w = (cs && parseFloat(cs.width)) || canvas.width, h = (cs && parseFloat(cs.height)) || canvas.height;
       dpr = Math.min(root.devicePixelRatio || 1, opts.maxDpr ?? 1.5);
-      if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) { canvas.width = w * dpr; canvas.height = h * dpr; }
+      if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); }   // rounded like the check above: a fractional size (258.75) no longer reallocates the buffer every frame
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0); W = w; H = h;
     }
     function perimeter(inset, r) {
