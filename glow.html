@@ -14,7 +14,7 @@
 <canvas id="c"></canvas>
 <script src="engine.js"></script>
 <script>
-  const api = window.surge;
+  const api = window.surge, FX = /fx=1/.test(location.search);   // fx: a small window that only draws one click burst
   let bounds = { x: 0, y: 0, width: innerWidth, height: innerHeight };
   const engine = SurgeEngine.create(document.getElementById('c'), { loop:false, refWidth: 1440, onDone: () => api?.done() });
 
@@ -76,11 +76,12 @@
     api.on('overlay:bounds', b => bounds = b);
     api.on('settings:update', s => engine.assign(s.modules?.glow || {}));
     api.on('glow:fire', p => { if (p.settings) engine.assign(p.settings); engine.fire(p.kind, p.level ?? 100, p); });
-    api.on('ripple', p => { const x = p.x - bounds.x, y = p.y - bounds.y; if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) return; ripples.push({ ...p, x, y, t0: performance.now(), seed: Math.random() * 6.283, dur: p.style === 'sparks' ? 850 : p.style === 'drop' ? 800 : p.style === 'shock' ? 800 : 700 }); if (ripples.length > 12) ripples.shift(); kick(); });
+    api.on('ripple', p => { const x = p.x - bounds.x, y = p.y - bounds.y; if (!FX && (x < 0 || y < 0 || x > innerWidth || y > innerHeight)) return; ripples.push({ ...p, x, y, t0: performance.now(), seed: Math.random() * 6.283, dur: p.style === 'sparks' ? 850 : p.style === 'drop' ? 800 : p.style === 'shock' ? 800 : 700 }); if (ripples.length > 12) ripples.shift(); kick(); });
     api.on('trail', p => { const x = p.x - bounds.x, y = p.y - bounds.y; if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) return; trailColor = p.color || trailColor; trailSize = p.size || 7; trail.push({ x, y, t: performance.now() }); if (trail.length > 40) trail.shift(); kick(); });
     api.on('spotlight', p => { spot = { ...spot, ...p }; if (p.on) kick(); else { fxSize(); fc.clearRect(0,0,innerWidth,innerHeight); } });
     api.on('cursor', p => { spot.x = p.x - bounds.x; spot.y = p.y - bounds.y; });
     api.on('tint', setTint);
+    api.on('fx:clear', () => { ripples = []; trail = []; fxSize(); fc.clearRect(0, 0, innerWidth, innerHeight); });
   } else { setTimeout(() => engine.fire('plug', 67), 300); }
 </script>
 </body>

@@ -5,6 +5,7 @@ const fs = require('fs');
 const os = require('os');
 const { execFile } = require('child_process');
 const IS_MAC = process.platform === 'darwin', IS_WIN = process.platform === 'win32';
+const Nova = require('./novaui.js');           // Surge's own right-click menu and dialogs (fall back to the native ones)
 
 /* ------------------------------------------------------------------ logging (~/Library/Logs/Surge/surge.log) */
 let logStream = null;
@@ -20,12 +21,17 @@ const settingsPath = () => path.join(app.getPath('userData'), 'settings.json');
 function defaultsFor(m) { return { enabled: !!m.defaultEnabled, ...(m.defaults || {}) }; }
 function loadSettings() {
   let raw = {}; try { raw = JSON.parse(fs.readFileSync(settingsPath(), 'utf8')); } catch {}
-  settings = { launchAtLogin: !!raw.launchAtLogin, masterVolume: raw.masterVolume ?? 1, muted: !!raw.muted, welcomed: raw.welcomed, soundFix: raw.soundFix, chipFix: raw.chipFix, modules: {} };
+  settings = { launchAtLogin: !!raw.launchAtLogin, masterVolume: raw.masterVolume ?? 1, muted: !!raw.muted, welcomed: raw.welcomed, soundFix: raw.soundFix, chipFix: raw.chipFix, uiSounds: !!raw.uiSounds, trayFix3: raw.trayFix3, modules: {} };
   // one-time: the menu-bar icon moves to the new charge chip (people who picked another style on purpose keep it)
   if (!raw.chipFix) { setTimeout(() => { try { if (settings.modules.glow && (settings.modules.glow.trayStyle === 'both' || !settings.modules.glow.trayStyle)) { settings.modules.glow.trayStyle = 'chip'; } saveSettings(); } catch {} }, 0); }
   settings.chipFix = 1;
   if (!settings.soundFix) { if (settings.muted || settings.masterVolume === 0) setTimeout(() => log('one-time sound reset: was muted =', settings.muted, 'master =', settings.masterVolume), 0); settings.muted = false; if (!(settings.masterVolume > 0.05)) settings.masterVolume = 1; settings.soundFix = 1; }
   for (const id in MODULES) settings.modules[id] = { ...defaultsFor(MODULES[id]), ...(raw.modules?.[id] || {}) };
+  // 3.0: the menu-bar icon is the new Surge mark (a macOS template image); the colour chip that never stopped animating is retired
+  // as the default. Anyone can still pick the charge chip, now a still template image too.
+  if (!raw.trayFix3) { if (settings.modules.glow && (settings.modules.glow.trayStyle === 'chip' || !settings.modules.glow.trayStyle)) settings.modules.glow.trayStyle = 'mark'; settings.trayFix3 = 1; }
+  // 3.0: checking GitHub every second spawned a process every second. Updates are now checked every 30 minutes, on wake and when you open the menu.
+  if (settings.modules.updater && !(settings.modules.updater.pollSeconds >= 900)) settings.modules.updater.pollSeconds = 1800;
 }
 function saveSettings() { try { fs.mkdirSync(path.dirname(settingsPath()), { recursive: true }); fs.writeFileSync(settingsPath(), JSON.stringify(settings, null, 2)); } catch (e) { console.error(e); } }
 function mod(id) { return settings.modules[id]; }
@@ -54,8 +60,9 @@ function ensureHook() {
   hookProc = child;
   const t = setTimeout(() => { if (!started) { log(`hook (${mode}) did not start within 5s — stopping it`); try { child.kill(); } catch {} } }, 5000);
   child.on('message', (m) => {
+    if (m.alive) { hookEvents++; return; }                      // the hook still hears (a mouse moved); no coordinates, nothing else to do
     if (m.ev) { lastInputAt = Date.now(); inputCount++; if (m.ev === 'keydown') keyCount++; if (!hookEvents++) log('hook first event'); hookListeners[m.ev]?.forEach(fn => { try { fn(m.e); } catch (err) { console.error(err); } }); return; }
-    if (m.started) { started = true; clearTimeout(t); hookStarting = false; hookStarted = true; hookState = 'running'; log(`hook started (${mode})`); setTimeout(() => { if (hookProc === child) hookTries = 0; }, 30000); watchHookAlive(); ctx.broadcast('settings:update', settings); }
+    if (m.started) { started = true; clearTimeout(t); hookStarting = false; hookStarted = true; hookState = 'running'; log(`hook started (${mode})`); syncMoves(); setTimeout(() => { if (hookProc === child) hookTries = 0; }, 30000); watchHookAlive(); ctx.broadcast('settings:update', settings); }
     else if (m.error) log('hook host error:', m.error);
   });
   child.on('exit', (code) => {
@@ -73,14 +80,15 @@ function stopHook() { const c = hookProc; hookProc = null; hookStarted = false; 
 let hookEvents = 0, deadFixes = 0, aliveT = null;
 function watchHookAlive() {
   if (process.platform !== 'darwin' || aliveT) return;
-  // runs for as long as the hook does (not just at startup): the cursor moving ~5 s with zero hook events since = the hook went deaf
+  // runs for as long as the hook does: the cursor moving for ~10 s with zero hook events (the hook sends a tiny "alive" ping
+  // at most every 2 s while the mouse moves) = the hook went deaf. One cursor read every 2 s; nothing else.
   let moves = 0, last = null, seen = hookEvents;
   aliveT = setInterval(() => {
     if (!hookStarted) { clearInterval(aliveT); aliveT = null; return; }
     if (hookEvents !== seen) { seen = hookEvents; moves = 0; }
     const c = screen.getCursorScreenPoint(); if (last && (c.x !== last.x || c.y !== last.y)) moves++; last = c;
-    if (moves >= 12) { clearInterval(aliveT); aliveT = null; onHookDead(); }
-  }, 400);
+    if (moves >= 5) { clearInterval(aliveT); aliveT = null; onHookDead(); }
+  }, 2000);
 }
 function onHookDead() {
   log(`hook dead: cursor moved but no events (AX trusted=${accessibilityOK(false)})`);
@@ -120,7 +128,11 @@ function repairAccessibility() {
 ipcMain.on('ax:repair', repairAccessibility);
 ipcMain.on('open:accessibility', () => { try { systemPreferences.isTrustedAccessibilityClient(true); } catch {} shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility'); });
 ipcMain.on('open:inputmonitoring', () => shell.openExternal('x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent'));
-function onInput(ev, fn) { hookListeners[ev].add(fn); ensureHook(); return () => hookListeners[ev].delete(fn); }
+// Mouse MOVES are the one event that fires hundreds of times a second. The hook keeps them to itself unless a feature that
+// draws on them is running (the comet trail); this tells it whether anyone is listening.
+let movesOn = false;
+function syncMoves() { const want = hookListeners.mousemove.size > 0; if (want === movesOn && hookStarted) return; movesOn = want; try { hookProc?.postMessage?.({ move: want }); } catch {} }
+function onInput(ev, fn) { hookListeners[ev].add(fn); ensureHook(); if (ev === 'mousemove') syncMoves(); return () => { hookListeners[ev].delete(fn); if (ev === 'mousemove') syncMoves(); }; }
 
 /* ------------------------------------------------------------------ overlay windows (one per display) */
 let overlays = [];
@@ -134,7 +146,7 @@ function createOverlays() {
     const win = new BrowserWindow({
       x, y, width, height, transparent: true, frame: false, hasShadow: false, resizable: false, movable: false,
       alwaysOnTop: true, skipTaskbar: true, focusable: false, show: false, roundedCorners: false, enableLargerThanScreen: true,
-      webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, backgroundThrottling: false },
+      webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true },
     });
     win.displayId = d.id; win.displayBounds = d.bounds;
     win.setIgnoreMouseEvents(true);
@@ -153,6 +165,25 @@ function syncOverlayVisibility() {
   overlays.forEach(w => { if (w.isDestroyed()) return; if (show) { if (!w.isVisible()) w.showInactive(); } else if (w.isVisible()) w.hide(); });
 }
 function overlaySend(ch, payload) { overlays.forEach(w => !w.isDestroyed() && w.webContents.send(ch, payload)); }
+// Click Ripple without a full-screen window: each burst gets a small transparent window just big enough for it, shown for
+// the burst and hidden right after. (The full-screen overlay is only kept up while Night Tint, Spotlight or the trail is on.)
+const fxPool = []; let fxNext = 0;
+function fxWin() {
+  let w = fxPool[fxNext % 3]; fxNext++;
+  if (w && !w.isDestroyed()) return w;
+  w = new BrowserWindow({ width: 200, height: 200, transparent: true, frame: false, hasShadow: false, resizable: false, movable: false, alwaysOnTop: true, skipTaskbar: true, focusable: false, show: false, roundedCorners: false,
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true } });
+  w.setIgnoreMouseEvents(true); w.setAlwaysOnTop(true, 'screen-saver'); w.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  w.loadFile(path.join(__dirname, 'glow.html'), { query: { fx: '1' } }); w._ready = new Promise(r => w.webContents.once('did-finish-load', r));
+  fxPool[(fxNext - 1) % 3] = w; return w;
+}
+function ripple(p) {
+  if (overlays.some(w => !w.isDestroyed() && w.isVisible())) return overlaySend('ripple', p);
+  const S = Math.ceil((p.size || 60) * 3.2) + 40, b = { x: Math.round(p.x - S / 2), y: Math.round(p.y - S / 2), width: S, height: S };
+  const w = fxWin(); clearTimeout(w._hideT);
+  w._ready.then(() => { if (w.isDestroyed()) return; w.setBounds(b, false); w.webContents.send('overlay:bounds', b); w.webContents.send('ripple', p); if (!w.isVisible()) w.showInactive();
+    w._hideT = setTimeout(() => { if (!w.isDestroyed()) { w.hide(); w.webContents.send('fx:clear'); } }, 950); });
+}
 function setOverlayPersistent(id, on) { on ? overlayPersistent.add(id) : overlayPersistent.delete(id); syncOverlayVisibility(); }
 /** kind: plug | unplug | low | full | info(ice) | warn(amber) | preview */
 function fireGlow(kind, extra = {}) {
@@ -165,13 +196,20 @@ ipcMain.on('glow:done', () => { glowBusy = Math.max(0, glowBusy - 1); syncOverla
 let audioWin = null;
 function ensureAudio() {
   if (audioWin && !audioWin.isDestroyed()) return audioWin;
-  audioWin = new BrowserWindow({ show: false, width: 10, height: 10, webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, backgroundThrottling: false, autoplayPolicy: 'no-user-gesture-required' } });
+  // WebAudio schedules on its own audio clock, so a throttled (normal) hidden window plays sounds on time. The page suspends its
+  // audio engine after 20 s of silence, so an idle Surge has no audio thread running at all.
+  audioWin = new BrowserWindow({ show: false, width: 10, height: 10, webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, autoplayPolicy: 'no-user-gesture-required' } });
   audioWin.loadFile(path.join(__dirname, 'audio.html'));
   audioWin.webContents.on('console-message', (_e, lvl, msg) => lvl >= 2 && log('audio', msg));
   return audioWin;
 }
 function play(sound, opts = {}) { if (settings.muted && !opts.force) return; lastSoundAt = Date.now(); soundCount++; const w = ensureAudio(); if (!w || w.isDestroyed()) return; const send = () => { try { w.webContents.send('audio:play', { sound, master: settings.masterVolume ?? 1, ...opts }); } catch {} }; w.webContents.isLoading() ? w.webContents.once('did-finish-load', send) : send(); }
-function sysSound(name) { if (IS_MAC) execFile('afplay', [`/System/Library/Sounds/${name}.aiff`], () => {}); else play('chime', { name, volume: .6 }); }
+// Surge's own glassy chimes (assets/sounds, drawn by tools/make-sounds.py). Older names map onto them.
+const CHIMES = { Glass: 'plug', Pop: 'unplug', Hero: 'full', Basso: 'low', Blow: 'breath', update: 'update', tap: 'tap', open: 'open' };
+function sysSound(name) { if (settings.muted) return; const f = path.join(__dirname, 'assets', 'sounds', (CHIMES[name] || 'tap') + '.wav');
+  if (IS_MAC && fs.existsSync(f)) execFile('afplay', ['-v', String(Math.max(.05, Math.min(1, (settings.masterVolume ?? 1) * .7))), f], () => {}); else play('chime', { name, volume: .5 }); }
+// interface sounds: off by default (Settings, About, Interface sounds)
+function uiSound(name) { if (settings.uiSounds) sysSound(name); }
 
 /* ------------------------------------------------------------------ battery (shared by modules) */
 let battery = null;
@@ -201,7 +239,7 @@ let settingsWin = null, notesWin = null;
 function openSettings(pane) {
   if (settingsWin && !settingsWin.isDestroyed()) { settingsWin.show(); settingsWin.focus(); if (pane) settingsWin.webContents.send('nav', pane); return; }
   settingsWin = new BrowserWindow({
-    width: 980, height: 660, minWidth: 820, minHeight: 540, show: false, frame: false, transparent: true, hasShadow: true,
+    width: 1040, height: 700, minWidth: 880, minHeight: 560, show: false, frame: false, transparent: true, hasShadow: true,
     ...(IS_MAC ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 16, y: 16 }, vibrancy: 'under-window', visualEffectState: 'active' } : {}), backgroundColor: '#00000000',
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true },
   });
@@ -354,114 +392,91 @@ function togglePopover() {
   x = Math.max(d.workArea.x + 6, Math.min(x, d.workArea.x + d.workArea.width - pw - 6)); y = Math.max(d.workArea.y + 6, Math.min(y, d.workArea.y + d.workArea.height - ph - 6));
   popBelow = below; w.webContents.send('popover:edge', below ? 'top' : 'bottom');
   w.setPosition(x, y, false); w.show(); w.focus(); w.webContents.send('popover:show');
-  try { if (running.has('updater')) MODULES.updater._check(ctx, false); } catch {}
+  uiSound('open');
+  try { if (running.has('updater')) MODULES.updater._peek?.(ctx); } catch {}      // a cheap look at GitHub, at most once a minute
 }
 
 /* ------------------------------------------------------------------ tray */
-let tray = null, trayMenu = null, trayExtras = {};           // module id → { title?: string, menu?: MenuItem[] }
-function trayIcon(b) {
-  const img = trayIconRaw(b);
-  // macOS will not decode the SVG versions on every system (the old battery icon came out blank) → never hand the tray an empty image
-  if (IS_MAC && (!img || img.isEmpty())) { if (b && b.level != null) { const c = trayChip(b); if (c) return c; } try { const p = nativeImage.createFromPath(path.join(__dirname, 'assets', 'tray', 'bolt.png')).resize({ width: 18, height: 18 }); p.setTemplateImage(false); return p; } catch {} }
-  return img;
+let tray = null, trayExtras = {};           // module id → { title?: string, menu?: MenuItem[] }
+// Surge 3.0: every menu-bar icon is a macOS TEMPLATE image (black + alpha, 1x and 2x) painted by traychip.js, so macOS tints it
+// like its own icons. Nothing animates in the menu bar any more: the icon only changes when the battery state does.
+const TC = require('./traychip.js');
+const trayCache = new Map();
+function templ(key, draw, [w, h]) {
+  if (trayCache.has(key)) return trayCache.get(key);
+  let img = nativeImage.createEmpty();
+  try { img = nativeImage.createFromBuffer(draw(1), { width: w, height: h }); img.addRepresentation({ scaleFactor: 2, buffer: draw(2), width: w, height: h }); if (IS_MAC) img.setTemplateImage(true); } catch (e) { log('tray icon error ' + e.message); }
+  if (img.isEmpty()) { try { img = nativeImage.createFromPath(path.join(__dirname, 'assets', 'tray', IS_MAC ? 'surgeTemplate.png' : 'bolt.png')); if (IS_MAC) img.setTemplateImage(true); } catch {} }
+  if (trayCache.size > 64) trayCache.clear(); trayCache.set(key, img); return img;
 }
-function trayIconRaw(b) {
-  if (!IS_MAC) {
-    const name = (!b || b.level == null) ? 'bolt' : `b${Math.round(Math.max(0, Math.min(100, b.level)) / 10) * 10}${b.charging ? 'c' : ''}`;
+const markIcon = () => templ('mark', s => TC.markPNG(s), TC.SIZES.mark);
+function trayChip(b) { const lvl = Math.round(b.level); return templ(`chip${lvl}${b.charging ? 'c' : ''}`, s => TC.chipPNG({ level: lvl, charging: b.charging }, s), TC.SIZES.chip); }
+function trayBattery(b) { const lvl = Math.round(b.level / 5) * 5; return templ(`bat${lvl}${b.charging ? 'c' : ''}`, s => TC.batteryPNG({ level: lvl, charging: b.charging }, s), TC.SIZES.battery); }
+function trayIcon(b, style) {
+  if (!IS_MAC) {     // Windows tray: the coloured PNGs in assets/tray
+    const name = (!b || b.level == null || style === 'mark') ? 'bolt' : `b${Math.round(Math.max(0, Math.min(100, b.level)) / 10) * 10}${b.charging ? 'c' : ''}`;
     try { return nativeImage.createFromPath(path.join(__dirname, 'assets', 'tray', name + '.png')); } catch { return nativeImage.createEmpty(); }
   }
-  // Menu-bar battery: live fill level, bolt while charging, hollow + warning tick when low. Template image → follows light/dark menu bar.
-  if (!b || b.level == null) {
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24"><path fill="black" d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>`;
-    const img = nativeImage.createFromDataURL('data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64')).resize({ width: 18, height: 18 }); img.setTemplateImage(true); return img;
-  }
-  const lvl = Math.max(0, Math.min(100, b.level)), low = !b.charging && lvl <= 20, full = lvl >= 100;
-  const W = 25, H = 12, R = 3.2, inner = 2, fillW = Math.max(1.2, (W - inner * 2 - 2) * lvl / 100);
-  const body = `<rect x="1" y="1" width="${W - 2}" height="${H - 2}" rx="${R}" fill="none" stroke="black" stroke-width="1.4" opacity="${low ? 1 : .55}"/>`;
-  const nub = `<rect x="${W - .2}" y="${H / 2 - 2}" width="2" height="4" rx="1" fill="black" opacity=".55"/>`;
-  const boltT = `translate(${W / 2 - 3.2},${H / 2 - 4.2}) scale(.36)`, boltD = 'M13 2 4 14h7l-1 8 9-12h-7z';
-  // template images only use alpha → a "white" bolt would still render solid, so the bolt is cut out of the fill with a mask (transparent halo), then drawn in black on top
-  const mask = b.charging ? `<mask id="m"><rect width="100%" height="100%" fill="white"/><path transform="${boltT}" d="${boltD}" fill="black" stroke="black" stroke-width="3.5" stroke-linejoin="round"/></mask>` : '';
-  const fill = `<rect x="${inner + 1}" y="${inner + 1}" width="${fillW}" height="${H - inner * 2 - 2}" rx="${R - 1.6}" fill="black" ${b.charging ? 'mask="url(#m)"' : ''}/>`;
-  const bolt = b.charging ? `<path transform="${boltT}" d="${boltD}" fill="black"/>` : '';
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${(W + 2) * 2}" height="${H * 2}" viewBox="0 0 ${W + 2} ${H}">${mask}${body}${nub}${fill}${bolt}</svg>`;
-  const img = nativeImage.createFromDataURL('data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64')).resize({ width: W + 2, height: H });
-  img.setTemplateImage(true); return img;
+  if (!b || b.level == null || style === 'mark' || style === 'bolt' || style === 'pct') return markIcon();
+  if (style === 'chip') return trayChip(b);
+  return trayBattery(b);
 }
 let trayIconKey = '';
-let chipLogged = false, chipBad = false;
-function trayChip(b) {
-  // the charge chip: a tiny tank in the menu bar (colour image, not a template, so it keeps its state colours)
-  try { const { chipPNG } = require('./traychip.js'); const g = mod('glow') || {};
-    if (chipBad) return null;
-    const png = chipPNG(b, { accent: g.theme === 'solid' ? g.color : '#00FF85', scale: 2 });
-    const img = nativeImage.createFromBuffer(png, { scaleFactor: 2 });                       // 80×36 pixels shown at 40×18 → crisp on Retina
-    const sz = img.isEmpty() ? { width: 0, height: 0 } : img.getSize();
-    if (!chipLogged) { chipLogged = true; log(`tray chip ok ${sz.width}x${sz.height} png=${png.length}`); }
-    if (sz.width !== 40 || sz.height !== 18) { chipBad = true; log('tray chip bad size'); return null; }
-    img.setTemplateImage(false); return img; } catch (e) { log('tray chip error ' + e.message); return null; }
-}
 function setTrayBattery(b, style) {
   if (!tray) return;
-  const chip = IS_MAC && style === 'chip' && b && b.level != null;
-  const k = b ? `${Math.round(b.level)}|${b.charging ? 1 : 0}|${b.charged ? 1 : 0}|${chip ? 'chip' + (mod('glow')?.color || '') + (mod('glow')?.theme || '') + (mod('glow')?.trayFlow === false ? 'still' : '') : ''}` : 'bolt';
+  const st = style || mod('glow')?.trayStyle || 'mark';
+  const k = b && b.level != null ? `${st}|${Math.round(b.level)}|${b.charging ? 1 : 0}` : 'mark';
   if (k === trayIconKey) return; trayIconKey = k;
-  try { const img = (chip && trayChip(b)) || trayIcon(b); tray.setImage(img); } catch (e) { console.error('tray icon', e); }
-  chipFlow(chip && !chipBad && mod('glow')?.trayFlow !== false ? b : null);
+  try { tray.setImage(trayIcon(b, st)); } catch (e) { console.error('tray icon', e); }
 }
-// The chip's liquid keeps moving: 12 frames per state, painted once and cached, then cycled. Costs next to nothing (a ready image is swapped in);
-// paused while the screen is locked or the Mac sleeps.
-let flowT = null, flowFrames = [], flowL = null, flowI = 0, flowPaused = false, flowLogged = false;
-function chipFlow(b) {
-  clearInterval(flowT); flowT = null; flowFrames = []; flowL = null; flowI = 0;
-  if (!b || !tray || flowPaused) return;
-  try { const C = require('./traychip.js'), g = mod('glow') || {};
-    flowL = C.chipLayout(b, { accent: g.theme === 'solid' ? g.color : '#00FF85', scale: 2 });
-    flowT = setInterval(() => { try {
-      if (!tray || tray.isDestroyed()) return chipFlow(null);
-      flowI = (flowI + 1) % C.FRAMES;
-      let img = flowFrames[flowI];
-      if (!img) { img = nativeImage.createFromBuffer(C.chipFramePNG(flowL, flowI), { scaleFactor: 2 }); if (img.isEmpty()) return chipFlow(null); img.setTemplateImage(false); flowFrames[flowI] = img; }
-      tray.setImage(img);
-      if (!flowLogged && flowI === C.FRAMES - 1) { flowLogged = true; log('tray chip flow ok ' + C.FRAMES + ' frames'); }
-    } catch (e) { log('tray chip flow error ' + e.message); chipFlow(null); } }, b.charging ? 140 : 260);
-  } catch (e) { log('tray chip flow error ' + e.message); }
-}
-function chipFlowPause(p) { flowPaused = p; if (p) chipFlow(null); else { trayIconKey = ''; try { MODULES.glow?.onSettings?.(ctx); } catch {} } }
-app.whenReady().then(() => { try { const { powerMonitor } = require('electron'); for (const e of ['suspend', 'lock-screen']) powerMonitor.on(e, () => chipFlowPause(true)); for (const e of ['resume', 'unlock-screen']) powerMonitor.on(e, () => chipFlowPause(false)); } catch {} });
 function setTray(id, extra) { const k = JSON.stringify(extra, (kk, v) => typeof v === 'function' ? undefined : v); if (trayKeys[id] === k) return; trayKeys[id] = k; trayExtras[id] = extra; updateTray(); }
 const trayKeys = {};
+let lastTitle = null;
 function updateTray() {
   if (!tray) return;
   const titles = Object.values(trayExtras).map(e => e?.title).filter(Boolean); if (settings.muted) titles.push(IS_MAC ? 'Muted' : '(muted)');
-  if (IS_MAC) tray.setTitle(titles.length ? ' ' + titles.join('  ') : ''); else tray.setToolTip(['Surge', ...titles].join('  '));
+  const t = titles.join('  ');
+  if (t === lastTitle) return; lastTitle = t;
+  if (IS_MAC) tray.setTitle(t ? ' ' + t : '', { fontType: 'monospacedDigit' }); else tray.setToolTip(['Surge', ...titles].join('  '));
+}
+// the right-click menu, built from the modules' items only when it opens (it used to be rebuilt every time a title changed)
+function trayTemplate() {
   const items = [];
-  for (const [id, e] of Object.entries(trayExtras)) if (e?.menu?.length) { items.push(...e.menu); items.push({ type: 'separator' }); }
-  trayMenu = Menu.buildFromTemplate([
+  for (const [, e] of Object.entries(trayExtras)) if (e?.menu?.length) { items.push(...e.menu); items.push({ type: 'separator' }); }
+  return [
     ...items,
-    { label: 'Settings…', accelerator: 'Cmd+,', click: () => openSettings() },
+    { label: 'Settings', accelerator: 'Cmd+,', click: () => openSettings() },
     { label: 'Quick Notes', accelerator: 'Cmd+Shift+N', click: toggleNotes },
+    { label: 'Check for updates', click: () => { try { MODULES.updater?._check(ctx, true); MODULES.updater?.actions?.card(); } catch {} } },
+    { label: 'About Surge', click: () => openSettings('about') },
     { type: 'separator' },
     { label: 'Mute all sounds', type: 'checkbox', checked: !!settings.muted, accelerator: 'Cmd+Shift+M', click: (m) => applyPatch({ muted: m.checked }) },
     { label: 'Launch at login', type: 'checkbox', checked: !!settings.launchAtLogin, click: (m) => applyPatch({ launchAtLogin: m.checked }) },
     { label: 'Quit Surge', accelerator: 'Cmd+Q', click: () => app.quit() },
-  ]);
+  ];
+}
+function openTrayMenu() {
+  const tpl = trayTemplate(); const b = tray.getBounds();
+  if (Nova.popupMenu(tpl, b)) return;
+  try { tray.popUpContextMenu(Menu.buildFromTemplate(tpl)); } catch (e) { log('tray menu', e.message); }
 }
 
 /* ------------------------------------------------------------------ module context + lifecycle */
 const ctx = {
   app, screen, clipboard, Notification, nativeTheme, powerSaveBlocker, globalShortcut, execFile, os,
-  get settings() { return settings; }, log, mod, fireGlow, overlaySend, setOverlayPersistent, play, sysSound, onInput, hookState: () => hookState,
+  get settings() { return settings; }, log, mod, fireGlow, overlaySend, setOverlayPersistent, play, sysSound, uiSound, ripple, onInput, hookState: () => hookState,
   frontApp: async () => { try { return (await runningApps()).find(a => a.front) || null; } catch { return null; } },
   activateApp: (a) => { if (!a) return; if (IS_WIN) { if (a.pid) winapps.activate(a.pid); } else if (a.path) execFile('open', ['-a', a.path], () => {}); },
-  setTray, setTrayBattery, openSettings, toggleNotes, readBattery, markCleanExit, bundlePath, stopHook: () => { quitting = true; stopHook(); }, applyPatch: (p) => applyPatch(p), get battery() { return battery; }, set battery(v) { battery = v; },
+  setTray, setTrayBattery, openSettings, dialog: (o) => Nova.dialog(o), toggleNotes, readBattery, markCleanExit, bundlePath, stopHook: () => { quitting = true; stopHook(); }, applyPatch: (p) => applyPatch(p), get battery() { return battery; }, set battery(v) { battery = v; },
   notify: (title, body) => { try { new Notification({ title, body, silent: true }).show(); } catch {} },
   broadcast: (ch, p) => { [settingsWin, notesWin, audioWin, popWin, ...overlays].forEach(w => { try { if (w && !w.isDestroyed()) w.webContents.send(ch, p); } catch {} }); },
 };
 const running = new Set();
+if (process.env.SURGE_TEST) global.__surge = { ctx, ripple, MODULES };   // tests only
 function startModule(id) { const m = MODULES[id]; if (!m || running.has(id)) return; try { log('starting', id); m.start?.(ctx); running.add(id); log('start', id); } catch (e) { console.error(`[${id}] start`, e); } }
 function stopModule(id) { const m = MODULES[id]; if (!m || !running.has(id)) return; try { m.stop?.(ctx); } catch (e) { console.error(`[${id}] stop`, e); } running.delete(id); trayExtras[id] = null; delete trayKeys[id]; updateTray(); }
 function reconcile() {
+  if (['keys', 'mouse', 'caps', 'chime'].some(id => mod(id)?.enabled)) setTimeout(ensureAudio, 1500);
   for (const id in MODULES) {
     const want = !!mod(id).enabled;
     if (want && !running.has(id)) startModule(id);
@@ -472,6 +487,7 @@ function reconcile() {
 function applyPatch(patch) {
   if ('masterVolume' in patch) settings.masterVolume = Math.max(0, Math.min(1, +patch.masterVolume));
   if ('muted' in patch) { settings.muted = !!patch.muted; setTimeout(updateTray, 0); }
+  if ('uiSounds' in patch) { settings.uiSounds = !!patch.uiSounds; if (settings.uiSounds) sysSound('tap'); }
   if ('launchAtLogin' in patch) { settings.launchAtLogin = !!patch.launchAtLogin; if (IS_MAC || IS_WIN) app.setLoginItemSettings({ openAtLogin: settings.launchAtLogin, openAsHidden: true }); }
   if (patch.modules) for (const id in patch.modules) settings.modules[id] = { ...settings.modules[id], ...patch.modules[id] };
   saveSettings(); reconcile(); ctx.broadcast('settings:update', settings); updateTray();
@@ -537,7 +553,7 @@ app.whenReady().then(async () => {
   if (process.platform === 'darwin' && app.isPackaged) {
     const translocated = process.execPath.includes('/AppTranslocation/');
     if (translocated || !app.isInApplicationsFolder()) {
-      const r = await dialog.showMessageBox({ type: 'info', buttons: ['Move to Applications', 'Not now'], defaultId: 0, cancelId: 1, message: 'Move Surge to your Applications folder?',
+      const r = await Nova.dialog({ type: 'info', buttons: ['Move to Applications', 'Not now'], defaultId: 0, cancelId: 1, message: 'Move Surge to your Applications folder?',
         detail: translocated ? 'macOS is running Surge from a temporary, read-only location (this happens when you open it from the DMG). Permissions and auto-updates only work from Applications.' : 'Surge works best — and can update itself — when it lives in Applications.' });
       if (r.response === 0) { try { if (app.moveToApplicationsFolder({ conflictHandler: () => true })) return; } catch (e) { log('move failed', e.message); } }
     } else {
@@ -553,16 +569,21 @@ app.whenReady().then(async () => {
   loadSettings(); if (firstRun) { settings.launchAtLogin = true; settings.welcomed = false; } saveSettings();
   if ((IS_MAC || IS_WIN) && app.isPackaged) { try { if (app.getLoginItemSettings().openAtLogin !== settings.launchAtLogin) app.setLoginItemSettings({ openAtLogin: settings.launchAtLogin, openAsHidden: true }); } catch {} }
   Menu.setApplicationMenu(Menu.buildFromTemplate([{ label: 'Surge', submenu: [
+    { label: 'About Surge', click: () => openSettings('about') },
+    { label: 'Check for Updates', click: () => { try { MODULES.updater?._check(ctx, true); MODULES.updater?.actions?.card(); } catch {} } },
+    { type: 'separator' },
     { label: 'Settings…', accelerator: 'Cmd+,', click: () => openSettings() },
     { label: 'Quick Notes', accelerator: 'Cmd+Shift+N', click: toggleNotes },
     { label: 'Preview glow', accelerator: 'Cmd+P', click: () => fireGlow('preview') },
     { type: 'separator' }, { role: 'close' }, { role: 'minimize' }, { role: 'quit' } ]}, { role: 'editMenu' }]));
   if (process.platform === 'darwin') app.dock?.hide();
-  createOverlays(); ensureAudio();
-  tray = new Tray(trayIcon()); tray.setIgnoreDoubleClickEvents(true); tray.setToolTip('Surge');
-  if (IS_MAC && process.env.SURGE_SELFTEST) { try { const t = trayChip({ level: 67, charging: true }); log('tray chip selftest ' + (t ? 'pass' : 'FAIL')); try { const C = require('./traychip.js'), L = C.chipLayout({ level: 67, charging: true }, { scale: 2 }); let n = 0; for (let f = 0; f < C.FRAMES; f++) { const im = nativeImage.createFromBuffer(C.chipFramePNG(L, f), { scaleFactor: 2 }); if (!im.isEmpty() && im.getSize().width === 40) { tray.setImage(im); n++; } } log(n === C.FRAMES ? 'tray chip flow ok ' + n + ' frames' : 'tray chip flow FAIL ' + n); tray.setImage(trayIcon()); } catch (e) { log('tray chip flow FAIL ' + e.message); } log('tray svg icon ' + (trayIconRaw({ level: 50 }).isEmpty() ? 'EMPTY' : 'ok') + ', fallback ' + (trayIcon({ level: 50 }).isEmpty() ? 'EMPTY' : 'ok') + ', bolt ' + (trayIcon().isEmpty() ? 'EMPTY' : 'ok')); } catch (e) { log('tray chip selftest FAIL ' + e.message); } }
+  createOverlays();
+  tray = new Tray(trayIcon(null, 'mark')); tray.setIgnoreDoubleClickEvents(true); tray.setToolTip('Surge');
+  if (IS_MAC && process.env.SURGE_SELFTEST) { try { const tests = [['mark', markIcon(), 16], ['chip', trayChip({ level: 67, charging: true }), 34], ['battery', trayBattery({ level: 50 }), 26]];
+      const bad = tests.filter(([, im, w]) => im.isEmpty() || im.getSize().width !== w || !im.isTemplateImage() || im.getScaleFactors().indexOf(2) < 0).map(t => t[0]);
+      log(bad.length ? 'tray template selftest FAIL ' + bad.join(',') : 'tray template selftest pass (mark, chip, battery: template, 1x + 2x)'); } catch (e) { log('tray template selftest FAIL ' + e.message); } }
   tray.on('click', togglePopover);
-  tray.on('right-click', () => trayMenu && tray.popUpContextMenu(trayMenu));
+  tray.on('right-click', openTrayMenu);
   if (IS_WIN) app.setAppUserModelId('app.surge.glow');
   updateTray(); ensurePopover();
   let dispT; const rebuild = () => { clearTimeout(dispT); dispT = setTimeout(() => { createOverlays(); running.forEach(id => MODULES[id].onSettings?.(ctx)); }, 600); };

@@ -8,7 +8,7 @@ module.exports = {
   start(ctx) {
     let caps = false;
     ctx.setOverlayPersistent('caps', false);
-    off.push(ctx.onInput('keydown', e => { if (e.keycode !== 58) return; caps = !caps; ctx.fireGlow('hud', { hud: { text: caps ? 'CAPS LOCK ON' : 'Caps Lock off', color: caps ? '#FFB300' : '#8E8E9C' } }); if (ctx.mod('caps').sound) ctx.play(caps ? 'capsOn' : 'capsOff', { volume: .5 }); }));
+    off.push(ctx.onInput('keydown', e => { if (e.keycode !== 58) return; caps = !caps; ctx.fireGlow('hud', { hud: { text: caps ? 'CAPS LOCK ON' : 'Caps Lock off', color: caps ? '#FFA514' : '#8E8E9C' } }); if (ctx.mod('caps').sound) ctx.play(caps ? 'capsOn' : 'capsOff', { volume: .5 }); }));
   },
   stop() { off.forEach(f => f()); off = []; },
 };

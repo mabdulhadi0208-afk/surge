@@ -179,56 +179,69 @@
       if (S.showCapsule) capsule(t, dur, A, sc, pal, level, kind);
     }
 
+    // Surge 3.0 capsules: Nova glass (ink body, specular top, gradient rim, coloured under-glow) with a glossy icon tile
+    const HEAD = 'ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif';
+    function glassPill(cw, ch, c0, c1, k) {
+      const r = ch / 2;
+      ctx.save(); ctx.shadowColor = rgba(c0, 0.55); ctx.shadowBlur = 34 * k; ctx.shadowOffsetY = 12 * k;
+      ctx.beginPath(); ctx.roundRect(-cw / 2, -ch / 2, cw, ch, r);
+      const body = ctx.createLinearGradient(0, -ch / 2, 0, ch / 2); body.addColorStop(0, 'rgba(30,24,58,0.96)'); body.addColorStop(1, 'rgba(9,7,18,0.96)');
+      ctx.fillStyle = body; ctx.fill(); ctx.restore();
+      ctx.save(); ctx.beginPath(); ctx.roundRect(-cw / 2, -ch / 2, cw, ch, r); ctx.clip();
+      const wash = ctx.createRadialGradient(-cw / 2, -ch / 2, 0, -cw / 2, -ch / 2, cw * .7); wash.addColorStop(0, rgba(c0, 0.38)); wash.addColorStop(1, rgba(c0, 0));
+      ctx.fillStyle = wash; ctx.fillRect(-cw / 2, -ch / 2, cw, ch);
+      const sheen = ctx.createLinearGradient(0, -ch / 2, 0, 0); sheen.addColorStop(0, 'rgba(255,255,255,0.16)'); sheen.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = sheen; ctx.fillRect(-cw / 2, -ch / 2, cw, ch / 2); ctx.restore();
+      const rim = ctx.createLinearGradient(-cw / 2, -ch / 2, cw / 2, ch / 2);
+      rim.addColorStop(0, 'rgba(255,255,255,0.75)'); rim.addColorStop(.25, rgba(c0, 0.8)); rim.addColorStop(.55, 'rgba(255,255,255,0.08)'); rim.addColorStop(.85, rgba(c1, 0.7)); rim.addColorStop(1, 'rgba(255,255,255,0.4)');
+      ctx.beginPath(); ctx.roundRect(-cw / 2 + .5, -ch / 2 + .5, cw - 1, ch - 1, r); ctx.lineWidth = 1.3 * k; ctx.strokeStyle = rim; ctx.stroke();
+    }
+    function tileAt(x, s, c0, c1, k, glyph) {
+      const r = s * .32; ctx.save(); ctx.shadowColor = rgba(c0, 0.7); ctx.shadowBlur = 14 * k; ctx.shadowOffsetY = 4 * k;
+      ctx.beginPath(); ctx.roundRect(x - s / 2, -s / 2, s, s, r); const g = ctx.createLinearGradient(x - s / 2, -s / 2, x + s / 2, s / 2); g.addColorStop(0, rgba(brighten(c0, .35))); g.addColorStop(.45, rgba(c0)); g.addColorStop(1, rgba(c1)); ctx.fillStyle = g; ctx.fill(); ctx.restore();
+      ctx.save(); ctx.beginPath(); ctx.roundRect(x - s / 2, -s / 2, s, s, r); ctx.clip(); const hl = ctx.createRadialGradient(x - s * .2, -s / 2, 0, x - s * .2, -s / 2, s * .7); hl.addColorStop(0, 'rgba(255,255,255,0.6)'); hl.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = hl; ctx.fillRect(x - s / 2, -s / 2, s, s); ctx.restore();
+      ctx.save(); ctx.translate(x, 0); ctx.fillStyle = '#fff'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.2 * k; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; const u = s / 24;
+      if (glyph === 'bolt') { ctx.beginPath(); ctx.moveTo(1.5 * u, -9.5 * u); ctx.lineTo(-6.5 * u, 2 * u); ctx.lineTo(-.5 * u, 2 * u); ctx.lineTo(-1.5 * u, 9.5 * u); ctx.lineTo(6.5 * u, -2 * u); ctx.lineTo(.5 * u, -2 * u); ctx.closePath(); ctx.fill(); }
+      else { ctx.beginPath(); ctx.moveTo(0, -8 * u); ctx.quadraticCurveTo(.6 * u, -.6 * u, 8 * u, 0); ctx.quadraticCurveTo(.6 * u, .6 * u, 0, 8 * u); ctx.quadraticCurveTo(-.6 * u, .6 * u, -8 * u, 0); ctx.quadraticCurveTo(-.6 * u, -.6 * u, 0, -8 * u); ctx.fill(); }
+      ctx.restore();
+    }
     function capsule(t, dur, A, sc, pal, level, kind) {
       if (anim.hud) return drawHud(t, dur, A, sc, pal, anim.hud);
       const inT = clamp(t / 0.9, 0, 1), outT = clamp((t - (dur - 0.75)) / 0.75, 0, 1);
       const sIn = spring(inT), sOut = 1 - easeInOutCubic(outT);
-      const scale = lerp(0.6, 1, Math.min(sIn, 1.08)) * lerp(1, 0.88, 1 - sOut), al = Math.min(inT * 1.6, 1) * sOut;
+      const scale = lerp(0.6, 1, Math.min(sIn, 1.06)) * lerp(1, 0.9, 1 - sOut), al = Math.min(inT * 1.6, 1) * sOut;
       if (al <= 0) return;
       const k = sc * (opts.capsuleScale ?? 1);
-      const cw = 236 * k, ch = 72 * k, cx = W / 2, cy = H - 128 * k + (1 - sIn) * 40 * k;
+      const cw = 270 * k, ch = 80 * k, cx = W / 2, cy = H - 132 * k + (1 - sIn) * 40 * k;
       const c0 = hex2rgb(pal[0]), c1 = hex2rgb(pal[1]);
       const label = kind === 'low' ? 'Low battery' : kind === 'unplug' ? 'Unplugged' : (kind === 'full' || level >= 100) ? 'Fully charged' : 'Charging';
       ctx.save(); ctx.translate(cx, cy); ctx.scale(scale, scale); ctx.globalAlpha = al;
-      // glow halo behind the capsule (cheap: a few expanding strokes)
-      for (let i = 4; i >= 1; i--) { ctx.beginPath(); ctx.roundRect(-cw / 2 - i * 5 * k, -ch / 2 - i * 5 * k, cw + i * 10 * k, ch + i * 10 * k, ch / 2 + i * 5 * k); ctx.fillStyle = rgba(c0, 0.045 * A); ctx.fill(); }
-      ctx.beginPath(); ctx.roundRect(-cw / 2, -ch / 2, cw, ch, ch / 2);
-      ctx.fillStyle = 'rgba(12,12,16,0.86)'; ctx.fill();
-      // animated gradient rim
-      const rim = ctx.createLinearGradient(-cw / 2, 0, cw / 2, 0);
-      const ph = (t * 0.7) % 1;
-      rim.addColorStop(0, rgba(c0, 0.35)); rim.addColorStop(ph, rgba(brighten(c1, 0.5), 0.95)); rim.addColorStop(Math.min(1, ph + 0.001), rgba(c1, 0.95)); rim.addColorStop(1, rgba(c0, 0.35));
-      ctx.lineWidth = 1.2 * k; ctx.strokeStyle = rim; ctx.stroke();
-      // ring
-      const rx = -cw / 2 + 36 * k, rr = 20 * k;
-      ctx.lineWidth = 4 * k; ctx.lineCap = 'round';
-      ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.beginPath(); ctx.arc(rx, 0, rr, 0, Math.PI * 2); ctx.stroke();
-      const g = ctx.createLinearGradient(rx - rr, 0, rx + rr, 0); g.addColorStop(0, rgba(brighten(c1, 0.3))); g.addColorStop(1, rgba(c0));
-      ctx.strokeStyle = g;
-      ctx.beginPath(); ctx.arc(rx, 0, rr, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * easeOutExpo(inT) * clamp(level, 0, 100) / 100); ctx.stroke(); ctx.shadowBlur = 0;
-      ctx.fillStyle = '#fff'; ctx.beginPath();
-      ctx.moveTo(rx + 2 * k, -9 * k); ctx.lineTo(rx - 6 * k, 2 * k); ctx.lineTo(rx - 1 * k, 2 * k); ctx.lineTo(rx - 2 * k, 9 * k); ctx.lineTo(rx + 6 * k, -2 * k); ctx.lineTo(rx + 1 * k, -2 * k); ctx.closePath(); ctx.fill();
+      glassPill(cw, ch, c0, c1, k);
+      // the ring of charge around the tile
+      const rx = -cw / 2 + 42 * k, rr = 25 * k;
+      ctx.lineWidth = 3.5 * k; ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.beginPath(); ctx.arc(rx, 0, rr, 0, Math.PI * 2); ctx.stroke();
+      const g = ctx.createLinearGradient(rx - rr, -rr, rx + rr, rr); g.addColorStop(0, '#fff'); g.addColorStop(1, rgba(brighten(c0, .3)));
+      ctx.strokeStyle = g; ctx.beginPath(); ctx.arc(rx, 0, rr, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * easeOutExpo(inT) * clamp(level, 0, 100) / 100); ctx.stroke();
+      tileAt(rx, 34 * k, c0, c1, k, 'bolt');
       ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
-      ctx.font = `600 ${20 * k}px -apple-system, "SF Pro Display", "Inter Tight", Inter, system-ui, sans-serif`; ctx.fillStyle = '#fff';
-      ctx.fillText(`${Math.round(level)}%`, rx + 34 * k, -11 * k);
-      ctx.font = `500 ${13 * k}px -apple-system, "SF Pro Text", Inter, system-ui, sans-serif`; ctx.fillStyle = rgba(brighten(c1, 0.45));
-      ctx.fillText(label, rx + 34 * k, 12 * k);
+      ctx.font = `800 ${28 * k}px ${HEAD}`; ctx.fillStyle = '#fff'; ctx.fillText(`${Math.round(level)}%`, rx + 40 * k, -10 * k);
+      ctx.font = `700 ${13 * k}px ${HEAD}`; ctx.fillStyle = rgba(brighten(c0, 0.55)); ctx.fillText(label.toUpperCase(), rx + 41 * k, 16 * k);
       ctx.restore();
     }
 
     function drawHud(t, dur, A, sc, pal, hud) {
-      // simple centred pill: text only, springs in / fades out
+      // a message capsule: glossy tile + bold text, springs in once, fades out
       const inT = clamp(t / 0.6, 0, 1), outT = clamp((t - (dur - 0.5)) / 0.5, 0, 1);
       const sIn = spring(inT), al = Math.min(inT * 1.8, 1) * (1 - easeInOutCubic(outT));
       if (al <= 0) return;
       const k = sc * (opts.capsuleScale ?? 1), c0 = hex2rgb(pal[0]);
-      ctx.save(); ctx.font = `600 ${16 * k}px -apple-system, "SF Pro Text", Inter, system-ui, sans-serif`; ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
-      const tw = ctx.measureText(hud.text).width, cw = tw + 56 * k, ch = 46 * k;
-      ctx.translate(W / 2, H - 110 * k + (1 - sIn) * 30 * k); ctx.scale(lerp(0.7, 1, Math.min(sIn, 1.06)), lerp(0.7, 1, Math.min(sIn, 1.06))); ctx.globalAlpha = al;
-      for (let i = 3; i >= 1; i--) { ctx.beginPath(); ctx.roundRect(-cw / 2 - i * 5 * k, -ch / 2 - i * 5 * k, cw + i * 10 * k, ch + i * 10 * k, ch); ctx.fillStyle = rgba(c0, 0.05); ctx.fill(); }
-      ctx.beginPath(); ctx.roundRect(-cw / 2, -ch / 2, cw, ch, ch / 2); ctx.fillStyle = 'rgba(12,12,16,0.88)'; ctx.fill(); ctx.lineWidth = 1 * k; ctx.strokeStyle = rgba(c0, 0.6); ctx.stroke();
-      ctx.beginPath(); ctx.arc(-cw / 2 + 20 * k, 0, 5 * k, 0, Math.PI * 2); ctx.fillStyle = rgba(c0); ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.fillText(hud.text, 8 * k, 1);
+      ctx.save(); ctx.font = `800 ${17 * k}px ${HEAD}`; ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+      const tw = ctx.measureText(hud.text).width, ch = 56 * k, cw = tw + 86 * k;
+      ctx.translate(W / 2, H - 112 * k + (1 - sIn) * 30 * k); const sS = lerp(0.7, 1, Math.min(sIn, 1.05)); ctx.scale(sS, sS); ctx.globalAlpha = al;
+      const deep = [Math.round(c0[0] * .55 + 60), Math.round(c0[1] * .35), Math.round(c0[2] * .55 + 90)];
+      glassPill(cw, ch, c0, deep, k);
+      tileAt(-cw / 2 + 30 * k, 34 * k, c0, deep, k, 'spark');
+      ctx.fillStyle = '#fff'; ctx.fillText(hud.text, -cw / 2 + 58 * k, 1);
       ctx.restore();
     }
 

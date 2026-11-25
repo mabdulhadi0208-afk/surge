@@ -21,5 +21,6 @@ contextBridge.exposeInMainWorld('surge', {
   appReveal: (p) => ipcRenderer.send('apps:reveal', p), appForceQuit: (pid) => ipcRenderer.send('apps:forcequit', pid), appOpenWith: (p, files) => ipcRenderer.send('apps:openwith', p, files),
   pathFor: (f) => { try { return webUtils.getPathForFile(f); } catch { return f?.path || null; } },
   notesLoad: () => ipcRenderer.invoke('notes:load'), notesSave: (t) => ipcRenderer.send('notes:save', t),
+  updHeight: (h) => ipcRenderer.send('update:height', h),
   platform: process.platform,
 });

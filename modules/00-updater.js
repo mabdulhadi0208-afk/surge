@@ -1,11 +1,19 @@
 // Auto Update — GitHub Releases → zip → staged .app → swap → relaunch.
-// State machine: idle → checking → available → downloading → unpacking → ready → installing  (error → retry)
+// State machine: idle → checking → available → downloading → unpacking → ready → installing  (error → retry with backoff)
+// What it reads: the redirect of github.com/<repo>/releases/latest (→ the newest tag), then the release asset
+// Surge-mac-arm64.zip (macOS) or Surge-win-x64.exe (Windows) that .github/workflows/build.yml uploads. No latest-mac.yml needed.
+// Zero lag: one tiny HEAD request every 30 minutes (and on wake, and when you open the menu, at most once a minute).
+// Never freezes: every network and disk step is async (curl, ditto, hdiutil run as child processes), and a failure only
+// ever leaves the current Surge running with a calm "Update paused" and a retry later.
 const { execFile, spawn } = require('child_process');
 const { BrowserWindow, screen } = require('electron');
 const fs = require('fs'); const path = require('path');
 const REPO = 'mabdulhadi0208-afk/surge', ZIP = 'Surge-mac-arm64.zip', DMG = 'Surge-mac-arm64.dmg', EXE = 'Surge-win-x64.exe';
 const IS_WIN = process.platform === 'win32';
-let timer = null, popup = null, snoozedUntil = 0, skipVersion = null, polling = false, misses = 0, lastTag = null, lastCheck = 0, dlProc = null;
+let timer = null, popup = null, snoozedUntil = 0, skipVersion = null, polling = false, misses = 0, lastTag = null, lastCheck = 0, dlProc = null, lastPeek = 0, retryT = null, fails = 0;
+// shown on the card right after an update lands (keep it to this version's changes)
+const WHATS_NEW = ['A whole new look: deep colour, glass and hero banners everywhere', 'Zero lag: Surge now sleeps when you are not using it', 'A new menu-bar icon, update card and sounds'];
+const NO_BUILD = process.platform === 'darwin' && process.arch !== 'arm64';   // only an Apple silicon build is published
 const state = { status: 'idle', latest: null, url: null, size: 0, progress: 0, bytes: 0, speed: 0, eta: 0, error: null, staged: null, isZip: true };
 
 const semver = v => String(v).replace(/^v/, '').split('.').map(n => parseInt(n, 10) || 0);
@@ -24,43 +32,47 @@ const migratedFlag = () => path.join(C.app.getPath('userData'), 'migrated-' + C.
 const log = (...a) => { try { fs.appendFileSync(path.join(C.app.getPath('logs'), 'surge.log'), `[${new Date().toISOString()}] updater: ${a.join(' ')}\n`); } catch {} };
 const updDir = () => path.join(C.app.getPath('userData'), 'update');
 function clearStaged() { try { fs.rmSync(updDir(), { recursive: true, force: true }); } catch {} state.staged = null; }
-function push() { const s = { ...state, current: C.app.getVersion(), lastCheck }; C.broadcast('updater:state', s); if (popup && !popup.isDestroyed()) { try { popup.webContents.send('updater:state', s); } catch {} } }
-function set(patch) { Object.assign(state, patch); push(); }
+function push() { const s = { ...state, current: C.app.getVersion(), lastCheck, whatsNew: WHATS_NEW, noBuild: NO_BUILD }; C.broadcast('updater:state', s); if (popup && !popup.isDestroyed()) { try { popup.webContents.send('updater:state', s); } catch {} } }
+function set(patch) { if (['available', 'ready'].includes(patch.status) || (patch.status === 'uptodate' && !retryT)) fails = 0; Object.assign(state, patch); push(); }
 
 function showCard() {
   if (!C.mod('updater').popup) return;
   if (popup && !popup.isDestroyed()) { if (!popup.isVisible()) popup.showInactive(); push(); return; }
-  const d = screen.getPrimaryDisplay().workArea; const w = 560, h = 186;
+  const d = screen.getPrimaryDisplay().workArea; const w = 520, h = 236;
   popup = new BrowserWindow({ width: w, height: h, x: Math.round(d.x + d.width / 2 - w / 2), y: d.y + 12, frame: false, transparent: true, hasShadow: false, resizable: false, alwaysOnTop: true, skipTaskbar: true, focusable: true, fullscreenable: false, backgroundColor: '#00000000',
     webPreferences: { preload: path.join(__dirname, '..', 'preload.js'), contextIsolation: true } });
   popup.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true }); popup.setAlwaysOnTop(true, 'screen-saver');
   popup.loadFile(path.join(__dirname, '..', 'update.html')); popup.once('ready-to-show', () => { popup.showInactive(); push(); }); popup.on('closed', () => (popup = null));
-  try { C.sysSound('Glass'); } catch {}
+  popup.webContents.on('ipc-message', (_e, ch, hgt) => { if (ch === 'update:height' && popup && !popup.isDestroyed()) { const b = popup.getBounds(), H = Math.max(150, Math.min(420, Math.ceil(+hgt || h))); if (b.height !== H) popup.setBounds({ ...b, height: H }, false); } });
+  try { C.uiSound?.('update'); } catch {}
 }
 function hideCard() { if (popup && !popup.isDestroyed()) popup.hide(); }
+// a failed check or download never shows as a red error on its own: it waits and tries again (1, 5, 15, 30 min)
+function retryLater() { clearTimeout(retryT); const mins = [1, 5, 15, 30][Math.min(fails++, 3)]; retryT = setTimeout(() => { retryT = null; lastTag = null; check(false); }, mins * 60000); log('will retry in', mins, 'min'); }
 
 async function check(manual) {
   if (['downloading', 'unpacking', 'installing'].includes(state.status)) return state;
   set({ status: 'checking', error: null }); lastCheck = Date.now();
+  if (NO_BUILD) { set({ status: 'uptodate', latest: null, note: 'Updates for Intel Macs come from the website' }); return state; }
   try {
     const latest = await latestTag(); if (!latest) throw new Error('GitHub did not answer');
     const cur = C.app.getVersion();
     if (!newer(latest, cur) && adhoc && same(latest, cur) && !fs.existsSync(migratedFlag())) { migrate = true; log('identity switch: fetching the cert-signed build of', latest); }
-    else if (!newer(latest, cur)) { if (state.staged) clearStaged(); set({ status: 'uptodate', latest }); C.setTray('updater', { title: '' }); if (manual) C.fireGlow('hud', { hud: { text: `Surge ${cur} is up to date`, color: '#00FF85' } }); return state; }
+    else if (!newer(latest, cur)) { if (state.staged) clearStaged(); set({ status: 'uptodate', latest }); C.setTray('updater', { title: '' }); if (manual) C.fireGlow('hud', { hud: { text: `Surge ${cur} is up to date`, color: '#19D69A' } }); return state; }
     if (!manual && !migrate && skipVersion === latest) { set({ status: 'uptodate', latest }); return state; }
     // staged copy must be exactly this version, otherwise it's stale
     if (state.staged) { const sv = stagedVersion(state.staged); if (!sv || !same(sv, latest)) { log('discard stale staged', sv); clearStaged(); } }
     if (state.staged) { set({ status: 'ready', latest }); showCardIfAllowed(manual); return state; }
     let url = `https://github.com/${REPO}/releases/download/${latest}/${IS_WIN ? EXE : ZIP}`, isZip = !IS_WIN, p = await probe(url);
     if (!p.ok && !IS_WIN) { url = `https://github.com/${REPO}/releases/download/${latest}/${DMG}`; isZip = false; p = await probe(url); }
-    if (!p.ok) throw new Error(`${latest} is published but the file isn't ready yet`);
+    if (!p.ok) { log(latest, 'is published but its file is not up yet'); set({ status: 'uptodate', latest: 'v' + cur }); lastTag = null; retryLater(); return state; }   // CI still uploading: quietly look again soon
     set({ status: 'available', latest, url, isZip, size: p.size, progress: 0, bytes: 0 });
     log('available', latest, isZip ? 'zip' : 'dmg', fmtMB(p.size));
     if (migrate) { download().then(() => { if (state.staged) { try { fs.writeFileSync(migratedFlag(), '1'); } catch {} install(); } }); return state; }
     C.setTray('updater', { title: '↑', menu: [{ label: `Update to ${latest}`, click: () => install() }] });
     showCardIfAllowed(manual);
     if (C.mod('updater').auto) download();
-  } catch (e) { set({ status: 'error', error: e.message }); log('check failed:', e.message); lastTag = null; if (manual) C.fireGlow('hud', { hud: { text: 'Update check failed', color: '#FFB300' } }); }
+  } catch (e) { log('check failed:', e.message); lastTag = null; if (manual) { set({ status: 'error', error: 'Could not reach GitHub. Surge will try again on its own.' }); C.fireGlow('hud', { hud: { text: 'Could not reach GitHub', color: '#FFA514' } }); } else set({ status: state.staged ? 'ready' : 'idle' }); retryLater(); }
   return state;
 }
 function showCardIfAllowed(manual) { if (manual || Date.now() > snoozedUntil) showCard(); }
@@ -80,10 +92,11 @@ async function download() {
     let ok = false, err = null;
     for (let i = 0; i < 3 && !ok; i++) { try { await new Promise((res, rej) => { dlProc = execFile('curl', ['-L', '--fail', '--silent', '--show-error', '-C', '-', '--retry', '2', '-o', file, state.url], { timeout: 900000 }, (e, o, se) => { dlProc = null; e ? rej(new Error((se || e.message).trim())) : res(); }); }); ok = true; } catch (e) { err = e; log('download attempt', i + 1, 'failed:', e.message); await new Promise(r => setTimeout(r, 1500)); } }
     if (!ok) throw err || new Error('download failed');
+    if (state.status !== 'downloading') { log('download cancelled'); return; }
     clearInterval(prog); prog = null;
     if (state.size && fs.statSync(file).size !== state.size) throw new Error('download incomplete');
     set({ progress: 100, status: 'unpacking' });
-    if (IS_WIN) { set({ staged: file, status: 'ready' }); log('staged installer', state.latest); C.setTray('updater', { title: '↑', menu: [{ label: `Restart to update to ${state.latest}`, click: () => install() }] }); showCardIfAllowed(false); C.notify('Surge update ready', `${state.latest} is downloaded. Click Restart on the card.`); return; }
+    if (IS_WIN) { set({ staged: file, status: 'ready' }); log('staged installer', state.latest); C.setTray('updater', { title: '↑', menu: [{ label: `Restart to update to ${state.latest}`, click: () => install() }] }); showCardIfAllowed(false); C.notify(`Surge ${String(state.latest).replace(/^v/, '')} is ready`, 'Restart from the update card or the Surge menu. It takes about 3 seconds.'); return; }
     if (state.isZip) { await sh('ditto', ['-x', '-k', file, dir]); const app = fs.readdirSync(dir).find(f => f.endsWith('.app')); if (!app) throw new Error('No .app in zip'); if (app !== 'Surge.app') fs.renameSync(path.join(dir, app), path.join(dir, 'Surge.app')); }
     else { fs.mkdirSync(mnt, { recursive: true }); await sh('hdiutil', ['attach', '-nobrowse', '-quiet', '-mountpoint', mnt, file]); const app = fs.readdirSync(mnt).find(f => f.endsWith('.app')); if (!app) throw new Error('No .app in DMG'); await sh('ditto', [path.join(mnt, app), path.join(dir, 'Surge.app')]); await sh('hdiutil', ['detach', '-quiet', mnt]).catch(() => {}); }
     fs.rmSync(file, { force: true });
@@ -93,8 +106,8 @@ async function download() {
     set({ staged, status: 'ready' }); log('staged', state.latest);
     if (migrate) return;
     C.setTray('updater', { title: '↑', menu: [{ label: `Restart to update to ${state.latest}`, click: () => install() }] });
-    showCardIfAllowed(false); C.notify('Surge update ready', `${state.latest} is downloaded. Click Restart on the card.`);
-  } catch (e) { clearInterval(prog); set({ status: 'error', error: e.message }); log('download failed:', e.message); try { await sh('hdiutil', ['detach', '-quiet', mnt]); } catch {} }
+    showCardIfAllowed(false); C.notify(`Surge ${String(state.latest).replace(/^v/, '')} is ready`, 'Restart from the update card or the Surge menu. It takes about 3 seconds.');
+  } catch (e) { clearInterval(prog); log('download failed:', e.message); try { await sh('hdiutil', ['detach', '-quiet', mnt]); } catch {} if (state.status === 'downloading' || state.status === 'unpacking') { set({ status: 'error', error: 'The download stopped. Surge will try again in a minute.' }); retryLater(); } }
 }
 
 async function install() {
@@ -138,7 +151,8 @@ if pgrep -f "$APP/Contents/MacOS/Surge" >/dev/null; then echo "launched OK"; rm 
 sleep 8; pgrep -f "$APP/Contents/MacOS/Surge" >/dev/null || { echo "no Surge running after swap, relaunching"; open -a "$APP"; }
 echo "=== done"
 `); fs.chmodSync(script, 0o755);
-  set({ status: 'installing' }); log('installing', sv);
+  set({ status: 'installing' }); log('installing', sv); showCard();
+  await new Promise(r => setTimeout(r, process.env.SURGE_SELFTEST ? 0 : 900));        // let the card say "Restarting" before Surge goes
   const child = spawn('/bin/bash', [script], { detached: true, stdio: 'ignore' }); child.unref();
   try { C.markCleanExit?.(); C.stopHook?.(); } catch {}              // marker: the watchdog must not fight the swap; the native hook is what makes exit hang
   setTimeout(() => C.app.exit(0), 150);
@@ -147,9 +161,10 @@ echo "=== done"
 }
 
 async function poll() {
+  if (NO_BUILD) return;
   if (polling || ['downloading', 'unpacking', 'installing', 'checking'].includes(state.status)) return; polling = true;
   const tag = await latestTag().finally(() => (polling = false));
-  if (!tag) { misses++; if (misses === 20) { clearInterval(timer); timer = setInterval(poll, 30000); log('backing off to 30s'); } return; } misses = 0;
+  if (!tag) { misses++; return; } misses = 0;
   if (tag === lastTag) return; lastTag = tag;
   if (newer(tag, C.app.getVersion())) check(false); else if (state.status === 'idle') set({ status: 'uptodate', latest: tag });
 }
@@ -157,22 +172,24 @@ async function poll() {
 module.exports = {
   id: 'updater', name: 'Auto Update', icon: 'refresh', group: 'System', defaultEnabled: true,
   desc: 'Watches GitHub for new versions, downloads them in the background, verifies them, and installs in one click.',
-  defaults: { auto: true, popup: true, pollSeconds: 1, skipped: null },
+  defaults: { auto: true, popup: true, pollSeconds: 1800, skipped: null },
   schema: [
     { k: 'auto', t: 'toggle', label: 'Download automatically', hint: 'New versions download in the background; you choose when to restart' },
     { k: 'popup', t: 'toggle', label: 'Show the update card', hint: 'A floating card appears on top of whatever you\'re doing' },
-    { k: 'pollSeconds', t: 'seg', label: 'Check every', opts: [[1,'1 s'],[5,'5 s'],[30,'30 s'],[300,'5 min']] },
-    { t: 'actions', label: 'Update', opts: [['check','Check now'],['install','Install update']] },
+    { k: 'pollSeconds', t: 'seg', label: 'Check every', opts: [[1800,'30 min'],[3600,'1 hour'],[21600,'6 hours']] },
   ],
   actions: {
     check: () => check(true), install: () => install(), download: () => download(),
     later: () => { snoozedUntil = Date.now() + 2 * 3600000; hideCard(); }, skip: () => { skipVersion = state.latest; C.applyPatch({ modules: { updater: { skipped: skipVersion } } }); hideCard(); },
-    cancel: () => { try { dlProc?.kill('SIGTERM'); } catch {} set({ status: 'available', progress: 0 }); },
-    state: () => ({ ...state, current: C.app.getVersion(), lastCheck }),
+    cancel: () => { set({ status: 'available', progress: 0 }); try { dlProc?.kill('SIGTERM'); } catch {} },
+    card: () => { showCard(); return true; }, close: () => { hideCard(); if (state.status === 'updated') set({ status: 'uptodate' }); },
+    state: () => ({ ...state, current: C.app.getVersion(), lastCheck, whatsNew: WHATS_NEW, noBuild: NO_BUILD }),
   },
   start(ctx) {
     C = ctx; skipVersion = ctx.mod('updater').skipped || null;
-    try { const f = path.join(ctx.app.getPath('userData'), 'just-updated'); if (fs.existsSync(f)) { fs.rmSync(f); setTimeout(() => ctx.fireGlow('full', { level: 100, hud: { text: `Updated to Surge ${ctx.app.getVersion()}`, color: '#00FF85' } }), 1500); log('updated to', ctx.app.getVersion());
+    try { const f = path.join(ctx.app.getPath('userData'), 'just-updated'); if (fs.existsSync(f)) { fs.rmSync(f); setTimeout(() => ctx.fireGlow('full', { level: 100, hud: { text: `Updated to Surge ${ctx.app.getVersion()}`, color: '#19D69A' } }), 1500); log('updated to', ctx.app.getVersion());
+        // the restart flow ends on a "you're on the new version" card with what changed; it hides itself after 12 s
+        setTimeout(() => { if (process.env.SURGE_SELFTEST) return; set({ status: 'updated', latest: 'v' + ctx.app.getVersion() }); showCard(); setTimeout(() => { if (state.status === 'updated') { hideCard(); set({ status: 'uptodate' }); } }, 12000); }, 2600);
         setTimeout(() => { try { const { systemPreferences } = require('electron'); if (process.platform === 'darwin') log('after update: accessibility trusted =', systemPreferences.isTrustedAccessibilityClient(false)); } catch {} }, 2500); } } catch {}
     // A fresh DMG install is ad-hoc signed (so Gatekeeper opens it). Updates are cert-signed (so permissions survive). Switch to the cert build
     // of the SAME version right away, before the user grants anything, so no later update ever changes the app's identity.
@@ -181,11 +198,17 @@ module.exports = {
     const staged = path.join(updDir(), 'Surge.app');
     if (fs.existsSync(staged)) { const sv = stagedVersion(staged); if (sv && newer(sv, ctx.app.getVersion())) { state.staged = staged; state.status = 'ready'; state.latest = 'v' + sv; } else clearStaged(); }
     setTimeout(() => check(false), 3000);
-    timer = setInterval(poll, Math.max(1, ctx.mod('updater').pollSeconds || 1) * 1000);
+    timer = setInterval(poll, Math.max(900, ctx.mod('updater').pollSeconds || 1800) * 1000);
     try { const { powerMonitor } = require('electron'); powerMonitor.on('resume', () => setTimeout(() => check(false), 8000)); } catch {}
   },
-  onSettings(ctx) { clearInterval(timer); timer = setInterval(poll, Math.max(1, ctx.mod('updater').pollSeconds || 1) * 1000); },
-  stop(ctx) { clearInterval(timer); ctx.setTray('updater', { title: '' }); if (popup && !popup.isDestroyed()) popup.destroy(); popup = null; },
+  onSettings(ctx) { const ms = Math.max(900, ctx.mod('updater').pollSeconds || 1800) * 1000; if (timer && timer._ms === ms) return; clearInterval(timer); timer = setInterval(poll, ms); timer._ms = ms; },
+  stop(ctx) { clearInterval(timer); clearTimeout(retryT); ctx.setTray('updater', { title: '' }); if (popup && !popup.isDestroyed()) popup.destroy(); popup = null; },
   _check: (ctx, manual) => check(!!manual),
+  _peek: () => { if (Date.now() - lastPeek < 60000) return; lastPeek = Date.now(); poll(); },
+  // tests and screenshots: put the card in any state without the network
+  _test: (status, extra = {}) => { if (status === 'idle') { Object.assign(state, { status: 'idle', latest: null, staged: null }); hideCard(); push(); return state; }
+    Object.assign(state, { status, latest: 'v' + C.app.getVersion().replace(/^(\d+)\.(\d+).*/, (m, a, b) => a + '.' + (+b + 1) + '.0'), url: 'test', size: 96 * 1048576, bytes: 60 * 1048576, speed: 8.4 * 1048576, eta: 4, error: status === 'error' ? 'Could not reach GitHub. Surge will try again on its own.' : null, ...extra });
+    if (status === 'downloading') state.bytes = Math.round(state.size * (state.progress || 0) / 100);
+    showCard(); push(); return state; },
   _migrating: () => adhoc && !fs.existsSync(migratedFlag()),
 };

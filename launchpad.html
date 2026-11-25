@@ -1,45 +1,39 @@
 <!DOCTYPE html>
 <html><head><meta charset="utf-8">
-<style>
-  :root{--a:#00FF85;--ink:#f2f2f6;--muted:#9a9aa6;--line:rgba(255,255,255,.1);--spring:cubic-bezier(.34,1.56,.64,1)}
-  *{box-sizing:border-box} html,body{margin:0;height:100%;background:transparent;font:13px/1.3 -apple-system,"SF Pro Text",Inter,system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased;-webkit-user-select:none;overflow:hidden}
-  .pad{height:100%;border-radius:26px;background:linear-gradient(180deg,rgba(19,24,36,.9),rgba(11,14,21,.92));border:1px solid var(--line);box-shadow:0 40px 100px -30px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.07);backdrop-filter:blur(40px) saturate(1.6);-webkit-backdrop-filter:blur(40px) saturate(1.6);display:flex;flex-direction:column;overflow:hidden;animation:in .28s var(--spring)}
-  @keyframes in{from{transform:scale(.94);opacity:0}}
-  .top{display:flex;align-items:center;gap:12px;padding:16px 18px 10px;-webkit-app-region:drag}
-  .top input{-webkit-app-region:no-drag;flex:1;all:unset;font-size:16px;padding:10px 14px;border-radius:14px;background:rgba(255,255,255,.07);border:1px solid var(--line);color:var(--ink);width:100%}
-  .top input:focus{border-color:rgba(0,255,133,.5);box-shadow:0 0 0 3px rgba(0,255,133,.12)}
-  .top .k{color:var(--muted);font-size:11px;white-space:nowrap}
-  .grid{flex:1;overflow:auto;padding:6px 14px 18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:4px;align-content:start}
-  .grid::-webkit-scrollbar{width:8px} .grid::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:4px}
-  .a{display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 6px 10px;border-radius:16px;cursor:pointer;transition:background .15s,transform .25s var(--spring)}
-  .a:hover,.a.sel{background:rgba(255,255,255,.09)} .a:active{transform:scale(.94)}
-  .a .ic{width:58px;height:58px;border-radius:14px;background:#1e1e26;box-shadow:0 12px 24px -10px rgba(0,0,0,.9);overflow:hidden;display:grid;place-items:center;font-weight:700;font-size:22px;color:#cfcfd8}
-  .a .ic img{width:100%;height:100%;display:block}
-  .a .n{font-size:11.5px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
-  .a .n b{color:var(--a);font-weight:700}
-  .empty{grid-column:1/-1;padding:40px;text-align:center;color:var(--muted)}
-
-  /* fluid max */
-  .pad{border:0;border-radius:30px;box-shadow:0 40px 100px -30px rgba(0,0,0,.95),0 0 80px -36px var(--a),inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px rgba(255,255,255,.05);animation:in .95s var(--spring-soft)!important}
-  @keyframes in{from{transform:scale(.8) translateY(30px);opacity:0}}
-  .top input{border:0;border-radius:16px;transition:box-shadow .4s,transform .7s var(--spring)} .top input:focus{box-shadow:0 0 0 3px color-mix(in srgb,var(--a) 26%,transparent)}
-  .a{border-radius:20px;transition:background .25s,transform .75s var(--spring);animation:aIn .85s var(--spring-soft) backwards;animation-delay:calc(min(var(--i,0),40)*14ms)} @keyframes aIn{from{opacity:0;transform:translateY(30px) scale(.6)}}
-  .a:hover,.a.sel{transform:translateY(-6px) scale(1.08);background:rgba(255,255,255,.07)} .a .ic{transition:transform .75s var(--spring),box-shadow .4s} .a:hover .ic,.a.sel .ic{box-shadow:0 20px 30px -12px #000,0 0 30px -10px var(--a)}
-
-  /* balanced pass */
-  .a{--c:120,170,255;position:relative} .a::before{content:"";position:absolute;left:50%;top:14px;width:86px;height:70px;translate:-50% 0;border-radius:50%;background:radial-gradient(closest-side,rgba(var(--c),.6),transparent);opacity:0;transition:opacity .4s;pointer-events:none;z-index:0}
-  .a:hover::before,.a.sel::before{opacity:1} .a>*{position:relative;z-index:1}
-  .a:hover,.a.sel{background:rgba(var(--c),.1)!important;box-shadow:inset 0 0 0 1px rgba(var(--c),.28)}
-  .a:hover .ic,.a.sel .ic{box-shadow:0 20px 30px -12px #000,0 0 34px -8px rgb(var(--c))!important}
-  kbd{font:inherit;font-size:10.5px;padding:2px 6px;border-radius:6px;background:rgba(255,255,255,.09);box-shadow:inset 0 -1px 0 rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.1);color:var(--ink);margin:0 3px 0 8px} #cnt{font-weight:600;color:var(--ink);margin-right:4px}
-</style><script>window.FLUID={host:'.pad',blobs:1,magnet:'.none',press:'.a,button',ripple:'.none'}</script><link rel="stylesheet" href="fluid.css"><script defer src="fluid.js"></script><link rel="stylesheet" href="fx.css"><script defer src="fx.js"></script>
+<link rel="stylesheet" href="nova.css"><style>
+  html,body{height:100%;overflow:hidden}
+  body{padding:8px}
+  .pad{height:100%;display:flex;flex-direction:column;border-radius:30px;overflow:hidden;isolation:isolate;position:relative;animation:nv-pop .55s var(--jelly) both;
+    background:radial-gradient(70% 40% at 0% 0%,rgba(123,61,255,.22),transparent 70%),radial-gradient(60% 40% at 100% 100%,rgba(255,46,138,.16),transparent 70%),linear-gradient(180deg,rgba(21,16,41,.97),rgba(8,6,15,.97));box-shadow:inset 0 1px 0 rgba(255,255,255,.16),inset 0 0 0 1px rgba(255,255,255,.08),0 26px 60px -24px rgba(0,0,0,.95)}
+  .hero{margin:10px 10px 0;padding:16px 18px;border-radius:24px}
+  .hero .tile{--ts:48px}
+  .hero h1{font-size:28px}
+  .top{display:flex;align-items:center;gap:12px;padding:12px 16px 8px}
+  #q{all:unset;flex:1;height:40px;padding:0 15px;border-radius:14px;font:650 14.5px/1 var(--body);background:rgba(0,0,0,.3);box-shadow:inset 0 0 0 1px rgba(255,255,255,.09),inset 0 1px 3px rgba(0,0,0,.45);-webkit-user-select:text}
+  #q:focus{box-shadow:inset 0 0 0 1px rgba(123,61,255,.8),0 0 0 4px rgba(123,61,255,.2)}
+  #q::placeholder{color:var(--mut)}
+  .k{display:flex;align-items:center;gap:5px;font:650 11px/1 var(--body);color:var(--mut);white-space:nowrap}
+  .k b{font:800 12px/1 var(--head);color:var(--tx2);margin-right:6px}
+  kbd{font:700 10.5px/1 var(--body);min-width:18px;height:18px;padding:0 5px;border-radius:5px;display:inline-grid;place-items:center;color:var(--tx2);background:rgba(255,255,255,.08);box-shadow:inset 0 -1px 0 rgba(0,0,0,.3),inset 0 0 0 1px rgba(255,255,255,.08)}
+  .grid{flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));align-content:start;gap:6px;padding:8px 14px 18px}
+  .a{--c:180,160,255;display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 4px 10px;border-radius:20px;cursor:pointer;transition:transform .5s var(--jelly);animation:nv-in .55s var(--jelly-soft) both;animation-delay:calc(min(var(--i,0),30)*14ms)}
+  .a:hover,.a.sel{background:radial-gradient(90% 90% at 50% 20%,rgba(var(--c),.3),transparent 75%),rgba(255,255,255,.05);box-shadow:inset 0 0 0 1px rgba(var(--c),.4)}
+  .a:hover{transform:translateY(-2px)}.a:active{transform:scale(.94)}
+  .ic{width:58px;height:58px;display:grid;place-items:center;font:800 24px/1 var(--head);border-radius:16px}
+  .ic img{width:58px;height:58px;filter:drop-shadow(0 8px 12px rgba(var(--c),.35))}
+  .ic:not(:has(img)){background:linear-gradient(150deg,var(--violet),var(--pink));box-shadow:inset 0 1px 0 rgba(255,255,255,.5)}
+  .n{font:700 11.5px/1.2 var(--head);letter-spacing:-.01em;text-align:center;color:var(--tx2);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .n b{color:#fff;background:rgba(123,61,255,.4);border-radius:4px}
+  .empty{grid-column:1/-1;padding:50px;text-align:center;font:700 14px/1 var(--head);color:var(--mut)}
+</style><script src="nova.js"></script>
 </head>
-<body><div class="pad">
-  <div class="top"><input id="q" placeholder="Search apps…" autofocus><span class="k"><b id="cnt"></b><kbd>↵</kbd> open <kbd>esc</kbd> close</span></div>
+<body><div class="pad h-violet">
+  <div class="hero h-violet drag"><div class="wm"></div><div class="tile"></div><div class="htx"><span class="eyebrow">Surge Dock</span><h1>Launchpad</h1></div></div>
+  <div class="top"><input id="q" placeholder="Search apps" autofocus><span class="k"><b id="cnt"></b><kbd>↩︎</kbd> open <kbd>esc</kbd> close</span></div>
   <div class="grid" id="grid"></div>
 </div>
 <script>
-const api=window.surge, $=s=>document.querySelector(s); let ALL=[], shown=[], sel=0; const icons={};
+const api=window.surge, $=s=>document.querySelector(s); $('.hero .tile').innerHTML=Nova.ic('apps'); $('.hero .wm').innerHTML=Nova.ic('apps'); let ALL=[], shown=[], sel=0; const icons={};
 function esc(s){ return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function mark(name,q){ if(!q) return esc(name); const i=name.toLowerCase().indexOf(q.toLowerCase()); return i<0?esc(name):esc(name.slice(0,i))+'<b>'+esc(name.slice(i,i+q.length))+'</b>'+esc(name.slice(i+q.length)); }
 function score(a,q){ const n=a.name.toLowerCase(); if(!q) return 1; if(n.startsWith(q)) return 3; if(n.split(/\s+/).some(w=>w.startsWith(q))) return 2; if(n.includes(q)) return 1; return 0; }

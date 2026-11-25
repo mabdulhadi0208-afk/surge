@@ -13,11 +13,14 @@ function build(reason) {
   comp = AC.createDynamicsCompressor(); comp.threshold.value = -6; comp.ratio.value = 2; comp.knee.value = 10; comp.connect(master);
   const b = AC.createBuffer(1, AC.sampleRate * 0.5, AC.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; noiseBuf = b;
   builds++; if (reason) window.surge?.audioAck?.(`rebuilt (${reason}) → ${AC.state}`);
+  idleSoon(3000);
 }
+// zero lag: a silent audio engine is suspended (no audio thread running at all); the next sound wakes it
+function idleSoon(ms) { clearTimeout(idleSoon.t); idleSoon.t = setTimeout(() => { try { if (AC.state === 'running') AC.suspend(); } catch {} }, ms); }
 build();
 try { navigator.mediaDevices.addEventListener('devicechange', () => { clearTimeout(build.t); build.t = setTimeout(() => build('output device changed'), 600); }); } catch {}
 let ctAt = 0, ctVal = 0;
-function healthy() { const now = performance.now(); if (AC.state === 'closed') return build('context closed');
+function healthy() { const now = performance.now(); if (AC.state === 'closed') return build('context closed'); if (AC.state === 'suspended') { ctAt = 0; return; }
   if (ctAt && now - ctAt > 1500 && AC.state === 'running' && AC.currentTime - ctVal < 0.05) build('engine stalled');
   ctAt = performance.now(); ctVal = AC.currentTime; }
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -64,6 +67,7 @@ function play(p) {
   healthy();
   if (AC.state !== 'running') AC.resume();
   if (!acked) { acked = true; setTimeout(() => window.surge?.audioAck?.(AC.state), 150); }
+  idleSoon(20000);
   const v = Math.max(0, Math.min(1, (p.volume ?? .5) * (p.master ?? 1)));
   if (v <= 0) return;
   switch (p.sound) {

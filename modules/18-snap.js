@@ -42,9 +42,9 @@ module.exports = {
   end tell
 end tell`;
     execFile('osascript', ['-e', script], { timeout: 4000 }, (err, out) => {
-      if (err) { if (!warned) { warned = true; console.error('snap failed:', (err.message || '').slice(0, 300)); ctx.fireGlow('warn', { hud: { text: 'Window Snap needs permission to control System Events', color: '#FFD60A' } }); } return; }
+      if (err) { if (!warned) { warned = true; console.error('snap failed:', (err.message || '').slice(0, 300)); ctx.fireGlow('warn', { hud: { text: 'Window Snap needs permission to control System Events', color: '#FFA514' } }); } return; }
       if ((out || '').trim() === 'nowindow') return;
-      if (s.hud) ctx.fireGlow('hud', { hud: { text: NAME[where], color: '#00D4FF' } });
+      if (s.hud) ctx.fireGlow('hud', { hud: { text: NAME[where], color: '#00C2FF' } });
     });
     return NAME[where];
   },

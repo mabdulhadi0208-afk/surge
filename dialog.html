@@ -1,0 +1,27 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="nova.css">
+<style>
+  html,body{height:auto;overflow:hidden}
+  body{padding:10px 12px 28px}
+  .card{border-radius:28px;padding:9px;position:relative;isolation:isolate;overflow:hidden;
+    background:linear-gradient(180deg,#151029,#09070f);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),inset 0 0 0 1px rgba(255,255,255,.08),0 26px 50px -22px rgba(0,0,0,.95),0 18px 50px -28px var(--hc);animation:nv-pop .6s var(--jelly) both}
+  .hero{padding:18px;border-radius:22px}
+  .hero .tile{--ts:52px}
+  .hero h1{font-size:22px;white-space:normal;line-height:1.1}
+  .detail{padding:14px 10px 2px;font:600 13px/1.5 var(--body);color:var(--tx2);white-space:pre-line}
+  .row{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px;padding:14px 4px 2px}
+</style>
+<script src="nova.js"></script>
+</head><body>
+<div class="card" id="card"><div class="hero drag" id="hero"><div class="wm" id="wm"></div><div class="tile" id="tile"></div><div class="htx"><span class="eyebrow">Surge</span><h1 id="msg"></h1></div></div><div class="detail" id="detail"></div><div class="row" id="row"></div></div>
+<script>
+const api=window.nova||{answer(){},dsize(){}}, N=window.Nova, $=s=>document.querySelector(s);
+let o={}; try{ o=JSON.parse(decodeURIComponent(location.hash.slice(1))); }catch{}
+const hue=o.type==='warning'||o.type==='error'?'h-amber':o.type==='question'?'h-violet':'h-pink', icon=o.type==='warning'||o.type==='error'?'alert':o.type==='question'?'dock':'rocket';
+$('#card').classList.add(hue); $('#hero').classList.add(hue); $('#tile').innerHTML=N.ic(icon); $('#wm').innerHTML=N.ic(icon);
+$('#msg').textContent=o.message||''; $('#detail').textContent=o.detail||''; if(!o.detail) $('#detail').style.display='none';
+const bs=o.buttons||['OK']; $('#row').innerHTML=bs.map((b,i)=>({b,i})).sort((a,b)=>(a.i===o.defaultId)-(b.i===o.defaultId)).map(({b,i})=>`<button class="btn lg ${i===o.defaultId?'pri':''}" data-i="${i}">${N.esc(b)}</button>`).join('');
+document.querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>api.answer(+b.dataset.i));
+addEventListener('keydown',e=>{ if(e.key==='Escape') api.answer(o.cancelId??bs.length-1); if(e.key==='Enter') api.answer(o.defaultId??0); });
+requestAnimationFrame(()=>api.dsize($('#card').offsetHeight+40));
+</script></body></html>
