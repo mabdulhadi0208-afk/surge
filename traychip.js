@@ -103,7 +103,11 @@ function stateColors(b) { const lvl = b.level; if (b.charging || lvl >= 100) ret
 // the white bolt with a soft dark halo, so it reads on any fill
 function drawBolt(x, y, P, px, haloA = .45) { const d = sdPoly(x, y, P); if (d < 1.0 && d > 0) over(px, PAL.inkD, haloA * (1 - d)); if (d <= 0) over(px, PAL.white, 1); }
 
-function markColor(_b, scale, dark) {               // 16 x 16 pt: the Surge squircle, pink into violet, a white bolt with an amber foot
+// flowing liquid (phase 0..1 loops): the fill's edge ripples like a meniscus and a soft sheen glides across it.
+// Phase 0 is the still icon (the sheen sits just outside the fill), so a still frame and the first flow frame match.
+const waveEdge = (edge, y, phase, full) => full ? edge : edge + .62 * Math.sin(2 * Math.PI * (y / 7 + phase)) + .22 * Math.sin(2 * Math.PI * (y / 3.1 - 2 * phase));
+function sheenAt(x, y, x0, x1, phase) { if (!phase) return 0; const cx = x0 - 5 + (x1 - x0 + 10) * phase + (y - 8) * .45, d = x - cx; return .34 * Math.exp(-d * d / 2.4); }
+function markColor(b, scale, dark, phase = 0) {               // 16 x 16 pt: the Surge squircle, pink into violet, a white bolt with an amber foot
   const bolt = BOLT(8, 8.15, .54);
   return paintRGBA(16, 16, scale, (x, y, px) => {
     const d = sdSquircle(x, y, 8, 8, 7.35);
@@ -115,6 +119,7 @@ function markColor(_b, scale, dark) {               // 16 x 16 pt: the Surge squ
     const hl = sdSquircle(x, y, 8, 5.6, 5.6, 3.2); if (hl < 0 && y < 8) over(px, PAL.white, .34 * Math.min(1, -hl / 2.2) * (1 - y / 8));   // glossy top
     if (d > -.75 && y < 9) over(px, PAL.white, .45 * (1 - (y - 1) / 8));                // rim of light
     if (dark && d > -.6) over(px, PAL.white, .12);
+    if (b && b.charging && phase) over(px, PAL.white, sheenAt(x, y, 0, 16, phase) * .8);     // while charging: a light sweep across the mark
     if (x < 3.5 || x > 12.5) return;
     const sh = sdPoly(x, y - .55, bolt); if (sh < .6 && sh > -10) over(px, hx('#3a0f6e'), .38 * Math.min(1, (.6 - sh) / .6));   // bolt shadow
     const bd = sdPoly(x, y, bolt); if (bd <= 0) over(px, mixc(PAL.white, hx('#ffd27a'), (y - 4.5) / 8), 1); else if (bd < .45) over(px, PAL.white, .9 * (1 - bd / .45));
@@ -127,7 +132,7 @@ function chipLayoutC(b) {
   const lvl = Math.max(0, Math.min(100, Math.round(b.level))), str = String(lvl), sc = .9, tw = digitsWidth(str, sc), bw = b.charging ? 6.2 : 0;
   const W = Math.max(30, Math.ceil(tw + bw + 17)); return { lvl, str, sc, tw, bw, W };   // room either side of the number, so the fill level reads at a glance
 }
-function chipColor(b, scale, dark) {           // a glass capsule, the level as a gradient fill, the number in bold white, a bolt while charging
+function chipColor(b, scale, dark, phase = 0) {           // a glass capsule, the level as a gradient fill, the number in bold white, a bolt while charging
   const L = chipLayoutC(b), W = L.W, H = 16, [c0, c1] = stateColors(b);
   const x0 = (W - L.tw - L.bw) / 2 + L.bw, D = digitSegs(L.str, x0, (H - 8 * L.sc) / 2, L.sc), bolt = b.charging ? BOLT(x0 - 3.5, 8, .35) : null;
   const fillR = 2.2 + (W - 4.4) * Math.max(.06, L.lvl / 100);
@@ -139,7 +144,8 @@ function chipColor(b, scale, dark) {           // a glass capsule, the level as 
     if (d > 0) return;
     over(px, mixc(hx('#1c1538'), hx('#0b0718'), (y - 1) / 14), .96);                    // the empty glass, deep and dark so the fill edge reads
     const fd = sdRRect(x, y, 2.2, 2.2, W - 4.4, 11.6, 5.8);
-    if (fd <= 0 && x <= fillR) { over(px, mixc(c0, c1, (x - 2.2) / Math.max(6, W - 4.4)), 1); if (y < 7.5) over(px, PAL.white, .3 * (1 - (y - 2.2) / 5.3)); if (x > fillR - .9) over(px, PAL.white, .4); }
+    const edge = waveEdge(fillR, y, phase, L.lvl >= 100);
+    if (fd <= 0 && x <= edge) { over(px, mixc(c0, c1, (x - 2.2) / Math.max(6, W - 4.4)), 1); if (y < 7.5) over(px, PAL.white, .3 * (1 - (y - 2.2) / 5.3)); if (x > edge - .9) over(px, PAL.white, .4); over(px, PAL.white, sheenAt(x, y, 2.2, fillR, phase)); }
     if (d > -.8) over(px, dark ? PAL.white : PAL.pinkL, (dark ? .4 : .5) * (y < 8 ? 1 : .45));   // the rim of light
     if (bolt && x > x0 - 8 && x < x0 && y > 3 && y < 13) drawBolt(x, y, bolt, px);
     if (x < gx0 || x > gx1 || y < gy0 || y > gy1) return;
@@ -148,7 +154,7 @@ function chipColor(b, scale, dark) {           // a glass capsule, the level as 
     if (g < .82) over(px, PAL.white, Math.min(1, (.82 - g) / .3));
   });
 }
-function batteryColor(b, scale, dark) {        // 27 x 16 pt: a slim battery, the level filled in the state colour, a bolt while charging
+function batteryColor(b, scale, dark, phase = 0) {        // 27 x 16 pt: a slim battery, the level filled in the state colour, a bolt while charging
   const lvl = Math.max(0, Math.min(100, b.level)), [c0, c1] = stateColors(b), shell = dark ? hx('#f1ecff') : hx('#2c2545'), fw = 18.2 * Math.max(.07, lvl / 100);
   const bolt = b.charging ? BOLT(12.2, 8, .43) : null;
   return paintRGBA(27, 16, scale, (x, y, px) => {
@@ -157,7 +163,8 @@ function batteryColor(b, scale, dark) {        // 27 x 16 pt: a slim battery, th
     if (d > -1.15) { over(px, shell, .92); return; }                                     // the shell
     over(px, dark ? PAL.inkD : hx('#e9e4f7'), dark ? .55 : .7);
     const fd = sdRRect(x, y, 2.6, 4.6, 18.8, 6.8, 1.8);
-    if (fd <= 0 && x <= 2.6 + fw) { over(px, mixc(c0, c1, (x - 2.6) / Math.max(3, fw)), 1); if (y < 8) over(px, PAL.white, .32 * (1 - (y - 4.6) / 3.4)); }
+    const edge = waveEdge(2.6 + fw, y, phase, lvl >= 100);
+    if (fd <= 0 && x <= edge) { over(px, mixc(c0, c1, (x - 2.6) / Math.max(3, fw)), 1); if (y < 8) over(px, PAL.white, .32 * (1 - (y - 4.6) / 3.4)); if (x > edge - .8) over(px, PAL.white, .3); over(px, PAL.white, sheenAt(x, y, 2.6, 2.6 + fw, phase)); }
     if (bolt && x > 8 && x < 17) drawBolt(x, y, bolt, px, .5);
   });
 }
@@ -177,6 +184,6 @@ module.exports = {
   batteryPNG: (b, scale = 2) => png(batteryRGBA(b, scale)),
   markRGBA, chipRGBA, batteryRGBA, png, SIZES: { mark: [16, 16], chip: [34, 16], battery: [26, 16] },
   // colour: kind = mark | chip | battery; dark = for a dark menu bar. Returns { png, width, height } in points.
-  colorPNG: (kind, b, scale = 2, dark = true) => { const im = COLOR[kind](b || { level: 100 }, scale, dark); return { png: png(im), width: Math.round(im.width / scale), height: 16 }; },
+  colorPNG: (kind, b, scale = 2, dark = true, phase = 0) => { const im = COLOR[kind](b || { level: 100 }, scale, dark, phase); return { png: png(im), width: Math.round(im.width / scale), height: 16 }; },
   colorSize: (kind, b) => kind === 'mark' ? [16, 16] : kind === 'battery' ? [27, 16] : [chipLayoutC(b).W, 16],
 };

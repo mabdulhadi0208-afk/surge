@@ -3,7 +3,7 @@ let timer = null, lowAlerted = false, fullAlerted = false, busy = false, pace = 
 module.exports = {
   id: 'glow', name: 'Charge Glow', icon: 'bolt', group: 'Glow', defaultEnabled: true,
   desc: 'Edge aurora when you plug in, warm sweep on unplug, red pulse on low battery, gold at 100%.',
-  defaults: { theme: 'aurora', color: '#00FF85', batteryColor: false, intensity: 0.9, thickness: 150, duration: 3.6, speed: 1, showCapsule: true, unplugGlow: true, lowAlert: 20, fullGlow: true, sound: false, trayStyle: 'mark', trayMono: false },
+  defaults: { theme: 'aurora', color: '#00FF85', batteryColor: false, intensity: 0.9, thickness: 150, duration: 3.6, speed: 1, showCapsule: true, unplugGlow: true, lowAlert: 20, fullGlow: true, sound: false, trayStyle: 'mark', trayMono: false, trayAnim: true },
   schema: [
     { k: 'theme', t: 'chips', label: 'Theme', opts: [['aurora','Aurora','#00FF85'],['solid','Solid','#FF2E8A'],['ember','Ember','#FF9500'],['ice','Ice','#7DF9FF']] },
     { k: 'color', t: 'color', label: 'Accent (Solid)', opts: ['#FF2E8A','#7B3DFF','#00C2FF','#FFA514','#00FF85','#FF4060','#FFFFFF'] },
@@ -18,6 +18,7 @@ module.exports = {
     { k: 'lowAlert', t: 'seg', label: 'Low battery pulse', opts: [[0,'Off'],[10,'10%'],[20,'20%'],[30,'30%']] },
     { k: 'sound', t: 'toggle', label: 'Chimes', hint: 'Soft glassy chimes on each event' },
     { k: 'trayStyle', t: 'seg', label: 'Menu bar', opts: process.platform === 'darwin' ? [['mark','Surge mark'],['chip','Charge chip'],['icon','Battery'],['both','Battery and %'],['pct','Mark and %']] : [['mark','Surge'],['icon','Battery'],['both','Battery and %'],['pct','Surge and %']] },
+    { k: 'trayAnim', t: 'toggle', label: 'Animated battery', hint: 'The fill flows like liquid while charging, and flows once when the level changes. It never runs while the screen is locked or the Mac is idle.' },
     { k: 'trayMono', t: 'toggle', label: 'Monochrome icon', hint: process.platform === 'darwin' ? 'A plain black and white icon that macOS tints like its own, instead of Surge colours' : 'A plain icon instead of Surge colours' },
     { t: 'actions', label: 'Preview', opts: [['preview','Plug in'],['unplug','Unplug'],['low','Low'],['full','Full']] },
   ],

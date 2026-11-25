@@ -392,7 +392,7 @@ function togglePopover() {
   x = Math.max(d.workArea.x + 6, Math.min(x, d.workArea.x + d.workArea.width - pw - 6)); y = Math.max(d.workArea.y + 6, Math.min(y, d.workArea.y + d.workArea.height - ph - 6));
   popBelow = below; w.webContents.send('popover:edge', below ? 'top' : 'bottom');
   w.setPosition(x, y, false); w.show(); w.focus(); w.webContents.send('popover:show');
-  uiSound('open');
+  uiSound('open'); trayFlowOnce();
   try { if (running.has('updater')) MODULES.updater._peek?.(ctx); } catch {}      // a cheap look at GitHub, at most once a minute
 }
 
@@ -428,15 +428,78 @@ function trayIcon(b, style) {
   if (style === 'chip') return trayChip(b);
   return trayBattery(b);
 }
-let trayIconKey = '', trayAt = 0, trayLater = null, trayWant = null;
+// ---- the flowing battery. Colour icons are painted as a short loop of frames (FLOW_N, a meniscus wave and a sheen) by
+// traywork.js on a worker thread, then cached as ready images per state, so the main process never stalls drawing them.
+// Flow runs continuously ONLY while charging, at FLOW_FPS (a cached tray.setImage per frame, nothing else). On battery it
+// plays one pass when the level changes, on plug/unplug and when the menu opens, then stands still. It pauses when the screen
+// locks, the Mac sleeps, the session goes inactive or nobody has touched the Mac for 2 minutes (the display is likely asleep).
+const FLOW_N = 10, FLOW_FPS = 7;
+let trayWorker = null, trayJobs = new Map(), trayJobId = 0; const frameCache = new Map();
+const maxSF = () => { try { return Math.max(...screen.getAllDisplays().map(d => d.scaleFactor || 1)); } catch { return 2; } };
+function ensureTrayWorker() {
+  if (trayWorker) return trayWorker;
+  try { const { Worker } = require('worker_threads'); trayWorker = new Worker(path.join(__dirname, 'traywork.js'));
+    trayWorker.on('message', m => { const j = trayJobs.get(m.id); if (!j) return; trayJobs.delete(m.id); m.error ? j.rej(new Error(m.error)) : j.res(m); });
+    trayWorker.on('error', e => { log('tray worker error', e && e.message); }); trayWorker.on('exit', () => { trayWorker = null; for (const j of trayJobs.values()) j.rej(new Error('worker gone')); trayJobs.clear(); });
+    trayWorker.unref?.(); } catch (e) { log('tray worker unavailable', e.message); trayWorker = null; }
+  return trayWorker;
+}
+function toImages(m, scales) { return m.frames.map(fr => { const [w, h] = m.size; const im = nativeImage.createFromBuffer(Buffer.from(fr[0]), { width: w, height: h }); fr.slice(1).forEach((buf, i) => im.addRepresentation({ scaleFactor: scales[i + 1], buffer: Buffer.from(buf), width: w, height: h })); return im; }); }
+function flowFrames(kind, b, dark, n) {
+  const scales = maxSF() > 2 ? [1, 2, 3] : [1, 2], bb = b ? { level: Math.round(b.level), charging: !!b.charging } : null;
+  const key = `${kind}|${bb ? bb.level + (bb.charging ? 'c' : '') : '-'}|${dark ? 'd' : 'l'}|${n}|${scales.length}`;
+  if (frameCache.has(key)) return frameCache.get(key);
+  const w = ensureTrayWorker();
+  const p = (w ? new Promise((res, rej) => { const id = ++trayJobId; trayJobs.set(id, { res, rej }); w.postMessage({ id, kind, b: bb, dark, frames: n, scales }); })
+    : Promise.resolve({ frames: [scales.map(sc => TC.colorPNG(kind, bb, sc, dark, 0).png)], size: TC.colorSize(kind, bb) }))
+    .then(m => toImages(m, scales)).catch(e => { frameCache.delete(key); throw e; });
+  frameCache.set(key, p); if (frameCache.size > 10) frameCache.delete(frameCache.keys().next().value);
+  return p;
+}
+const flow = { frames: null, i: 0, t: null, mode: 'still', paused: false, idleT: null, ticks: 0 };
+function flowStop() { clearInterval(flow.t); flow.t = null; }
+function flowPlay(frames, mode) {
+  flowStop(); flow.frames = frames; flow.mode = mode; flow.i = 0;
+  try { tray.setImage(frames[0]); } catch {}
+  if (mode === 'still' || frames.length < 2 || flow.paused) return;
+  flow.t = setInterval(() => {
+    if (!tray || tray.isDestroyed()) return flowStop();
+    if (++flow.ticks % (FLOW_FPS * 10) === 0 && flow.mode === 'loop') { let idle = 0; try { idle = require('electron').powerMonitor.getSystemIdleTime(); } catch {} if (idle > 120) return flowPause('idle'); }
+    flow.i++; if (flow.i >= flow.frames.length) { if (flow.mode === 'once') { flowStop(); flow.mode = 'still'; try { tray.setImage(flow.frames[0]); } catch {} return; } flow.i = 0; }
+    try { tray.setImage(flow.frames[flow.i]); } catch {}
+  }, Math.round(1000 / FLOW_FPS));
+}
+function flowPause(why) {
+  if (flow.paused) return; flow.paused = why; flowStop(); try { if (flow.frames) tray.setImage(flow.frames[0]); } catch {}
+  if (why === 'idle') { clearInterval(flow.idleT); flow.idleT = setInterval(() => { let idle = 0; try { idle = require('electron').powerMonitor.getSystemIdleTime(); } catch {} if (idle < 5) flowResume('idle'); }, 5000); }
+}
+function flowResume(why) { if (!flow.paused || (why && flow.paused !== why && why !== 'any')) return; flow.paused = false; clearInterval(flow.idleT); flow.idleT = null; if (flow.frames && flow.mode === 'loop') flowPlay(flow.frames, 'loop'); }
+app.whenReady().then(() => { try { const { powerMonitor: pm } = require('electron');
+  for (const e of ['lock-screen', 'suspend', 'user-did-resign-active']) pm.on(e, () => flowPause(e));
+  for (const e of ['unlock-screen', 'resume', 'user-did-become-active']) pm.on(e, () => flowResume('any')); } catch {} });
+// one flow pass on demand (the menu opened), only when the battery icon is still
+function trayFlowOnce() { if (flow.frames && flow.frames.length > 1 && !flow.t && !flow.paused && flow.mode !== 'loop') flowPlay(flow.frames, 'once'); }
+const animOn = () => mod('glow')?.trayAnim !== false;
+let trayIconKey = '', trayAt = 0, trayLater = null, trayGen = 0;
 function setTrayBattery(b, style) {
   if (!tray) return;
-  const st = style || mod('glow')?.trayStyle || 'mark', look = `${mono() ? 'm' : 'c'}${darkBar() ? 'd' : 'l'}`;
+  const st = style || mod('glow')?.trayStyle || 'mark', look = `${mono() ? 'm' : 'c'}${darkBar() ? 'd' : 'l'}${animOn() ? 'a' : 's'}`;
   const usesLevel = b && b.level != null && (st === 'chip' || st === 'icon' || st === 'both');
-  const k = usesLevel ? `${st}|${look}|${Math.round(b.level)}|${b.charging ? 1 : 0}` : `mark|${look}`;
+  const chg = !!(b && b.charging && !b.charged && b.level < 100);
+  const k = usesLevel ? `${st}|${look}|${Math.round(b.level)}|${chg ? 1 : 0}` : `mark|${look}|${chg ? 1 : 0}`;
   if (k === trayIconKey) return;
-  const prev = trayIconKey.split('|'), onlyLevel = usesLevel && prev[0] === st && prev[1] === look && prev[3] === (b.charging ? '1' : '0');
-  const apply = () => { trayLater = null; trayIconKey = k; trayAt = Date.now(); try { tray.setImage(trayIcon(b, st)); } catch (e) { console.error('tray icon', e); } };
+  const prev = trayIconKey.split('|'), onlyLevel = usesLevel && prev[0] === st && prev[1] === look && prev[3] === (chg ? '1' : '0'), first = !trayIconKey;
+  const apply = () => {
+    trayLater = null; trayIconKey = k; trayAt = Date.now(); const gen = ++trayGen;
+    if (mono()) { flowStop(); flow.frames = null; try { tray.setImage(trayIcon(b, st)); } catch (e) { console.error('tray icon', e); } return; }   // monochrome stays still
+    const kind = usesLevel ? (st === 'chip' ? 'chip' : 'battery') : 'mark', bb = usesLevel ? { level: b.level, charging: chg } : { level: 100, charging: chg };
+    const n = animOn() && (usesLevel || chg) ? FLOW_N : 1;
+    flowFrames(kind, bb, darkBar(), n).then(frames => {
+      if (gen !== trayGen) return;
+      const mode = n < 2 ? 'still' : chg ? 'loop' : (usesLevel && !first) ? 'once' : 'still';
+      flowPlay(frames, mode);
+    }).catch(e => { log('tray frames failed', e.message); try { tray.setImage(trayIcon(b, st)); } catch {} });
+  };
   clearTimeout(trayLater);
   if (onlyLevel && Date.now() - trayAt < 4000) { trayLater = setTimeout(apply, 4000 - (Date.now() - trayAt)); return; }   // a level tick waits its turn; plug, unplug and style changes are instant
   apply();
@@ -487,7 +550,7 @@ const ctx = {
   broadcast: (ch, p) => { [settingsWin, notesWin, audioWin, popWin, ...overlays].forEach(w => { try { if (w && !w.isDestroyed()) w.webContents.send(ch, p); } catch {} }); },
 };
 const running = new Set();
-if (process.env.SURGE_TEST) global.__surge = { ctx, ripple, MODULES, markIcon, trayChip, trayBattery, applyPatch: (p) => applyPatch(p), get tray() { return tray; } };   // tests only
+if (process.env.SURGE_TEST) global.__surge = { ctx, ripple, MODULES, flow, setTrayBattery, markIcon, trayChip, trayBattery, applyPatch: (p) => applyPatch(p), get tray() { return tray; } };   // tests only
 function startModule(id) { const m = MODULES[id]; if (!m || running.has(id)) return; try { log('starting', id); m.start?.(ctx); running.add(id); log('start', id); } catch (e) { console.error(`[${id}] start`, e); } }
 function stopModule(id) { const m = MODULES[id]; if (!m || !running.has(id)) return; try { m.stop?.(ctx); } catch (e) { console.error(`[${id}] stop`, e); } running.delete(id); trayExtras[id] = null; delete trayKeys[id]; updateTray(); }
 function reconcile() {

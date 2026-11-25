@@ -31,6 +31,16 @@ app.whenReady().then(async () => {
   const G = global.__surge; ok(!G.markIcon().isEmpty() && G.markIcon().getScaleFactors().includes(2), 'tray uses the colour mark with 1x and 2x (3x on 3x displays)');
   G.applyPatch({ modules: { glow: { trayMono: true } } }); const mi = G.markIcon(); ok(!mi.isEmpty() && (process.platform !== 'darwin' || mi.isTemplateImage()), 'Monochrome icon setting switches to the template mark');
   G.applyPatch({ modules: { glow: { trayMono: false } } });
+  // the flowing battery: loops only while charging, still on battery, never in monochrome or with Animated battery off
+  G.ctx.battery = { level: 62, charging: true }; G.setTrayBattery(G.ctx.battery, 'icon'); await wait(2500);
+  ok(G.flow.mode === 'loop' && G.flow.frames?.length === 10 && !!G.flow.t, `charging: the battery flows (${G.flow.mode}, ${G.flow.frames?.length} frames)`);
+  G.ctx.battery = { level: 61, charging: false }; G.setTrayBattery(G.ctx.battery, 'icon'); await wait(3500);
+  ok(!G.flow.t && G.flow.mode === 'still', `on battery: one pass, then still (${G.flow.mode})`);
+  G.applyPatch({ modules: { glow: { trayAnim: false } } }); G.ctx.battery = { level: 60, charging: true }; G.setTrayBattery(G.ctx.battery, 'icon'); await wait(2000);
+  ok(!G.flow.t, 'Animated battery off: still while charging');
+  G.applyPatch({ modules: { glow: { trayAnim: true, trayMono: true } } }); G.setTrayBattery({ level: 59, charging: true }, 'icon'); await wait(1500);
+  ok(!G.flow.t, 'Monochrome: still while charging');
+  G.applyPatch({ modules: { glow: { trayMono: false } } }); G.ctx.battery = null; G.setTrayBattery(null, 'mark'); await wait(1000);
   ok(fs.existsSync(path.join(__dirname, '..', 'assets', 'tray', 'surgeTemplate@2x.png')), 'fallback template icon on disk');
   // the menu
   tray('click').fn(); await wait(1800); const pop = find(/popover\.html/);
