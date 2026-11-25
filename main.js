@@ -398,37 +398,52 @@ function togglePopover() {
 
 /* ------------------------------------------------------------------ tray */
 let tray = null, trayExtras = {};           // module id → { title?: string, menu?: MenuItem[] }
-// Surge 3.0: every menu-bar icon is a macOS TEMPLATE image (black + alpha, 1x and 2x) painted by traychip.js, so macOS tints it
-// like its own icons. Nothing animates in the menu bar any more: the icon only changes when the battery state does.
+// Surge 3.0 menu-bar icons (traychip.js): COLOUR by default, in Surge's palette, with a light- and a dark-menu-bar variant
+// that switch live with the appearance; MONOCHROME (Settings, Charge Glow, Monochrome icon) gives macOS TEMPLATE images.
+// Zero lag: nothing animates in the menu bar. An icon is painted once per state (level, charging, style, look) and cached;
+// the battery icon is only redrawn when the level moves by 1% or charging flips, and level changes at most every 4 s.
 const TC = require('./traychip.js');
 const trayCache = new Map();
-function templ(key, draw, [w, h]) {
+function cached(key, draw, size, template) {
   if (trayCache.has(key)) return trayCache.get(key);
   let img = nativeImage.createEmpty();
-  try { img = nativeImage.createFromBuffer(draw(1), { width: w, height: h }); img.addRepresentation({ scaleFactor: 2, buffer: draw(2), width: w, height: h }); if (IS_MAC) img.setTemplateImage(true); } catch (e) { log('tray icon error ' + e.message); }
+  try { const [w, h] = size; img = nativeImage.createFromBuffer(draw(1), { width: w, height: h });
+    // 2x always (every Retina Mac); 3x only when a display actually runs at 3x, so a level change costs a few ms, not more
+    const maxSF = (() => { try { return Math.max(...screen.getAllDisplays().map(d => d.scaleFactor || 1)); } catch { return 2; } })();
+    for (const sf of maxSF > 2 ? [2, 3] : [2]) img.addRepresentation({ scaleFactor: sf, buffer: draw(sf), width: w, height: h });
+    if (template && IS_MAC) img.setTemplateImage(true); } catch (e) { log('tray icon error ' + e.message); }
   if (img.isEmpty()) { try { img = nativeImage.createFromPath(path.join(__dirname, 'assets', 'tray', IS_MAC ? 'surgeTemplate.png' : 'bolt.png')); if (IS_MAC) img.setTemplateImage(true); } catch {} }
-  if (trayCache.size > 64) trayCache.clear(); trayCache.set(key, img); return img;
+  if (trayCache.size > 80) trayCache.clear(); trayCache.set(key, img); return img;
 }
-const markIcon = () => templ('mark', s => TC.markPNG(s), TC.SIZES.mark);
-function trayChip(b) { const lvl = Math.round(b.level); return templ(`chip${lvl}${b.charging ? 'c' : ''}`, s => TC.chipPNG({ level: lvl, charging: b.charging }, s), TC.SIZES.chip); }
-function trayBattery(b) { const lvl = Math.round(b.level / 5) * 5; return templ(`bat${lvl}${b.charging ? 'c' : ''}`, s => TC.batteryPNG({ level: lvl, charging: b.charging }, s), TC.SIZES.battery); }
+// which menu bar we sit on: macOS draws a dark menu bar in Dark Mode
+const darkBar = () => { try { return nativeTheme.shouldUseDarkColors; } catch { return true; } };
+const mono = () => !!mod('glow')?.trayMono;
+const markIcon = () => mono() ? cached('m-mark', s => TC.markPNG(s), TC.SIZES.mark, true) : cached(`c-mark-${darkBar() ? 'd' : 'l'}`, s => TC.colorPNG('mark', null, s, darkBar()).png, [16, 16]);
+function trayChip(b) { const lvl = Math.round(b.level), bb = { level: lvl, charging: !!b.charging };
+  return mono() ? cached(`m-chip${lvl}${bb.charging ? 'c' : ''}`, s => TC.chipPNG(bb, s), TC.SIZES.chip, true) : cached(`c-chip${lvl}${bb.charging ? 'c' : ''}-${darkBar() ? 'd' : 'l'}`, s => TC.colorPNG('chip', bb, s, darkBar()).png, TC.colorSize('chip', bb)); }
+function trayBattery(b) { const lvl = Math.round(b.level), bb = { level: lvl, charging: !!b.charging };
+  return mono() ? cached(`m-bat${lvl}${bb.charging ? 'c' : ''}`, s => TC.batteryPNG(bb, s), TC.SIZES.battery, true) : cached(`c-bat${lvl}${bb.charging ? 'c' : ''}-${darkBar() ? 'd' : 'l'}`, s => TC.colorPNG('battery', bb, s, darkBar()).png, [27, 16]); }
 function trayIcon(b, style) {
-  if (!IS_MAC) {     // Windows tray: the coloured PNGs in assets/tray
-    const name = (!b || b.level == null || style === 'mark') ? 'bolt' : `b${Math.round(Math.max(0, Math.min(100, b.level)) / 10) * 10}${b.charging ? 'c' : ''}`;
-    try { return nativeImage.createFromPath(path.join(__dirname, 'assets', 'tray', name + '.png')); } catch { return nativeImage.createEmpty(); }
-  }
   if (!b || b.level == null || style === 'mark' || style === 'bolt' || style === 'pct') return markIcon();
   if (style === 'chip') return trayChip(b);
   return trayBattery(b);
 }
-let trayIconKey = '';
+let trayIconKey = '', trayAt = 0, trayLater = null, trayWant = null;
 function setTrayBattery(b, style) {
   if (!tray) return;
-  const st = style || mod('glow')?.trayStyle || 'mark';
-  const k = b && b.level != null ? `${st}|${Math.round(b.level)}|${b.charging ? 1 : 0}` : 'mark';
-  if (k === trayIconKey) return; trayIconKey = k;
-  try { tray.setImage(trayIcon(b, st)); } catch (e) { console.error('tray icon', e); }
+  const st = style || mod('glow')?.trayStyle || 'mark', look = `${mono() ? 'm' : 'c'}${darkBar() ? 'd' : 'l'}`;
+  const usesLevel = b && b.level != null && (st === 'chip' || st === 'icon' || st === 'both');
+  const k = usesLevel ? `${st}|${look}|${Math.round(b.level)}|${b.charging ? 1 : 0}` : `mark|${look}`;
+  if (k === trayIconKey) return;
+  const prev = trayIconKey.split('|'), onlyLevel = usesLevel && prev[0] === st && prev[1] === look && prev[3] === (b.charging ? '1' : '0');
+  const apply = () => { trayLater = null; trayIconKey = k; trayAt = Date.now(); try { tray.setImage(trayIcon(b, st)); } catch (e) { console.error('tray icon', e); } };
+  clearTimeout(trayLater);
+  if (onlyLevel && Date.now() - trayAt < 4000) { trayLater = setTimeout(apply, 4000 - (Date.now() - trayAt)); return; }   // a level tick waits its turn; plug, unplug and style changes are instant
+  apply();
 }
+// the menu bar changes between light and dark with the system appearance: swap to the matching variant (cached, no repaint loop)
+function onAppearance() { if (!tray || mono()) return; trayIconKey = ''; try { MODULES.glow?.onSettings?.(ctx); } catch {} if (!running.has('glow') || !battery) setTrayBattery(null, 'mark'); }
+app.whenReady().then(() => { try { nativeTheme.on('updated', onAppearance); } catch {} if (IS_MAC) { try { systemPreferences.subscribeNotification('AppleInterfaceThemeChangedNotification', () => setTimeout(onAppearance, 120)); } catch {} } });
 function setTray(id, extra) { const k = JSON.stringify(extra, (kk, v) => typeof v === 'function' ? undefined : v); if (trayKeys[id] === k) return; trayKeys[id] = k; trayExtras[id] = extra; updateTray(); }
 const trayKeys = {};
 let lastTitle = null;
@@ -472,7 +487,7 @@ const ctx = {
   broadcast: (ch, p) => { [settingsWin, notesWin, audioWin, popWin, ...overlays].forEach(w => { try { if (w && !w.isDestroyed()) w.webContents.send(ch, p); } catch {} }); },
 };
 const running = new Set();
-if (process.env.SURGE_TEST) global.__surge = { ctx, ripple, MODULES };   // tests only
+if (process.env.SURGE_TEST) global.__surge = { ctx, ripple, MODULES, markIcon, trayChip, trayBattery, applyPatch: (p) => applyPatch(p), get tray() { return tray; } };   // tests only
 function startModule(id) { const m = MODULES[id]; if (!m || running.has(id)) return; try { log('starting', id); m.start?.(ctx); running.add(id); log('start', id); } catch (e) { console.error(`[${id}] start`, e); } }
 function stopModule(id) { const m = MODULES[id]; if (!m || !running.has(id)) return; try { m.stop?.(ctx); } catch (e) { console.error(`[${id}] stop`, e); } running.delete(id); trayExtras[id] = null; delete trayKeys[id]; updateTray(); }
 function reconcile() {
@@ -578,10 +593,12 @@ app.whenReady().then(async () => {
     { type: 'separator' }, { role: 'close' }, { role: 'minimize' }, { role: 'quit' } ]}, { role: 'editMenu' }]));
   if (process.platform === 'darwin') app.dock?.hide();
   createOverlays();
-  tray = new Tray(trayIcon(null, 'mark')); tray.setIgnoreDoubleClickEvents(true); tray.setToolTip('Surge');
-  if (IS_MAC && process.env.SURGE_SELFTEST) { try { const tests = [['mark', markIcon(), 16], ['chip', trayChip({ level: 67, charging: true }), 34], ['battery', trayBattery({ level: 50 }), 26]];
-      const bad = tests.filter(([, im, w]) => im.isEmpty() || im.getSize().width !== w || !im.isTemplateImage() || im.getScaleFactors().indexOf(2) < 0).map(t => t[0]);
-      log(bad.length ? 'tray template selftest FAIL ' + bad.join(',') : 'tray template selftest pass (mark, chip, battery: template, 1x + 2x)'); } catch (e) { log('tray template selftest FAIL ' + e.message); } }
+  tray = new Tray(markIcon()); tray.setIgnoreDoubleClickEvents(true); tray.setToolTip('Surge');
+  if (IS_MAC && process.env.SURGE_SELFTEST) { try {
+      const imgs = [['mark', markIcon(), 16], ['chip', trayChip({ level: 67, charging: true }), 0], ['battery', trayBattery({ level: 50 }), 27]];
+      const bad = imgs.filter(([, im, w]) => im.isEmpty() || (w && im.getSize().width !== w) || im.getSize().height !== 16 || im.getScaleFactors().indexOf(2) < 0).map(t => t[0]);
+      const tm = [TC.markPNG(2), TC.chipPNG({ level: 67, charging: true }, 2)].map(b => nativeImage.createFromBuffer(b)).filter(im => im.isEmpty()).length;
+      log(bad.length || tm ? 'tray icons selftest FAIL ' + bad.join(',') : 'tray icons selftest pass (colour mark, chip, battery at 1x and 2x; monochrome templates ok)'); } catch (e) { log('tray icons selftest FAIL ' + e.message); } }
   tray.on('click', togglePopover);
   tray.on('right-click', openTrayMenu);
   if (IS_WIN) app.setAppUserModelId('app.surge.glow');

@@ -11,11 +11,26 @@ const { ipcMain, nativeImage } = require('electron');
 app.whenReady().then(async () => {
   await wait(5000);
   const TC = require('../traychip.js');
+  const stats = png => { const im = nativeImage.createFromBuffer(png), bmp = im.toBitmap(); let colour = 0, opaque = 0; for (let i = 0; i < bmp.length; i += 4) if (bmp[i + 3] > 200) { opaque++; const mx = Math.max(bmp[i], bmp[i + 1], bmp[i + 2]), mn = Math.min(bmp[i], bmp[i + 1], bmp[i + 2]); if (mx - mn > 60) colour++; } return { im, colour, opaque }; };
+  // colour icons (default): Surge colours, 16pt tall at 1x/2x/3x, a light and a dark menu-bar variant that differ
+  for (const [kind, b] of [['mark', null], ['chip', { level: 78, charging: true }], ['chip', { level: 100 }], ['battery', { level: 55 }], ['battery', { level: 80, charging: true }], ['battery', { level: 12 }]]) {
+    const L = TC.colorPNG(kind, b, 2, false), Dk = TC.colorPNG(kind, b, 2, true), s3 = TC.colorPNG(kind, b, 3, true), st = stats(Dk.png);
+    ok(st.im.getSize().height === 32 && nativeImage.createFromBuffer(s3.png).getSize().height === 48 && st.colour > 20, `colour ${kind}${b ? ' ' + b.level + (b.charging ? ' charging' : '') : ''}: 16pt at 2x and 3x, ${st.colour} coloured pixels`);
+    ok(!L.png.equals(Dk.png), `colour ${kind}: light and dark menu-bar variants differ`);
+  }
+  // battery fill follows the level: amber when low, cyan/mint while charging, pink/violet otherwise
+  const hue = png => { const bmp = nativeImage.createFromBuffer(png).toBitmap(), w = nativeImage.createFromBuffer(png).getSize().width; let r = 0, g = 0, bl = 0, n = 0; for (let y = 12; y < 20; y++) for (let x = 8; x < 14; x++) { const i = (y * w + x) * 4; if (bmp[i + 3] > 200) { bl += bmp[i]; g += bmp[i + 1]; r += bmp[i + 2]; n++; } } return [r / n, g / n, bl / n]; };   // toBitmap is BGRA
+  const lo = hue(TC.colorPNG('battery', { level: 12 }, 2, true).png), ch = hue(TC.colorPNG('battery', { level: 60, charging: true }, 2, true).png), nm = hue(TC.colorPNG('battery', { level: 60 }, 2, true).png);
+  ok(lo[0] > 200 && lo[2] < 120, `battery low is amber (${lo.map(Math.round)})`); ok(ch[1] > 150 && ch[0] < 100, `battery charging is cyan/mint (${ch.map(Math.round)})`); ok(nm[2] > 150 && nm[1] < 120, `battery normal is pink/violet (${nm.map(Math.round)})`);
+  // monochrome option: template images, black + alpha only
   for (const [n, png, w] of [['mark', TC.markPNG(2), 32], ['chip', TC.chipPNG({ level: 67, charging: true }, 2), 68], ['battery', TC.batteryPNG({ level: 40 }, 2), 52]]) {
     const im = nativeImage.createFromBuffer(png); const bmp = im.toBitmap(); let colour = false;
     for (let i = 0; i < bmp.length; i += 4) if (bmp[i + 3] && (bmp[i] || bmp[i + 1] || bmp[i + 2])) { colour = true; break; }
-    ok(!im.isEmpty() && im.getSize().width === w && im.getSize().height === 32 && !colour, `tray ${n}: ${im.getSize().width}x${im.getSize().height} @2x, black + alpha only (template)`);
+    ok(!im.isEmpty() && im.getSize().width === w && im.getSize().height === 32 && !colour, `monochrome ${n}: ${im.getSize().width}x${im.getSize().height} @2x, black + alpha only (template)`);
   }
+  const G = global.__surge; ok(!G.markIcon().isEmpty() && G.markIcon().getScaleFactors().includes(2), 'tray uses the colour mark with 1x and 2x (3x on 3x displays)');
+  G.applyPatch({ modules: { glow: { trayMono: true } } }); const mi = G.markIcon(); ok(!mi.isEmpty() && (process.platform !== 'darwin' || mi.isTemplateImage()), 'Monochrome icon setting switches to the template mark');
+  G.applyPatch({ modules: { glow: { trayMono: false } } });
   ok(fs.existsSync(path.join(__dirname, '..', 'assets', 'tray', 'surgeTemplate@2x.png')), 'fallback template icon on disk');
   // the menu
   tray('click').fn(); await wait(1800); const pop = find(/popover\.html/);

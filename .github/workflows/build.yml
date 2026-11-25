@@ -105,7 +105,7 @@ jobs:
           grep -i "UNCAUGHT\|module load\|UNHANDLED" $L/surge.log && { echo "✗ errors in log"; exit 1; } || echo "✓ no errors in log"
           [ "$(grep -c "hook started (worker)" $L/surge.log)" -ge 2 ] && echo "✓ hook runs INSIDE Surge (worker thread) on both launches — uses Surge's own permission" || { echo "✗ hook did not start as an in-app worker on both launches"; cat $L/surge.log; exit 1; }
           [ "$(grep -c "hook started" $L/surge.log)" -ge 2 ] && echo "✓ keyboard/mouse hook started before AND after the update (permission granted, like a real Mac)" || { echo "✗ hook did not start on both launches"; cat $L/surge.log; exit 1; }
-          grep -q "tray template selftest pass" $L/surge.log && echo "✓ menu-bar icons are valid template images (mark, chip, battery at 1x and 2x)" || { echo "✗ menu-bar template icons failed"; grep "tray" $L/surge.log; exit 1; }
+          grep -q "tray icons selftest pass" $L/surge.log && echo "✓ menu-bar icons render (colour mark, chip, battery; monochrome templates)" || { echo "✗ menu-bar template icons failed"; grep "tray" $L/surge.log; exit 1; }
           grep -q "haptics ready" $L/surge.log && echo "✓ trackpad haptics helper started and is ready" || { echo "✗ haptics helper did not start"; exit 1; }
           [ "$(grep -c "start dock" $L/surge.log)" -ge 2 ] && echo "✓ startup ran to the end both times (no freeze)" || { echo "✗ startup did not finish (FROZEN)"; cat $L/surge.log; exit 1; }
           osascript -e 'with timeout of 5 seconds' -e 'tell application "System Events" to key code 49' -e 'end timeout' >/dev/null 2>&1 || true; sleep 2

@@ -4,7 +4,7 @@
 
 - **A whole new look.** Every panel, menu, popover, dialog and window is redesigned: deep pink, violet, cyan and amber, big hero banners, glossy icon tiles and glass with real depth.
 - **Zero lag.** Surge now sleeps when you are not using it. Its windows truly close, nothing animates in the background, and it no longer checks things every second. Idle CPU is close to zero.
-- **A new menu-bar icon.** The Surge mark, a charge chip or a battery, all drawn as proper macOS menu-bar icons that match light and dark menu bars.
+- **A new menu-bar icon in Surge colours.** The glossy Surge mark, a charge chip with the level and percent, or a battery that turns amber when low and cyan while charging, with versions made for light and dark menu bars that switch by themselves. Prefer plain? Turn on Monochrome icon in Settings.
 - **A new right-click menu and new dialogs**, drawn by Surge in the same style instead of plain system boxes.
 - **A beautiful update card.** See the download fill up, restart in one click, and get a short "what's new" card when Surge comes back.
 - **Updates you can trust.** Surge checks GitHub every 30 minutes (and when you open its menu), retries calmly if the network drops, and never interrupts what you are doing.
