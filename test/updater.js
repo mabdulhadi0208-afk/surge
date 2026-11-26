@@ -21,6 +21,12 @@ if (process.env.SURGE_UPDATER_CHILD) {
   U.start(ctx);
   (async () => {
     const st = () => U.actions.state().status;
+    // 3.0.3: Update now pressed before any check has run (the card opened right after launch) must still update
+    if (process.env.SURGE_UPDATER_COLD) {
+      await Promise.all([U.actions.download(), U.actions.download()]);
+      for (let i = 0; i < 200 && !['ready', 'error'].includes(st()); i++) await new Promise(r => setTimeout(r, 100));
+      say({ cold: st(), latest: U.actions.state().latest, error: U.actions.state().error }); setTimeout(() => process.exit(0), 500); return;
+    }
     // pile-up: the timer, the menu and a wake all check at once, then two downloads are asked for
     await Promise.all([U._check(ctx, false), U._check(ctx, false), U._check(ctx, true)]);
     say({ afterCheck: st(), latest: U.actions.state().latest, size: U.actions.state().size });
@@ -129,6 +135,13 @@ server.listen(0, '127.0.0.1', async () => {
     const c = await runChild('readonly', { SURGE_UPDATE_BUNDLE: '/Volumes/Surge/Surge.app', SURGE_UPDATER_INSTALL: '1' });
     const ci = get(c.msgs, 'afterInstall');
     ok(ci && ci.afterInstall === 'error' && /Applications/.test(ci.error || '') && !c.msgs.some(m => 'exit' in m), `cannot swap: stays open with "${(ci?.error || '').slice(0, 60)}..."`);
+
+    // 5. Update now before any check (the button that "did nothing"): it checks, then downloads and stages the update
+    const g0 = gets
+    const d = await runChild('cold', { SURGE_UPDATE_BUNDLE: target, SURGE_UPDATER_COLD: '1' });
+    const dc = get(d.msgs, 'cold');
+    ok(dc && dc.cold === 'ready' && dc.latest === 'v3.0.1' && gets - g0 === 1, `Update now before any check still updates: ${dc?.cold}${dc?.error ? ' (' + dc.error + ')' : ''}, ${gets - g0} download`);
+    if (!dc || dc.cold !== 'ready') out('child log:\n' + readLog(d.dir));
 
     if (r.err.trim()) out('child stderr: ' + r.err.trim().slice(0, 400));
   } catch (e) { ok(false, 'test crashed: ' + e.stack); }

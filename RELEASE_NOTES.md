@@ -1,3 +1,13 @@
+## Surge 3.0.3: Update now always works
+
+**Download:** Mac (Apple silicon): **Surge-mac-arm64.dmg**, drag Surge to Applications, then right-click it and choose Open the first time. Windows: **Surge-win-x64.exe** (if SmartScreen asks: More info, then Run anyway). Already have Surge? It updates itself.
+
+- **Update now never does nothing.** Pressed before Surge had looked for updates (the card or the menu opened right after Surge started, or after a check that could not reach GitHub), it used to return without a word. Now it looks first, then downloads the new version; if there is nothing newer, the card says so.
+- **The button answers the moment you press it:** it gives under your finger, says Starting with a spinner, and a ring of light spreads from it.
+- **The update card says "1 change"**, not "1 changes".
+
+If Update now did nothing for you before, download this version once from the website. From then on Surge updates itself.
+
 ## Surge 3.0.2: your Mac stays the way you set it, and Surge stays smooth
 
 **Download:** Mac (Apple silicon): **Surge-mac-arm64.dmg**, drag Surge to Applications, then right-click it and choose Open the first time. Windows: **Surge-win-x64.exe** (if SmartScreen asks: More info, then Run anyway). Already have Surge? It updates itself.

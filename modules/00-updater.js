@@ -14,7 +14,7 @@ const IS_WIN = process.platform === 'win32';
 let timer = null, popup = null, snoozedUntil = 0, skipVersion = null, polling = false, misses = 0, lastTag = null, lastCheck = 0, dlProc = null, lastPeek = 0, retryT = null, fails = 0;
 let checkP = null, dlP = null, dlCancelled = false;   // single-flight: one check and one download at a time (a second one used to wipe the first one's file)
 // shown on the card right after an update lands (keep it to this version's changes)
-const WHATS_NEW = ['Auto Dark Mode no longer switches your Mac to light or dark on its own: it only acts at the times you set', 'Settings opens faster and flips pages smoothly, with every animation exactly as before', 'The Dock and Launchpad never freeze Surge while loading app icons'];
+const WHATS_NEW = ['Update now always works: pressed before Surge has looked for updates, it looks first and then downloads', 'The button answers the moment you press it, with a spinner and a ring of light', 'The update card says 1 change, not 1 changes']
 // only an Apple silicon build is published. An Intel Mac gets updates from the website; an Apple silicon Mac running an x64 copy
 // under Rosetta CAN run the arm64 build, so it is not blocked (set in start(), where app is known).
 let NO_BUILD = false;
@@ -119,9 +119,17 @@ async function doCheck(manual) {
 function showCardIfAllowed(manual) { if (manual || Date.now() > snoozedUntil) showCard(); }
 
 // One download at a time. A second call while one runs joins it instead of deleting its half-written file.
+// Update now must always do something. Before a check has found the file to fetch (the card or the menu opened right after
+// Surge started, while the first check was still waiting, or after a check that failed), it used to return without a
+// word, so the button looked dead. Now it looks first, then fetches what it found; with nothing newer the card says so.
 function download() {
   if (dlP) return dlP;
-  if (!state.url || ['downloading', 'unpacking', 'installing'].includes(state.status)) return Promise.resolve();
+  if (['downloading', 'unpacking', 'installing'].includes(state.status)) return Promise.resolve();
+  if (!state.url) {
+    log('update asked for before a check found the file: checking first');
+    dlP = check(true).then(() => (state.status === 'available' && state.url ? doDownload() : null)).catch(e => log('download crashed:', e.message)).finally(() => { dlP = null; });
+    return dlP;
+  }
   dlP = doDownload().catch(e => log('download crashed:', e.message)).finally(() => { dlP = null; });
   return dlP;
 }
