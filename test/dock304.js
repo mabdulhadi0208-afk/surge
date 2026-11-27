@@ -22,7 +22,7 @@ dock._execSync = (cmd, args) => run(cmd, args);
 
 const settings = { modules: { dock: { ...dock.defaults } } }; let asked = 0;
 const merge = (a, b) => { for (const k in b) { if (b[k] && typeof b[k] === 'object' && !Array.isArray(b[k]) && a[k] && typeof a[k] === 'object') merge(a[k], b[k]); else a[k] = b[k]; } };
-const ctx = { app, os: require('os'), battery: null, settings, mod: id => settings.modules[id] || {}, applyPatch: p => merge(settings, p),
+const ctx = { app, os: require('os'), battery: null, settings, mod: id => settings.modules[id] || {}, applyPatch: p => { merge(settings, p); if (ctx.started) dock.onSettings(ctx); },
   dialog: async () => { asked++; return { response: 0 }; }, globalShortcut: { register() {}, unregister() {} }, runningApps: async () => [], log() {} };
 dock._ctx = ctx;
 
@@ -55,7 +55,7 @@ app.whenReady().then(async () => {
   settings.modules.dock = { ...dock.defaults, macDockConfirmed: false, hideMacDock: false }; asked = 0;
   let dw = null; app.once('browser-window-created', (_e, w) => (dw = w));
   let allSpaces = false; const realVAW = BrowserWindow.prototype.setVisibleOnAllWorkspaces; BrowserWindow.prototype.setVisibleOnAllWorkspaces = function (v, o) { if (v) allSpaces = true; return realVAW.call(this, v, o); };
-  dock.start(ctx); await new Promise(r => setTimeout(r, 2500));
+  ctx.started = true; dock.start(ctx); await new Promise(r => setTimeout(r, 2500));
   ok(!!dw && dw.isAlwaysOnTop() && !dw.isFocusable(), 'Surge Dock sits above app windows and never takes focus');
   ok(allSpaces, 'and asks to be on every desktop');   // a virtual display without a window manager cannot report it back
   ok(settings.modules.dock.macDockV2 === true && settings.modules.dock.hideMacDock === true && asked === 1, 'anyone whose option was switched off by the old permission is asked once more');

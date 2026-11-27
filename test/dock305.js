@@ -41,7 +41,10 @@ app.whenReady().then(async () => {
   // start Surge Dock with the fake helper
   const realHelper = Native.Helper; Native.Helper = (o) => realHelper({ ...o, spawnFn: fakeSpawn, bin: 'fake' });
   let dw = null; app.once('browser-window-created', (_e, w) => (dw = w));
-  dock.start(ctx); await wait(2500);
+  // Surge's main process starts a module again if its settings change before start() returns: start must never save settings itself
+  let inStart = false, savedInStart = false; const realPatch = ctx.applyPatch; ctx.applyPatch = (p) => { if (inStart) savedInStart = true; realPatch(p); };
+  inStart = true; dock.start(ctx); inStart = false; await wait(2500);
+  ok(!savedInStart, 'starting the dock never saves settings mid-start (that started it three times in the first 3.0.5 build)');
   ok(settings.modules.dock.fsV2 === true && settings.modules.dock.fullscreen === true, 'people who had it off in fullscreen get the new behavior once');
   say({ ev: 'ready', ax: true, protocol: 1 }); await wait(200);
   const zoneMsg = sent.filter(m => m.cmd === 'zone').pop(), kc = sent.filter(m => m.cmd === 'keepclear').pop();

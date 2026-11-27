@@ -160,6 +160,8 @@ func unwatchAll() {
 func frontIsFullscreen() -> Bool {
     guard let app = NSWorkspace.shared.frontmostApplication else { return false }
     let pid = app.processIdentifier
+    // Surge itself in front (its settings, the What's new film, the full-screen glow overlay) is never a fullscreen app
+    if pid == parentPid || pid == myPid { return lastFullscreen ?? false }
     let screen: CGRect = zone?.screen ?? {
         guard let s = NSScreen.screens.first else { return .zero }
         return CGRect(x: 0, y: 0, width: s.frame.width, height: s.frame.height)

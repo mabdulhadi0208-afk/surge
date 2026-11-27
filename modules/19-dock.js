@@ -110,6 +110,14 @@ module.exports = {
     if (ev.ev === 'fullscreen') module.exports._onFullscreen(ctx, ev.on);
     else if (ev.ev === 'ready' || ev.ev === 'ax') { lastZone = ''; module.exports._sendZone(ctx); try { ctx.log && ctx.log('dock', `helper ${ev.ev}: accessibility ${ev.ax ?? ev.on}`); } catch {} }
   },
+  _migrate(ctx) {
+    if (!win || win.isDestroyed()) return; const s = ctx.mod('dock'); const patch = {};
+    // 3.0.4: replacing Apple's Dock no longer needs System Events, so anyone it was switched off for by a refused permission gets asked once more
+    if (!IS_WIN && !s.macDockV2) Object.assign(patch, { macDockV2: true }, s.macDockConfirmed ? {} : { hideMacDock: true });
+    // 3.0.5: Surge Dock slides up in fullscreen apps by default (it used to stay out of them)
+    if (!s.fsV2) Object.assign(patch, { fsV2: true, fullscreen: true });
+    if (Object.keys(patch).length) ctx.applyPatch({ modules: { dock: patch } });
+  },
   async _confirmMacDock(ctx) {
     if (ctx.mod('dock').macDockConfirmed) return true;
     const r = await ctx.dialog({ type: 'question', buttons: ['Replace it', 'Keep the macOS Dock'], defaultId: 0, cancelId: 1, message: 'Replace the macOS Dock with Surge Dock?',
@@ -208,11 +216,10 @@ module.exports = {
     poll = setInterval(() => module.exports._tick(ctx), 5000);
     try { ctx.globalShortcut.register('CommandOrControl+Shift+D', () => module.exports._toggle(ctx)); ctx.globalShortcut.register('CommandOrControl+Shift+L', () => module.exports._launchpad(ctx)); } catch {}
     if (!module.exports._dispHooked) { module.exports._dispHooked = true; screen.on('display-metrics-changed', () => module.exports._place(ctx)); }
-    // 3.0.5: Surge Dock slides up in fullscreen apps by default (it used to stay out of them)
-    if (!ctx.mod('dock').fsV2) ctx.applyPatch({ modules: { dock: { fsV2: true, fullscreen: true } } });
+    // one-time setting changes run after start has finished: saving settings from inside start() made Surge start the
+    // dock again before the first start was done (three docks, two of them leaked)
+    setTimeout(() => module.exports._migrate(ctx), 0);
     if (!IS_WIN && !helper) { helper = Native.Helper({ onEvent: (ev) => module.exports._helperEvent(ctx, ev), log: (m) => { try { ctx.log && ctx.log('dock', m); } catch {} } }); helper.start(); lastZone = ''; }
-    // 3.0.4: replacing Apple's Dock no longer needs System Events, so anyone it was switched off for by a refused permission gets asked once more
-    if (!IS_WIN && !ctx.mod('dock').macDockV2) ctx.applyPatch({ modules: { dock: { macDockV2: true, ...(ctx.mod('dock').macDockConfirmed ? {} : { hideMacDock: true }) } } });
     if (!IS_WIN && !module.exports._pmHooked) { module.exports._pmHooked = true; try { const { powerMonitor } = require('electron'); for (const ev of ['resume', 'unlock-screen']) powerMonitor.on(ev, () => setTimeout(() => module.exports._macDockCheck(ctx), 1500)); } catch {} }
     if (!IS_WIN) { clearInterval(module.exports._recheck); module.exports._recheck = setInterval(() => module.exports._macDockCheck(ctx), 120000); }
     if (!IS_WIN && ctx.mod('dock').hideMacDock && !macDockHidden) module.exports._confirmMacDock(ctx).then(ok => ok && module.exports._macDock(true, ctx));
