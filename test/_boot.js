@@ -6,7 +6,9 @@ process.env.SURGE_TEST = '1';
 const DIR = process.env.SURGE_TEST_DIR || fs.mkdtempSync(path.join(os.tmpdir(), 'surge-test-'));
 const extra = process.env.SURGE_TEST_MODULES ? JSON.parse(process.env.SURGE_TEST_MODULES) : {};
 fs.mkdirSync(DIR, { recursive: true });
-fs.writeFileSync(path.join(DIR, 'settings.json'), JSON.stringify({ launchAtLogin: false, welcomed: true, soundFix: 1, chipFix: 1, modules: extra }));
+// SURGE_TEST_SETTINGS adds top-level settings (say whatsNewSeen); SURGE_TEST_FRESH leaves no settings file, like a fresh install
+const extraTop = process.env.SURGE_TEST_SETTINGS ? JSON.parse(process.env.SURGE_TEST_SETTINGS) : {};
+if (!process.env.SURGE_TEST_FRESH) fs.writeFileSync(path.join(DIR, 'settings.json'), JSON.stringify({ launchAtLogin: false, welcomed: true, soundFix: 1, chipFix: 1, ...extraTop, modules: extra }));
 app.setPath('userData', DIR); app.setPath('logs', path.join(DIR, 'logs'));
 try { app.setVersion(require('../package.json').version); } catch {}
 const trays = []; const oOn = Tray.prototype.on;

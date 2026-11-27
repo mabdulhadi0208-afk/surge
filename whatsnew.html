@@ -1,0 +1,120 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="nova.css">
+<style>
+  /* Surge's What's new film (3.0.4). One take, about seven seconds: the stage opens on a spring, a beam of light crosses it,
+     the Surge gem lands with two shock rings and a burst of sparks, the name and the version drop in letter by letter, then
+     the title rises and this version's changes slide in one by one on the jelly spring. Esc, Enter, Space or a click skips it.
+     Only transform and opacity animate, every animation plays once, and with Reduce motion the film is a still card. */
+  html,body{margin:0;height:100%;overflow:hidden;background:transparent;-webkit-user-select:none;user-select:none;cursor:default}
+  body{display:grid;place-items:center;font-family:var(--font)}
+  .stage{--accent:#5b8cff;position:relative;width:780px;height:480px;border-radius:36px;overflow:hidden;isolation:isolate;color:#fff;
+    background:radial-gradient(70% 55% at 50% 38%,color-mix(in srgb,var(--accent) 34%,transparent),transparent 70%),radial-gradient(60% 60% at 100% 100%,color-mix(in srgb,var(--accent3) 30%,transparent),transparent 70%),radial-gradient(50% 50% at 0% 100%,color-mix(in srgb,var(--accent2) 26%,transparent),transparent 70%),linear-gradient(180deg,#0d1024,#06070f);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.28),inset 0 0 0 1px rgba(255,255,255,.12),0 0 0 1px color-mix(in srgb,var(--accent) 40%,transparent),0 30px 80px -20px color-mix(in srgb,var(--accent) 60%,rgba(0,0,0,.5));
+    animation:stIn .7s var(--jelly) both;transition:transform .45s cubic-bezier(.5,0,.7,.4),opacity .45s ease-in}
+  @keyframes stIn{from{opacity:0;transform:scale(.86) translateY(14px)}}
+  .stage.out{opacity:0;transform:scale(1.06)}
+  /* the light: drifting aurora pools, faint film grain lines, a beam that crosses once, a rim glint */
+  .pool{position:absolute;border-radius:50%;z-index:-1;pointer-events:none}
+  .p1{width:520px;height:520px;left:-160px;top:-220px;background:radial-gradient(closest-side,color-mix(in srgb,var(--accent) 55%,transparent),transparent);animation:drift1 8s cubic-bezier(.3,.6,.4,1) both}
+  .p2{width:460px;height:460px;right:-170px;bottom:-230px;background:radial-gradient(closest-side,color-mix(in srgb,var(--accent3) 50%,transparent),transparent);animation:drift2 8s cubic-bezier(.3,.6,.4,1) both}
+  .p3{width:360px;height:360px;left:40%;top:46%;background:radial-gradient(closest-side,color-mix(in srgb,var(--accent2) 36%,transparent),transparent);animation:drift3 8s cubic-bezier(.3,.6,.4,1) both}
+  @keyframes drift1{from{opacity:0;transform:translate(-60px,-40px) scale(.7)}}
+  @keyframes drift2{from{opacity:0;transform:translate(70px,60px) scale(.7)}}
+  @keyframes drift3{from{opacity:0;transform:translate(-80px,40px) scale(.5)}}
+  .lines{position:absolute;inset:0;z-index:-1;pointer-events:none;opacity:.5;background:repeating-linear-gradient(115deg,transparent 0 54px,rgba(255,255,255,.035) 54px 56px)}
+  .beam{position:absolute;top:-40%;left:0;width:180px;height:180%;z-index:2;pointer-events:none;opacity:0;transform:translateX(-260px) rotate(18deg);
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,.14) 40%,rgba(255,255,255,.32) 50%,rgba(255,255,255,.14) 60%,transparent);animation:beam 1.3s cubic-bezier(.4,0,.2,1) .25s forwards}
+  @keyframes beam{0%{opacity:0;transform:translateX(-260px) rotate(18deg)}15%{opacity:1}85%{opacity:1}100%{opacity:0;transform:translateX(1000px) rotate(18deg)}}
+  .bar{position:absolute;left:0;right:0;height:26px;z-index:3;background:#000;pointer-events:none}
+  .bar.t{top:0;transform-origin:50% 0;animation:barT 1.6s cubic-bezier(.6,0,.2,1) both}.bar.b{bottom:0;transform-origin:50% 100%;animation:barT 1.6s cubic-bezier(.6,0,.2,1) both}
+  @keyframes barT{0%{transform:scaleY(4)}55%{transform:scaleY(4)}100%{transform:scaleY(0)}}
+  .bar{transform:scaleY(0)}
+  /* the hero: gem, name, version. It starts large in the middle of the frame and rises to the top for the second scene */
+  .wnhero{position:absolute;left:0;right:0;top:44px;display:flex;align-items:center;justify-content:center;gap:22px;animation:heroRise 2.9s cubic-bezier(.3,0,.2,1) both}
+  @keyframes heroRise{0%,72%{transform:translateY(120px) scale(1.32)}100%{transform:none}}
+  .gemw{position:relative;width:86px;height:86px;flex:none}
+  .gem{position:absolute;inset:0;border-radius:26px;display:grid;place-items:center;color:#fff;
+    background:radial-gradient(80% 60% at 30% 10%,rgba(255,255,255,.55),transparent 60%),linear-gradient(150deg,var(--accent),var(--accent2) 55%,var(--accent3));
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.85),inset 0 0 0 1px rgba(255,255,255,.35),0 0 0 6px rgba(255,255,255,.07),0 18px 40px -8px color-mix(in srgb,var(--accent) 80%,transparent);animation:gemIn .9s var(--jelly) .3s both}
+  .gem svg{width:44px;height:44px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 2px 6px rgba(20,0,60,.4))}
+  @keyframes gemIn{from{opacity:0;transform:scale(.2) rotate(-40deg)}}
+  .shock{position:absolute;inset:-6px;border-radius:32px;border:2px solid rgba(255,255,255,.75);opacity:0;pointer-events:none;animation:shock 1s cubic-bezier(.16,1,.3,1) .55s forwards}
+  .shock.s2{border-color:color-mix(in srgb,var(--accent3) 80%,#fff);animation-delay:.75s}
+  @keyframes shock{0%{opacity:.95;transform:scale(.6)}100%{opacity:0;transform:scale(2.6)}}
+  .spk{position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px;border-radius:50%;background:#fff;opacity:0;pointer-events:none;box-shadow:0 0 10px var(--c,#fff);animation:spk .95s cubic-bezier(.16,1,.3,1) var(--d,.6s) forwards}
+  @keyframes spk{0%{opacity:1;transform:translate(0,0) scale(1.2)}100%{opacity:0;transform:translate(var(--x),var(--y)) scale(.3)}}
+  .words{display:flex;flex-direction:column;gap:4px}
+  .name{display:flex;font:850 15px/1 var(--display);letter-spacing:.42em;text-transform:uppercase;color:rgba(255,255,255,.78)}
+  .ver{display:flex;font:900 76px/.9 var(--display);letter-spacing:-.05em;font-variant-numeric:tabular-nums}
+  .ver span{background:linear-gradient(180deg,#fff 20%,color-mix(in srgb,var(--accent3) 55%,#fff));-webkit-background-clip:text;background-clip:text;color:transparent;text-shadow:none}
+  .ch{display:inline-block;animation:chIn .7s var(--jelly) both}
+  @keyframes chIn{from{opacity:0;transform:translateY(26px) scale(.7)}}
+  /* scene two: the title and this version's changes */
+  .eye{position:absolute;left:0;right:0;top:170px;display:flex;justify-content:center;align-items:center;gap:10px;font:800 11px/1 var(--display);letter-spacing:.3em;text-transform:uppercase;color:rgba(255,255,255,.72);animation:fadeUp .6s var(--jelly) 2.5s both}
+  .eye i{width:7px;height:7px;border-radius:50%;background:var(--accent3);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent3) 25%,transparent),0 0 12px var(--accent3)}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}}
+  ol{position:absolute;left:50%;top:200px;width:620px;margin:0 0 0 -310px;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px}
+  li{display:flex;align-items:center;gap:14px;padding:12px 16px 12px 12px;border-radius:20px;font:600 14.5px/1.35 var(--font);color:#fff;
+    background:linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,.05));box-shadow:inset 0 1px 0 rgba(255,255,255,.28),inset 0 0 0 1px rgba(255,255,255,.1),0 14px 30px -18px color-mix(in srgb,var(--ic) 80%,transparent);
+    animation:liIn .75s var(--jelly) var(--d) both}
+  ol.many{gap:7px}ol.many li{padding:8px 14px 8px 10px}ol.many li .t{width:34px;height:34px}
+  @keyframes liIn{from{opacity:0;transform:translateX(60px) scale(.94)}}
+  li .t{position:relative;flex:none;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(140deg,var(--ic3),var(--ic));box-shadow:inset 0 1.5px 0 rgba(255,255,255,.7),0 6px 14px -4px var(--ic)}
+  li .t svg{width:19px;height:19px;fill:none;stroke:#fff;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round}
+  li .t b{position:absolute;right:-5px;top:-5px;width:17px;height:17px;border-radius:50%;display:grid;place-items:center;font:850 9.5px/1 var(--display);color:var(--ic);background:#fff}
+  /* chrome: skip, hint, the progress line */
+  .skip{position:absolute;right:18px;top:18px;z-index:4;display:flex;align-items:center;gap:8px;padding:7px 8px 7px 13px;border:0;border-radius:999px;font:750 12px/1 var(--display);color:#fff;cursor:pointer;
+    background:rgba(255,255,255,.12);box-shadow:inset 0 0 0 1px rgba(255,255,255,.2);animation:fadeUp .5s var(--jelly) .9s both;transition:transform .3s var(--jelly)}
+  .skip:hover{transform:scale(1.05)}.skip:active{transform:scale(.94)}
+  .skip kbd{padding:3px 6px;border-radius:7px;font:800 10px/1 var(--display);background:rgba(255,255,255,.16)}
+  .prog{position:absolute;left:28px;right:28px;bottom:18px;height:3px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden;z-index:4}
+  .prog i{position:absolute;inset:0;transform-origin:0 50%;border-radius:inherit;background:linear-gradient(90deg,var(--accent),var(--accent2),var(--accent3));animation:prog var(--len,7s) linear both}
+  @keyframes prog{from{transform:scaleX(0)}}
+  .brand{position:absolute;left:28px;bottom:30px;font:800 10px/1 var(--display);letter-spacing:.3em;text-transform:uppercase;color:rgba(255,255,255,.4);animation:fadeUp .6s var(--jelly) 1.4s both}
+  @media (prefers-reduced-motion:reduce){.beam,.shock,.spk,.bar{display:none}.stage{transition:none}}
+</style>
+<script src="nova.js"></script>
+</head><body>
+<div class="stage" id="stage" role="dialog" aria-label="What's new in Surge">
+  <i class="pool p1"></i><i class="pool p2"></i><i class="pool p3"></i><i class="lines"></i><i class="beam"></i>
+  <i class="bar t"></i><i class="bar b"></i>
+  <button class="skip" id="skip">Skip <kbd>Esc</kbd></button>
+  <div class="wnhero" id="hero"><div class="gemw" id="gemw"><i class="shock"></i><i class="shock s2"></i><div class="gem" id="gem"></div></div>
+    <div class="words"><div class="name" id="name"></div><div class="ver" id="ver"></div></div></div>
+  <div class="eye"><i></i><b id="eye">What's new</b></div>
+  <ol id="items"></ol>
+  <span class="brand">Surge</span>
+  <div class="prog"><i id="prog"></i></div>
+</div>
+<script>
+const $=s=>document.querySelector(s), api=window.surge, N=window.Nova;
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const HUES=['h-blue','h-violet','h-pink','h-cyan','h-orange'];
+const film=window.__film={ state:'loading', how:null, version:'', items:[] };
+const letters=(el,txt,start,step)=>{ el.innerHTML=[...txt].map((c,i)=>`<span class="ch" style="animation-delay:${(start+i*step).toFixed(3)}s">${c===' '?'&nbsp;':N.esc(c)}</span>`).join(''); };
+let endT=0;
+function finish(how){ if(film.state!=='playing') return; film.state='out'; film.how=how; clearTimeout(endT);
+  $('#stage').classList.add('out'); setTimeout(()=>api?.whatsNewDone?.(how), RM?0:460); }
+async function start(){
+  const d=await api?.whatsNew?.()||{ version:'', items:[] };
+  film.version=d.version; film.items=(d.items||[]).map(i=>i.text);
+  $('#gem').innerHTML=N.ic('bolt');
+  letters($('#name'),'Surge',.62,.05);
+  $('#ver').innerHTML=''; const vs=document.createElement('span'); $('#ver').appendChild(vs); letters(vs,d.version,.95,.07);
+  $('#eye').textContent=`What's new in ${d.version}`;
+  const items=d.items||[];
+  $('#items').classList.toggle('many',items.length>3);$('#items').innerHTML=items.map((it,i)=>`<li class="${HUES[i%HUES.length]}" style="--d:${(2.75+i*.42).toFixed(2)}s"><span class="t">${N.ic(it.icon||'spark')}<b>${i+1}</b></span><span>${N.esc(it.text)}</span></li>`).join('');
+  // a burst of sparks from the gem as it lands
+  const g=$('#gemw'); for(let i=0;i<16;i++){ const a=i/16*Math.PI*2+(i%2?.2:0), r=70+(i%3)*28, s=document.createElement('i'); s.className='spk';
+    s.style.cssText=`--x:${(Math.cos(a)*r).toFixed(1)}px;--y:${(Math.sin(a)*r).toFixed(1)}px;--d:${(.58+(i%4)*.04).toFixed(2)}s;--c:${i%2?'var(--accent3)':'var(--accent)'}`; g.appendChild(s); }
+  // the film runs as long as its words need: about seven seconds for three changes (a still card holds a little longer)
+  const len=Math.round((2.75+items.length*.42+3.1)*1000);
+  $('#prog').style.setProperty('--len',len+'ms');
+  film.state='playing'; film.length=len;
+  endT=setTimeout(()=>finish('end'), RM?Math.max(len,9000):len);
+}
+addEventListener('keydown',e=>{ if(['Escape','Enter',' '].includes(e.key)){ e.preventDefault(); finish('skip'); } });
+addEventListener('mousedown',()=>finish('skip'));
+api?.on?.('whatsnew:replay',()=>location.reload());
+start();
+</script></body></html>

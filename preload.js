@@ -22,5 +22,6 @@ contextBridge.exposeInMainWorld('surge', {
   pathFor: (f) => { try { return webUtils.getPathForFile(f); } catch { return f?.path || null; } },
   notesLoad: () => ipcRenderer.invoke('notes:load'), notesSave: (t) => ipcRenderer.send('notes:save', t),
   updHeight: (h) => ipcRenderer.send('update:height', h),
+  whatsNew: () => ipcRenderer.invoke('whatsnew:data'), whatsNewDone: (how) => ipcRenderer.send('whatsnew:done', how), playWhatsNew: () => ipcRenderer.send('whatsnew:play'),
   platform: process.platform,
 });

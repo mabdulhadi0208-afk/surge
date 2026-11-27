@@ -14,7 +14,8 @@ const IS_WIN = process.platform === 'win32';
 let timer = null, popup = null, snoozedUntil = 0, skipVersion = null, polling = false, misses = 0, lastTag = null, lastCheck = 0, dlProc = null, lastPeek = 0, retryT = null, fails = 0;
 let checkP = null, dlP = null, dlCancelled = false;   // single-flight: one check and one download at a time (a second one used to wipe the first one's file)
 // shown on the card right after an update lands (keep it to this version's changes)
-const WHATS_NEW = ['Update now always works: pressed before Surge has looked for updates, it looks first and then downloads', 'The button answers the moment you press it, with a spinner and a ring of light', 'The update card says 1 change, not 1 changes']
+// (one list for the card and the What's new film: whatsnew.js)
+const WHATS_NEW = require('../whatsnew.js').WHATS_NEW.items.map(i => i.text);
 // only an Apple silicon build is published. An Intel Mac gets updates from the website; an Apple silicon Mac running an x64 copy
 // under Rosetta CAN run the arm64 build, so it is not blocked (set in start(), where app is known).
 let NO_BUILD = false;
@@ -255,7 +256,8 @@ module.exports = {
       if (fs.existsSync(f) && want && !same(want, ctx.app.getVersion())) { fs.rmSync(f, { force: true }); log('update to', want, 'did not stick; still on', ctx.app.getVersion()); }
       else if (fs.existsSync(f)) { fs.rmSync(f); setTimeout(() => ctx.fireGlow('full', { level: 100, hud: { text: `Updated to Surge ${ctx.app.getVersion()}`, color: '#19D69A' } }), 1500); log('updated to', ctx.app.getVersion());
         // the restart flow ends on a "you're on the new version" card with what changed; it hides itself after 12 s
-        setTimeout(() => { if (process.env.SURGE_SELFTEST) return; set({ status: 'updated', latest: 'v' + ctx.app.getVersion() }); showCard(); setTimeout(() => { if (state.status === 'updated') { hideCard(); set({ status: 'uptodate' }); } }, 12000); }, 2600);
+        // 3.0.4: when the What's new film plays for this version, it is the welcome, so the card stays away
+        setTimeout(() => { if (process.env.SURGE_SELFTEST || ctx.whatsNewPending?.()) return; set({ status: 'updated', latest: 'v' + ctx.app.getVersion() }); showCard(); setTimeout(() => { if (state.status === 'updated') { hideCard(); set({ status: 'uptodate' }); } }, 12000); }, 2600);
         setTimeout(() => { try { const { systemPreferences } = require('electron'); if (process.platform === 'darwin') log('after update: accessibility trusted =', systemPreferences.isTrustedAccessibilityClient(false)); } catch {} }, 2500); } } catch {}
     // A fresh DMG install is ad-hoc signed (so Gatekeeper opens it). Updates are cert-signed (so permissions survive). Switch to the cert build
     // of the SAME version right away, before the user grants anything, so no later update ever changes the app's identity.

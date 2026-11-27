@@ -39,6 +39,7 @@ npm install
 npm start
 xvfb-run -a npx electron test/perf.js --no-sandbox     # idle CPU of every Surge process + frame timing (/tmp/surge-perf.log)
 xvfb-run -a npx electron test/shots.js --no-sandbox    # screenshots of every surface (/tmp/surge-shots-raw)
+xvfb-run -a npx electron test/whatsnew.js --no-sandbox # the What's new film: plays once after an update, skips, replays (/tmp/surge-whatsnew.log)
 npx electron-builder --mac dmg zip
 ```
 

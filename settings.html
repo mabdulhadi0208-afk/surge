@@ -248,6 +248,7 @@ function build(){
     <div class="glance"><div class="gl h-pink"><div class="tile">${ic('grid')}</div><div><b>${MODS.length}</b><span>Modules, each one tiny and optional</span></div></div><div class="gl h-violet"><div class="tile">${ic('keyboard')}</div><div><b>145</b><span>Keyboard sounds, made live</span></div></div><div class="gl h-cyan"><div class="tile">${ic('spark')}</div><div><b>Zero lag</b><span>Surge sleeps while you are not using it</span></div></div></div>
     <div class="card glass h-accent"><h3>App</h3>
       <div class="row"><div class="l">Interface sounds<small>Soft glassy taps when you open the menu and flip switches. Off by default.</small></div><div class="tg" id="uiSnd"></div></div>
+      <div class="row"><div class="l">What's new<small>Play the short film of what changed in this version again</small></div><button class="btn pri" id="whatsNew">What's new</button></div>
       <div class="row"><div class="l">Updates<small>Surge updates itself from its GitHub releases</small></div><div class="links"><button class="btn" data-go="updater">Open Updates</button><button class="btn" id="relNotes">Release notes</button></div></div>
       <div class="row"><div class="l">Start over<small>Puts every module and option back the way it came</small></div><button class="btn" id="reset">Reset all settings</button></div>
     </div></section>`;
@@ -276,6 +277,7 @@ function build(){
   // the preview plays once per change or click (no endless loop while the page is open)
   const pc = $('#pc'); if (pc) { mini = SurgeEngine.create(pc, { loop:false, refWidth:1440, capsuleScale:1.6 }); $('#preview').onclick = () => replay(); }
   $('#uiSnd').onclick = () => { S.uiSounds = !S.uiSounds; api?.setSettings({ uiSounds: S.uiSounds }); paint(); };
+  $('#whatsNew').onclick = () => api?.playWhatsNew?.();
   $('#relNotes').onclick = () => api?.openExternal('https://github.com/mabdulhadi0208-afk/surge/releases/latest');
   if ($('#upc')) { $('#upCheck').onclick = async () => { paintUpd({ ...(UPD||{}), status:'checking' }); paintUpd(await api?.action('updater','check')); };
     $('#upGo').onclick = () => { const st = UPD?.status; api?.action('updater', st==='ready'?'install':st==='available'?'download':st==='error'?'check':'cancel'); }; }

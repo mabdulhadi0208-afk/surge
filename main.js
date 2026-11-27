@@ -5,7 +5,8 @@ const fs = require('fs');
 const os = require('os');
 const { execFile } = require('child_process');
 const IS_MAC = process.platform === 'darwin', IS_WIN = process.platform === 'win32';
-const Nova = require('./novaui.js');           // Surge's own right-click menu and dialogs (fall back to the native ones)
+const Nova = require('./novaui.js');
+const WhatsNew = require('./whatsnew.js');      // the What's new film that plays once after an update (whatsnew.html)           // Surge's own right-click menu and dialogs (fall back to the native ones)
 
 /* ------------------------------------------------------------------ logging (~/Library/Logs/Surge/surge.log) */
 let logStream = null;
@@ -31,7 +32,7 @@ const settingsPath = () => path.join(app.getPath('userData'), 'settings.json');
 function defaultsFor(m) { return { enabled: !!m.defaultEnabled, ...(m.defaults || {}) }; }
 function loadSettings() {
   let raw = {}; try { raw = JSON.parse(fs.readFileSync(settingsPath(), 'utf8')); } catch {}
-  settings = { launchAtLogin: !!raw.launchAtLogin, masterVolume: raw.masterVolume ?? 1, muted: !!raw.muted, welcomed: raw.welcomed, soundFix: raw.soundFix, chipFix: raw.chipFix, uiSounds: !!raw.uiSounds, trayFix3: raw.trayFix3, modules: {} };
+  settings = { launchAtLogin: !!raw.launchAtLogin, masterVolume: raw.masterVolume ?? 1, muted: !!raw.muted, welcomed: raw.welcomed, soundFix: raw.soundFix, chipFix: raw.chipFix, uiSounds: !!raw.uiSounds, trayFix3: raw.trayFix3, whatsNewSeen: raw.whatsNewSeen, modules: {} };
   // one-time: the menu-bar icon moves to the new charge chip (people who picked another style on purpose keep it)
   if (!raw.chipFix) { setTimeout(() => { try { if (settings.modules.glow && (settings.modules.glow.trayStyle === 'both' || !settings.modules.glow.trayStyle)) { settings.modules.glow.trayStyle = 'chip'; } saveSettings(); } catch {} }, 0); }
   settings.chipFix = 1;
@@ -557,6 +558,7 @@ function trayTemplate() {
     { label: 'Settings', accelerator: 'Cmd+,', click: () => openSettings() },
     { label: 'Quick Notes', accelerator: 'Cmd+Shift+N', click: toggleNotes },
     { label: 'Check for updates', click: () => { try { MODULES.updater?._check(ctx, true); MODULES.updater?.actions?.card(); } catch {} } },
+    { label: 'What\'s new', click: () => playWhatsNew('replay') },
     { label: 'About Surge', click: () => openSettings('about') },
     { type: 'separator' },
     { label: 'Mute all sounds', type: 'checkbox', checked: !!settings.muted, accelerator: 'Cmd+Shift+M', click: (m) => applyPatch({ muted: m.checked }) },
@@ -577,7 +579,7 @@ const ctx = {
   runningApps: () => runningApps(), save: () => saveSettings(), get booting() { return booting; },
   frontApp: async () => { try { return (await runningApps()).find(a => a.front) || null; } catch { return null; } },
   activateApp: (a) => { if (!a) return; if (IS_WIN) { if (a.pid) winapps.activate(a.pid); } else if (a.path) execFile('open', ['-a', a.path], () => {}); },
-  setTray, setTrayBattery, openSettings, dialog: (o) => Nova.dialog(o), toggleNotes, readBattery, markCleanExit, bundlePath, stopHook: () => { quitting = true; stopHook(); }, applyPatch: (p) => applyPatch(p), get battery() { return battery; }, set battery(v) { battery = v; },
+  setTray, setTrayBattery, openSettings, whatsNewPending: () => whatsNewBoot, dialog: (o) => Nova.dialog(o), toggleNotes, readBattery, markCleanExit, bundlePath, stopHook: () => { quitting = true; stopHook(); }, applyPatch: (p) => applyPatch(p), get battery() { return battery; }, set battery(v) { battery = v; },
   notify: (title, body) => { try { new Notification({ title, body, silent: true }).show(); } catch {} },
   broadcast: (ch, p) => { [settingsWin, notesWin, audioWin, popWin, ...overlays].forEach(w => { try { if (w && !w.isDestroyed()) w.webContents.send(ch, p); } catch {} }); },
 };
@@ -608,7 +610,7 @@ function applyPatch(patch) {
 /* ------------------------------------------------------------------ ipc */
 ipcMain.handle('settings:get', () => settings);
 ipcMain.handle('settings:set', (_e, patch) => { applyPatch(patch); try { if (IS_MAC && patch && patch.modules && mod('mouse')?.haptic !== false) require('./haptics.js').tap(0, 60); } catch {} return settings; });
-ipcMain.handle('settings:reset', () => { settings = { launchAtLogin: settings.launchAtLogin, masterVolume: 1, muted: false, welcomed: true, modules: {} }; for (const id in MODULES) settings.modules[id] = defaultsFor(MODULES[id]); saveSettings(); reconcile(); ctx.broadcast('settings:update', settings); updateTray(); return settings; });
+ipcMain.handle('settings:reset', () => { settings = { launchAtLogin: settings.launchAtLogin, masterVolume: 1, muted: false, welcomed: true, whatsNewSeen: settings.whatsNewSeen, modules: {} }; for (const id in MODULES) settings.modules[id] = defaultsFor(MODULES[id]); saveSettings(); reconcile(); ctx.broadcast('settings:update', settings); updateTray(); return settings; });
 ipcMain.handle('modules:list', () => Object.values(MODULES).map(m => ({ id: m.id, name: m.name, icon: m.icon, group: m.group, desc: m.desc, needsHook: !!m.needsHook, schema: m.schema || [] })));
 ipcMain.handle('battery:get', () => battery);
 ipcMain.handle('hook:state', () => hookState);
@@ -638,6 +640,12 @@ ipcMain.on('win:minimize', (e) => BrowserWindow.fromWebContents(e.sender)?.minim
 ipcMain.on('open:external', (_e, url) => /^https?:\/\//.test(url) && shell.openExternal(url));
 ipcMain.on('app:quit', () => app.quit());
 ipcMain.on('open:settings', () => openSettings());
+// the What's new film: its words, its end (played out, skipped with Esc or a click), and a replay from Settings or the menu
+let whatsNewBoot = false;
+const playWhatsNew = (why) => { try { return WhatsNew.play({ app, settings: () => settings, save: saveSettings, log, preload: path.join(__dirname, 'preload.js') }, why); } catch (e) { log('whatsnew failed', e.message); } };
+ipcMain.handle('whatsnew:data', () => WhatsNew.data(app));
+ipcMain.on('whatsnew:done', (_e, how) => { log('whatsnew:', how); WhatsNew.done(how); });
+ipcMain.on('whatsnew:play', () => playWhatsNew('replay'));
 ipcMain.on('notes:toggle', () => toggleNotes());
 const notesPath = () => path.join(app.getPath('userData'), 'notes.txt');
 ipcMain.handle('notes:load', () => { try { return fs.readFileSync(notesPath(), 'utf8'); } catch { return ''; } });
@@ -678,12 +686,15 @@ app.whenReady().then(async () => {
   }
   log('modules', Object.keys(MODULES).join(','), 'hook', hookState);
   const firstRun = !fs.existsSync(settingsPath());
-  loadSettings(); if (firstRun) { settings.launchAtLogin = true; settings.welcomed = false; } saveSettings();
+  loadSettings(); if (firstRun) { settings.launchAtLogin = true; settings.welcomed = false; settings.whatsNewSeen = app.getVersion(); } saveSettings();
+  // a fresh install has its own welcome, so the What's new film is for updates only: it plays once on the first launch of a new version
+  whatsNewBoot = WhatsNew.wantsWhatsNew(app.getVersion(), settings.whatsNewSeen) && (!process.env.SURGE_TEST || !!process.env.SURGE_TEST_WHATSNEW);
   // Start at login: registered on the first run; after that, a launch never overrides what you set in System Settings (Login
   // Items): if you removed Surge there, Surge's own switch follows that instead of quietly adding itself back.
   if ((IS_MAC || IS_WIN) && app.isPackaged) { try { const sys = app.getLoginItemSettings().openAtLogin; if (firstRun) { if (sys !== settings.launchAtLogin) app.setLoginItemSettings({ openAtLogin: settings.launchAtLogin, openAsHidden: true }); } else if (sys !== settings.launchAtLogin) { settings.launchAtLogin = !!sys; saveSettings(); } } catch {} }
   Menu.setApplicationMenu(Menu.buildFromTemplate([{ label: 'Surge', submenu: [
     { label: 'About Surge', click: () => openSettings('about') },
+    { label: 'What\'s New in Surge', click: () => playWhatsNew('replay') },
     { label: 'Check for Updates', click: () => { try { MODULES.updater?._check(ctx, true); MODULES.updater?.actions?.card(); } catch {} } },
     { type: 'separator' },
     { label: 'Settings…', accelerator: 'Cmd+,', click: () => openSettings() },
@@ -711,6 +722,7 @@ app.whenReady().then(async () => {
   const greet = () => { if (settings.welcomed) return; settings.welcomed = true; saveSettings(); openSettings('welcome'); };
   if (firstRun) setTimeout(() => fireGlow('preview'), 900);
   if (!settings.welcomed) setTimeout(() => { if (MODULES.updater?._migrating?.()) setTimeout(greet, 45000); else greet(); }, 2500);
+  if (whatsNewBoot) setTimeout(() => playWhatsNew('update'), +process.env.SURGE_WHATSNEW_DELAY || 2400);
 });
 app.on('window-all-closed', () => {});
 app.on('will-quit', () => { quitting = true; stopHook(); try { winapps?.stop(); } catch {} try { globalShortcut.unregisterAll(); const dk = MODULES.dock; if (dk && running.has('dock')) dk.stop(ctx); } catch {} });
