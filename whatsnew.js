@@ -6,11 +6,10 @@
 const path = require('path');
 
 const WHATS_NEW = {
-  version: '3.0.5',
+  version: '3.0.6',
   items: [
-    { icon: 'dock', text: 'In fullscreen apps, Surge Dock slides up when you touch the screen edge' },
-    { icon: 'apps', text: 'Zoomed and new windows stop just above Surge Dock, like Apple\'s Dock' },
-    { icon: 'snap', text: 'Surge Dock stays put in Mission Control and skips Cmd and the backtick key' },
+    { icon: 'dock', text: 'Surge Dock is smaller and neater, with room to spare on every screen' },
+    { icon: 'apps', text: 'The Size slider still goes bigger or smaller from the new, compact starting point' },
   ],
 };
 

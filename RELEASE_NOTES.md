@@ -1,3 +1,9 @@
+## Surge 3.0.6: a smaller Surge Dock
+
+**Download:** Mac (Apple silicon): **Surge-mac-arm64.dmg**, drag Surge to Applications, then right-click it and choose Open the first time. Windows: **Surge-win-x64.exe** (if SmartScreen asks: More info, then Run anyway). Already have Surge? It updates itself.
+
+- **Surge Dock is smaller.** Icons, widgets and the dock itself all start about a fifth smaller, so it takes less of your screen. The Size slider in Settings still makes it bigger or smaller from there.
+
 ## Surge 3.0.5: Surge Dock, now a real Dock
 
 **Download:** Mac (Apple silicon): **Surge-mac-arm64.dmg**, drag Surge to Applications, then right-click it and choose Open the first time. Windows: **Surge-win-x64.exe** (if SmartScreen asks: More info, then Run anyway). Already have Surge? It updates itself.
