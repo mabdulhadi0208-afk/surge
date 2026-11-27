@@ -34,7 +34,7 @@ app.whenReady().then(async () => {
   ok(WN.WHATS_NEW.version === VERSION, `WHATS_NEW is for this version (${WN.WHATS_NEW.version}, package.json ${VERSION})`);
   ok(WN.wantsWhatsNew(VERSION, '3.0.3') && WN.wantsWhatsNew(VERSION, undefined), 'wantsWhatsNew: plays after an update from an older version');
   ok(!WN.wantsWhatsNew(VERSION, VERSION), 'wantsWhatsNew: not again on the same version');
-  ok(!WN.wantsWhatsNew('3.0.5', '3.0.4') && !WN.wantsWhatsNew('', undefined), 'wantsWhatsNew: not for a version it does not describe');
+  ok(!WN.wantsWhatsNew('9.9.9', VERSION) && !WN.wantsWhatsNew('', undefined), 'wantsWhatsNew: not for a version it does not describe');
   ok(WN.WHATS_NEW.items.length >= 1 && WN.WHATS_NEW.items.every(i => i.text && !EMOJI.test(i.text)), `WHATS_NEW has ${WN.WHATS_NEW.items.length} items, no emoji`);
   const html = fs.readFileSync(path.join(__dirname, '..', 'whatsnew.html'), 'utf8');
   ok(!EMOJI.test(html) && !EMOJI.test(fs.readFileSync(path.join(__dirname, '..', 'whatsnew.js'), 'utf8')), 'no emoji in the film page or its words');

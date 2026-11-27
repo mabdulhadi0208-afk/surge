@@ -1,3 +1,11 @@
+## Surge 3.0.5: Surge Dock, now a real Dock
+
+**Download:** Mac (Apple silicon): **Surge-mac-arm64.dmg**, drag Surge to Applications, then right-click it and choose Open the first time. Windows: **Surge-win-x64.exe** (if SmartScreen asks: More info, then Run anyway). Already have Surge? It updates itself.
+
+- **Surge Dock comes with you into fullscreen apps.** It used to stay out of them completely. Now it tucks away in a fullscreen app and slides up the moment you touch the bottom edge of the screen, just like Apple's Dock. Settings, Surge Dock, Slide up in fullscreen apps (on by default).
+- **Windows keep clear of the Dock.** When you zoom or fill a window, or an app opens a big one, it now stops just above Surge Dock instead of sliding underneath, the way macOS does for Apple's Dock. Windows you drag under it yourself are left alone, as with Apple's Dock. With auto-hide on, no space is kept, also like Apple's Dock. Settings, Surge Dock, Keep windows clear of the Dock (uses Accessibility).
+- **It behaves like part of macOS.** Surge Dock now stays put in Mission Control instead of flying off with your windows, is skipped by Cmd and the backtick key, and sits at the Dock's own level on every desktop. A small native helper built into Surge does this; if it is ever missing, Surge Dock simply works as before.
+
 ## Surge 3.0.4: Surge Dock takes over for real, and a new icon
 
 **Download:** Mac (Apple silicon): **Surge-mac-arm64.dmg**, drag Surge to Applications, then right-click it and choose Open the first time. Windows: **Surge-win-x64.exe** (if SmartScreen asks: More info, then Run anyway). Already have Surge? It updates itself.

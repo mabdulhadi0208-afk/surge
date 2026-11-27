@@ -21,6 +21,15 @@ jobs:
             ~/Library/Caches/electron-builder
           key: electron-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - run: npm ci --no-audit --no-fund --prefer-offline || npm install --no-audit --no-fund
+      - name: Build Surge Dock's native parts (helper + window add-on, universal; a compile failure fails the release)
+        run: |
+          xcrun swiftc --version
+          bash native/build.sh
+          native/bin/surge-dock --selftest | tee dock-selftest.json
+          grep -q '"ok":true' dock-selftest.json || { echo "::error::surge-dock selftest failed"; exit 1; }
+          node -e "const a=require('./native/bin/surge-dockwin.node'); if (typeof a.makeDock!=='function' || a.makeDock(Buffer.alloc(2))!==false) process.exit(1); console.log('✓ dock add-on loads and refuses a bad handle')"
+          # the helper answers and exits when stdin closes
+          printf '{"cmd":"check"}\n' | native/bin/surge-dock | tee dock-run.json; grep -q '"ev":"ready"' dock-run.json && grep -q '"ev":"fullscreen"' dock-run.json || { echo "::error::surge-dock did not answer"; exit 1; }
       - name: Import signing certificate (stable identity so macOS permissions survive updates)
         env:
           P12_BASE64: ${{ secrets.MAC_CERT_P12 }}
@@ -121,7 +130,9 @@ jobs:
           # 4. required files made it into the bundle
           npx --yes @electron/asar list "$APP/Contents/Resources/app.asar" | grep -q "assets/tray/bolt.png" && echo "✓ tray assets bundled"
           npx --yes @electron/asar list "$APP/Contents/Resources/app.asar" | grep -q "launchpad.html" && echo "✓ launchpad bundled"
-          for f in clip.html hookworker.js traychip.js traywork.js haptics.js nova.css nova.js novaui.js nova-preload.js menu.html dialog.html whatsnew.js whatsnew.html assets/sounds/plug.wav modules/18-snap.js; do npx --yes @electron/asar list "$APP/Contents/Resources/app.asar" | grep -q "$f" && echo "✓ $f bundled" || { echo "✗ $f missing from the app"; exit 1; }; done
+          [ -x "$APP/Contents/MacOS/surge-dock" ] && echo "✓ surge-dock helper bundled" || { echo "✗ surge-dock helper missing"; exit 1; }
+          [ -f "$APP/Contents/Resources/native/surge-dockwin.node" ] && echo "✓ dock add-on bundled" || { echo "✗ dock add-on missing"; exit 1; }
+          for f in dock-native.js clip.html hookworker.js traychip.js traywork.js haptics.js nova.css nova.js novaui.js nova-preload.js menu.html dialog.html whatsnew.js whatsnew.html assets/sounds/plug.wav modules/18-snap.js; do npx --yes @electron/asar list "$APP/Contents/Resources/app.asar" | grep -q "$f" && echo "✓ $f bundled" || { echo "✗ $f missing from the app"; exit 1; }; done
           # 5. sizes sane
           for f in dist/Surge-mac-arm64.dmg dist/Surge-mac-arm64.zip; do s=$(stat -f%z "$f"); [ "$s" -gt 60000000 ] && echo "✓ $f $s bytes" || { echo "✗ $f too small ($s)"; exit 1; }; done
         env: { CSC_IDENTITY_AUTO_DISCOVERY: "false" }

@@ -6,16 +6,15 @@
 const path = require('path');
 
 const WHATS_NEW = {
-  version: '3.0.4',
+  version: '3.0.5',
   items: [
-    { icon: 'dock', text: 'Surge Dock replaces Apple\'s Dock for real, no peeking, no permission' },
-    { icon: 'apps', text: 'A true Dock: it never steals focus and skips Mission Control' },
-    { icon: 'bolt', text: 'A brand new icon, the same pink gem as on the website' },
-    { icon: 'play', text: 'This film plays once after each update, and replays from Settings' },
+    { icon: 'dock', text: 'In fullscreen apps, Surge Dock slides up when you touch the screen edge' },
+    { icon: 'apps', text: 'Zoomed and new windows stop just above Surge Dock, like Apple\'s Dock' },
+    { icon: 'snap', text: 'Surge Dock stays put in Mission Control and skips Cmd and the backtick key' },
   ],
 };
 
-// Plays when Surge runs the version WHATS_NEW describes (3.0.4, or a 3.0.4.x build) and that version has not been seen yet.
+// Plays when Surge runs the version WHATS_NEW describes (3.0.5, or a 3.0.5.x build) and that version has not been seen yet.
 function wantsWhatsNew(version, seen) {
   const v = String(version || ''), f = String(WHATS_NEW.version || ''), norm = x => x.replace(/(\.0)+$/, '');
   if (!v || !f || seen === v) return false;

@@ -1,7 +1,7 @@
 {
   "name": "surge",
   "productName": "Surge",
-  "version": "3.0.4",
+  "version": "3.0.5",
   "description": "Surge: a 20-in-1 menu-bar toolbox for your Mac. Charge glow, keyboard and mouse sounds, click ripple, spotlight, night tint, caffeine, clipboard history, focus timer, window snap, a Dock and more.",
   "main": "main.js",
   "author": "Surge",
@@ -13,7 +13,8 @@
   },
   "devDependencies": {
     "electron": "^33.4.11",
-    "electron-builder": "^25.0.0"
+    "electron-builder": "^25.0.0",
+    "node-api-headers": "^1.9.0"
   },
   "build": {
     "appId": "app.surge.glow",
@@ -30,7 +31,19 @@
       },
       "hardenedRuntime": false,
       "identity": null,
-      "icon": "build/icon.png"
+      "icon": "build/icon.png",
+      "extraFiles": [
+        {
+          "from": "native/bin/surge-dock",
+          "to": "MacOS/surge-dock"
+        }
+      ],
+      "extraResources": [
+        {
+          "from": "native/bin/surge-dockwin.node",
+          "to": "native/surge-dockwin.node"
+        }
+      ]
     },
     "files": [
       "main.js",
@@ -62,7 +75,8 @@
       "menu.html",
       "dialog.html",
       "whatsnew.js",
-      "whatsnew.html"
+      "whatsnew.html",
+      "dock-native.js"
     ],
     "dmg": {
       "title": "Surge",

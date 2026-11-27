@@ -2,6 +2,10 @@
 const { BrowserWindow, screen, dialog } = require('electron');
 const path = require('path'); const { execFile } = require('child_process');
 const IS_WIN = process.platform === 'win32';
+const Native = require('../dock-native.js');
+let helper = null, inFs = false, lastZone = '';
+// auto-hide is on when you chose it, and always inside a fullscreen app (Surge Dock slides up from the edge there, like Apple's Dock)
+const autoNow = (s) => !!(s.autohide || (inFs && s.fullscreen));
 let pill = null, pillHover = false;
 let win = null, poll = null, prevCpu = null, macDockHidden = false, edgePoll = null, revealed = true, animT = null, hideT = null, H = 150;
 const WIDGETS = IS_WIN ? ['apps', 'launchpad', 'clock', 'battery', 'stats', 'focus', 'caffeine', 'glow', 'notes', 'spotlight', 'date'] : ['apps', 'launchpad', 'clock', 'battery', 'stats', 'media', 'volume', 'focus', 'caffeine', 'glow', 'notes', 'spotlight', 'date'];
@@ -16,7 +20,7 @@ function cpu(os) { const c = os.cpus(); let idle = 0, total = 0; for (const k of
 module.exports = {
   id: 'dock', name: 'Surge Dock', icon: 'dock', group: 'Screen', platforms: ['darwin', 'win32'],
   desc: IS_WIN ? 'A floating Dock for Windows: your apps (pinned + running, with magnification), Launchpad search, plus widgets — clock, battery, CPU, focus, caffeine.' : 'A full Dock replacement: your apps (pinned + running, macOS-style magnification) plus widgets — clock, battery, CPU, now playing, volume, focus, caffeine. Can hide the macOS Dock for good.',
-  defaults: { edge: 'bottom', offset: 10, size: 1, autohide: false, hideMacDock: true, macDockConfirmed: false, macDockBackup: null, fullscreen: false, magnify: true, look: 'islands', aura: true, reflect: true, labels: true, pinned: DEFAULT_PINS, widgets: IS_WIN ? ['apps', 'launchpad', 'clock', 'battery', 'focus', 'caffeine'] : ['apps', 'launchpad', 'clock', 'battery', 'volume', 'focus', 'caffeine'] },
+  defaults: { edge: 'bottom', offset: 10, size: 1, autohide: false, keepClear: true, hideMacDock: true, macDockConfirmed: false, macDockBackup: null, fullscreen: true, magnify: true, look: 'islands', aura: true, reflect: true, labels: true, pinned: DEFAULT_PINS, widgets: IS_WIN ? ['apps', 'launchpad', 'clock', 'battery', 'focus', 'caffeine'] : ['apps', 'launchpad', 'clock', 'battery', 'volume', 'focus', 'caffeine'] },
   schema: [
     { k: 'edge', t: 'seg', label: 'Edge', opts: [['bottom', 'Bottom'], ['top', 'Top']] },
     { k: 'look', t: 'seg', label: 'Style', opts: [['islands', 'Islands'], ['pill', 'Pill'], ['float', 'Floating icons']] },
@@ -28,10 +32,11 @@ module.exports = {
     { k: 'reflect', t: 'toggle', label: 'Icon reflections' },
     { k: 'labels', t: 'toggle', label: 'Widget labels' },
     { k: 'autohide', t: 'toggle', label: 'Auto-hide', hint: 'Drops away the instant the cursor leaves it; touch the screen edge to bring it back' },
-    { k: 'fullscreen', t: 'toggle', label: 'Show over fullscreen apps', hint: 'Off: the dock stays out of fullscreen videos, games and apps' },
+    { k: 'fullscreen', t: 'toggle', label: 'Slide up in fullscreen apps', hint: 'In a fullscreen app Surge Dock hides and slides up when you touch the screen edge, like Apple\'s Dock. Off: it stays out of fullscreen apps.' },
+    { k: 'keepClear', t: 'toggle', label: 'Keep windows clear of the Dock', hint: 'Zoomed and new windows stop just above Surge Dock, the way they do for Apple\'s Dock. Uses Accessibility.' },
     { k: 'pinned', t: 'apps', label: 'Pinned apps' },
     { k: 'widgets', t: 'widgets', label: 'Widgets', opts: WIDGETS },
-  ].filter(f => !(IS_WIN && f.k === 'hideMacDock')),
+  ].filter(f => !(IS_WIN && (f.k === 'hideMacDock' || f.k === 'keepClear'))),
   actions: {
     state: () => ({ shown: !!win && !win.isDestroyed() && win.isVisible() }),
     toggle: (ctx) => module.exports._toggle(ctx),
@@ -41,7 +46,7 @@ module.exports = {
     pin: (ctx, p) => { const s = ctx.mod('dock'); const pins = s.pinned.includes(p) ? s.pinned.filter(x => x !== p) : [...s.pinned, p]; ctx.applyPatch({ modules: { dock: { pinned: pins } } }); return pins; },
     // the window is bigger than the pill (room for magnification/tooltip) — only the pill itself should catch clicks, the rest passes through to whatever is behind
     hover: (_ctx, over) => { pillHover = !!over; if (win && !win.isDestroyed()) win.setIgnoreMouseEvents(!over, { forward: true }); },
-    rect: (_ctx, r) => { if (r && isFinite(r.l + r.t + r.w + r.h)) pill = r; },
+    rect: (_ctx, r) => { if (r && isFinite(r.l + r.t + r.w + r.h)) { pill = r; module.exports._sendZone(); } },
     resize: (_ctx, w) => { if (win && !win.isDestroyed()) { const [, h] = win.getSize(); win.setSize(Math.round(w), h, false); module.exports._place(); } },
   },
   _geom(ctx) {
@@ -55,8 +60,10 @@ module.exports = {
   _place(ctx) {
     if (!win || win.isDestroyed()) return;
     const g = module.exports._geom(ctx);
-    if (!g.s.autohide) revealed = true;
+    if (inFs && !g.s.fullscreen) { if (win.isVisible()) win.hide(); return; }
+    if (!autoNow(g.s)) { revealed = true; if (!win.isVisible() && module.exports._shown !== false) win.showInactive(); }
     win.setPosition(g.x, revealed ? g.shown : g.hidden, false);
+    module.exports._sendZone(ctx);
   },
   _slide(ctx, show) {
     if (!win || win.isDestroyed() || revealed === show) return; revealed = show;
@@ -66,7 +73,7 @@ module.exports = {
     animT = setInterval(() => { if (!win || win.isDestroyed()) return clearInterval(animT); const p = Math.min(1, (Date.now() - t0) / dur); const e = show ? 1 - Math.pow(1 - p, 3) : p * p; win.setPosition(g.x, Math.round(from + (to - from) * e), false); if (p >= 1) { clearInterval(animT); if (!show && !revealed) win.hide(); } }, 16);
   },
   _edgeTick(ctx) {
-    if (!win || win.isDestroyed()) return; const s = ctx.mod('dock'); if (!s.autohide) return;
+    if (!win || win.isDestroyed()) return; const s = ctx.mod('dock'); if (!autoNow(s)) return;
     const p = screen.getCursorScreenPoint(); module.exports._near = revealed || Math.abs(p.y - module.exports._geom(ctx).edgeY) < 260; const g = module.exports._geom(ctx); const [w, h] = win.getSize(); const [wx, wy] = win.getPosition();
     const top = s.edge === 'top'; const atEdge = top ? p.y <= g.edgeY : p.y >= g.edgeY;
     const inWin = p.x >= wx && p.x <= wx + w && p.y >= wy && p.y <= wy + h;
@@ -77,6 +84,31 @@ module.exports = {
       onDock = (p.x >= L && p.x <= R && (top ? p.y <= wy + r.t + r.h : p.y >= wy + r.t)) || (pillHover && inWin); }
     if (atEdge || onDock) module.exports._slide(ctx, true);
     else if (revealed) module.exports._slide(ctx, false);        // no delay: the instant the cursor is off the dock, it goes
+  },
+  // tell the helper where Surge Dock is, so zoomed and new windows stop above it (only when it stays up, like Apple's Dock)
+  _sendZone(ctx) {
+    ctx = ctx || module.exports._ctx; if (!helper || !win || win.isDestroyed() || !ctx) return;
+    const s = ctx.mod('dock'); const on = !IS_WIN && s.keepClear !== false && !s.autohide && win.isVisible();
+    const [winX, winY] = win.getPosition(), [winW, winH] = win.getSize();
+    const z = Native.zoneFor({ edge: s.edge || 'bottom', winX, winY: revealed ? winY : module.exports._geom(ctx).shown, winW, winH, pill, screen: screen.getPrimaryDisplay().bounds });
+    const key = JSON.stringify([z, on]); if (key === lastZone) return; lastZone = key;
+    helper.send({ cmd: 'zone', ...z }); helper.send({ cmd: 'keepclear', on });
+  },
+  // the helper says whether the app in front is fullscreen
+  _onFullscreen(ctx, on) {
+    ctx = ctx || module.exports._ctx; if (!win || win.isDestroyed() || inFs === !!on) return; inFs = !!on;
+    const s = ctx.mod('dock');
+    if (inFs) {
+      if (!s.fullscreen) { clearInterval(animT); win.hide(); revealed = false; return; }
+      if (!s.autohide) module.exports._slide(ctx, false);              // tucked away until you touch the edge
+      if (!edgePoll && module.exports._edgeLoop) module.exports._edgeLoop();
+    } else if (!s.autohide) { if (!win.isVisible()) { revealed = false; win.setPosition(module.exports._geom(ctx).x, module.exports._geom(ctx).hidden, false); } module.exports._slide(ctx, true); }
+    else module.exports._place(ctx);
+  },
+  _helperEvent(ctx, ev) {
+    if (!ev || typeof ev !== 'object') return;
+    if (ev.ev === 'fullscreen') module.exports._onFullscreen(ctx, ev.on);
+    else if (ev.ev === 'ready' || ev.ev === 'ax') { lastZone = ''; module.exports._sendZone(ctx); try { ctx.log && ctx.log('dock', `helper ${ev.ev}: accessibility ${ev.ax ?? ev.on}`); } catch {} }
   },
   async _confirmMacDock(ctx) {
     if (ctx.mod('dock').macDockConfirmed) return true;
@@ -142,7 +174,7 @@ module.exports = {
     }
     pad.show(); pad.focus();
   },
-  _toggle(ctx) { if (!win || win.isDestroyed()) return; win.isVisible() ? win.hide() : win.showInactive(); },
+  _toggle(ctx) { if (!win || win.isDestroyed()) return; if (win.isVisible()) { win.hide(); module.exports._shown = false; } else { win.showInactive(); module.exports._shown = true; } module.exports._sendZone(ctx); },
   async _tick(ctx) {
     if (!win || win.isDestroyed()) return;
     const s = ctx.mod('dock'); const data = { t: Date.now() };
@@ -171,11 +203,14 @@ module.exports = {
     try { win.setAlwaysOnTop(true, IS_WIN ? 'floating' : 'dock'); } catch { win.setAlwaysOnTop(true, 'floating'); }
     win.setIgnoreMouseEvents(true, { forward: true });
     win.loadFile(path.join(__dirname, '..', 'dock.html'));
-    win.webContents.on('did-finish-load', () => { win.webContents.send('settings:update', ctx.settings); module.exports._place(ctx); win.showInactive(); module.exports._tick(ctx); });
+    win.webContents.on('did-finish-load', () => { win.webContents.send('settings:update', ctx.settings); module.exports._place(ctx); if (!inFs) win.showInactive(); module.exports._native = Native.makeDock(win, !!ctx.mod('dock').fullscreen); module.exports._tick(ctx); });
     win.on('closed', () => (win = null));
     poll = setInterval(() => module.exports._tick(ctx), 5000);
     try { ctx.globalShortcut.register('CommandOrControl+Shift+D', () => module.exports._toggle(ctx)); ctx.globalShortcut.register('CommandOrControl+Shift+L', () => module.exports._launchpad(ctx)); } catch {}
     if (!module.exports._dispHooked) { module.exports._dispHooked = true; screen.on('display-metrics-changed', () => module.exports._place(ctx)); }
+    // 3.0.5: Surge Dock slides up in fullscreen apps by default (it used to stay out of them)
+    if (!ctx.mod('dock').fsV2) ctx.applyPatch({ modules: { dock: { fsV2: true, fullscreen: true } } });
+    if (!IS_WIN && !helper) { helper = Native.Helper({ onEvent: (ev) => module.exports._helperEvent(ctx, ev), log: (m) => { try { ctx.log && ctx.log('dock', m); } catch {} } }); helper.start(); lastZone = ''; }
     // 3.0.4: replacing Apple's Dock no longer needs System Events, so anyone it was switched off for by a refused permission gets asked once more
     if (!IS_WIN && !ctx.mod('dock').macDockV2) ctx.applyPatch({ modules: { dock: { macDockV2: true, ...(ctx.mod('dock').macDockConfirmed ? {} : { hideMacDock: true }) } } });
     if (!IS_WIN && !module.exports._pmHooked) { module.exports._pmHooked = true; try { const { powerMonitor } = require('electron'); for (const ev of ['resume', 'unlock-screen']) powerMonitor.on(ev, () => setTimeout(() => module.exports._macDockCheck(ctx), 1500)); } catch {} }
@@ -183,9 +218,9 @@ module.exports = {
     if (!IS_WIN && ctx.mod('dock').hideMacDock && !macDockHidden) module.exports._confirmMacDock(ctx).then(ok => ok && module.exports._macDock(true, ctx));
     // auto-hide watches the cursor: never with auto-hide off, 8 times a second while the cursor is far from the Dock's edge,
     // and smoothly (40 a second) only near it or while the Dock is up
-    const edgeLoop = () => { edgePoll = null; if (!win || win.isDestroyed() || !ctx.mod('dock').autohide) return; try { module.exports._edgeTick(ctx); } catch {} edgePoll = setTimeout(edgeLoop, module.exports._near ? 25 : 120); };
+    const edgeLoop = () => { edgePoll = null; if (!win || win.isDestroyed() || !autoNow(ctx.mod('dock'))) return; try { module.exports._edgeTick(ctx); } catch {} edgePoll = setTimeout(edgeLoop, module.exports._near ? 25 : 120); };
     module.exports._edgeLoop = edgeLoop; edgeLoop();
   },
-  onSettings(ctx) { if (ctx.mod('dock').autohide && !edgePoll && module.exports._edgeLoop) module.exports._edgeLoop(); if (win && !win.isDestroyed() && module.exports._fs !== !!ctx.mod('dock').fullscreen) { module.exports._fs = !!ctx.mod('dock').fullscreen; win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: module.exports._fs }); } module.exports._place(ctx); const h = !IS_WIN && !!ctx.mod('dock').hideMacDock; if (h && !macDockHidden) module.exports._confirmMacDock(ctx).then(ok => ok && module.exports._macDock(true, ctx)); else if (!h && macDockHidden) module.exports._macDock(false, ctx); else if (h && macDockHidden && module.exports._dockEdge !== (ctx.mod('dock').edge || 'bottom')) module.exports._macDock(true, ctx); if (win && !win.isDestroyed()) win.webContents.send('settings:update', ctx.settings); },
-  stop(ctx) { clearInterval(poll); clearInterval(module.exports._recheck); clearTimeout(edgePoll); edgePoll = null; clearInterval(animT); clearTimeout(hideT); if (macDockHidden) module.exports._macDockRestoreSync(ctx); try { ctx.globalShortcut.unregister('CommandOrControl+Shift+D'); ctx.globalShortcut.unregister('CommandOrControl+Shift+L'); } catch {} if (pad && !pad.isDestroyed()) pad.destroy(); pad = null; if (win && !win.isDestroyed()) win.destroy(); win = null; },
+  onSettings(ctx) { if (autoNow(ctx.mod('dock')) && !edgePoll && module.exports._edgeLoop) module.exports._edgeLoop(); if (win && !win.isDestroyed() && module.exports._fs !== !!ctx.mod('dock').fullscreen) { module.exports._fs = !!ctx.mod('dock').fullscreen; win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: module.exports._fs }); Native.makeDock(win, module.exports._fs); if (inFs) { inFs = false; module.exports._onFullscreen(ctx, true); } } module.exports._place(ctx); const h = !IS_WIN && !!ctx.mod('dock').hideMacDock; if (h && !macDockHidden) module.exports._confirmMacDock(ctx).then(ok => ok && module.exports._macDock(true, ctx)); else if (!h && macDockHidden) module.exports._macDock(false, ctx); else if (h && macDockHidden && module.exports._dockEdge !== (ctx.mod('dock').edge || 'bottom')) module.exports._macDock(true, ctx); if (win && !win.isDestroyed()) win.webContents.send('settings:update', ctx.settings); },
+  stop(ctx) { if (helper) { helper.stop(); helper = null; } inFs = false; lastZone = ''; clearInterval(poll); clearInterval(module.exports._recheck); clearTimeout(edgePoll); edgePoll = null; clearInterval(animT); clearTimeout(hideT); if (macDockHidden) module.exports._macDockRestoreSync(ctx); try { ctx.globalShortcut.unregister('CommandOrControl+Shift+D'); ctx.globalShortcut.unregister('CommandOrControl+Shift+L'); } catch {} if (pad && !pad.isDestroyed()) pad.destroy(); pad = null; if (win && !win.isDestroyed()) win.destroy(); win = null; },
 };
