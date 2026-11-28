@@ -1,7 +1,7 @@
 {
   "name": "surge",
   "productName": "Surge",
-  "version": "3.0.6",
+  "version": "3.1.0",
   "description": "Surge: a 20-in-1 menu-bar toolbox for your Mac. Charge glow, keyboard and mouse sounds, click ripple, spotlight, night tint, caffeine, clipboard history, focus timer, window snap, a Dock and more.",
   "main": "main.js",
   "author": "Surge",
@@ -76,7 +76,9 @@
       "dialog.html",
       "whatsnew.js",
       "whatsnew.html",
-      "dock-native.js"
+      "dock-native.js",
+      "maison.css",
+      "fonts/**"
     ],
     "dmg": {
       "title": "Surge",

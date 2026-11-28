@@ -1,3 +1,19 @@
+## Surge 3.1.0: a calm new look, and a Dock with no lag
+
+**Download:** Mac (Apple silicon): **Surge-mac-arm64.dmg**, drag Surge to Applications, then right-click it and choose Open the first time. Windows: **Surge-win-x64.exe** (if SmartScreen asks: More info, then Run anyway). Already have Surge? It updates itself.
+
+- **Surge Dock magnifies smoothly, with no lag.** Icons now swell and slide apart without redrawing the Dock: no dropped frames in our tests (it used to drop about one frame in six while you moved across it), a fraction of the layout work, and everything stops the moment it settles. The magnification is gentler, icons no longer tilt, and the app name follows the icon without a timer.
+- **Surge Dock has a new look:** compact paper islands in light mode and ink in dark mode, with a clear dot under running apps and an emerald bar under the app in front.
+- **A calm new look everywhere:** warm paper in light mode, deep ink in dark mode, one emerald accent, Instrument Serif for big titles and Geist for the rest. No more rainbow gradients, glows or drifting dots.
+- **Buttons, menus and tabs fill from where your pointer comes in,** and their labels and icons switch colour so they always stay readable.
+- **A clearer update card:** Download, Verify and Restart steps show exactly where the update is, the restart tells you what it is doing, and Return updates.
+- **Every shortcut on one sheet:** press ? in Settings, or Settings, About, Keyboard shortcuts.
+- **Export and import your settings** from Settings, About, and undo a reset or an import.
+- **Undo removing an app from Surge Dock**, and undo clearing your clipboard history.
+- **Esc clears the search first** in Launchpad and the clipboard picker.
+- **Settings opens where you left it**, at the same size.
+- The What's new film is a new title sequence in the same calm style.
+
 ## Surge 3.0.6: a smaller Surge Dock
 
 **Download:** Mac (Apple silicon): **Surge-mac-arm64.dmg**, drag Surge to Applications, then right-click it and choose Open the first time. Windows: **Surge-win-x64.exe** (if SmartScreen asks: More info, then Run anyway). Already have Surge? It updates itself.

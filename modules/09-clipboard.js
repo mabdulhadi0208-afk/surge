@@ -20,6 +20,8 @@ module.exports = {
     last: () => items[0] || '',
     list: () => items,
     open: (ctx) => { module.exports._picker(ctx); return 'Opened'; },
+    // 3.1: Undo after Clear history puts the list back exactly as it was (still in memory only)
+    restore: (ctx, list) => { if (Array.isArray(list)) { items = list.filter(x => typeof x === 'string' && x).slice(0, ctx.mod('clip').max || 25); module.exports._tray(ctx); } return items; },
     remove: (ctx, text) => { items = items.filter(x => x !== text); module.exports._tray(ctx); return items; },
     paste: (ctx, text) => {
       if (typeof text !== 'string' || !text) return false;

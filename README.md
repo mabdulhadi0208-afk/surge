@@ -1,7 +1,7 @@
 # Surge 3
 
 Your Mac, turned up. Surge is a menu-bar toolbox where every feature is its own small module you flip on in Settings.
-Surge 3.0 is a complete redesign (deep colour, glass, hero banners, one-shot spring motion) and is built for zero lag:
+Surge 3.1 wears the family's Maison look (warm paper, deep ink, one emerald accent, the flow hover) and is built for zero lag:
 it sleeps whenever you are not using it.
 
 **Download:** [the latest release](https://github.com/mabdulhadi0208-afk/surge/releases/latest). Mac (Apple silicon): `Surge-mac-arm64.dmg`. Windows: `Surge-win-x64.exe`. Surge updates itself after that.
@@ -40,6 +40,9 @@ npm start
 xvfb-run -a npx electron test/perf.js --no-sandbox     # idle CPU of every Surge process + frame timing (/tmp/surge-perf.log)
 xvfb-run -a npx electron test/shots.js --no-sandbox    # screenshots of every surface (/tmp/surge-shots-raw)
 xvfb-run -a npx electron test/whatsnew.js --no-sandbox # the What's new film: plays once after an update, skips, replays (/tmp/surge-whatsnew.log)
+xvfb-run -a npx electron test/dockfeel31.js --no-sandbox # Surge Dock: transform-only magnification, frames, layout cost, Undo (/tmp/surge-dockfeel31.log)
+xvfb-run -a npx electron test/flow31.js --no-sandbox   # the flow hover contrast on every page, light and dark, plus the 3.1 Settings features (/tmp/surge-flow31.log)
+xvfb-run -a npx electron test/shots31.js --no-sandbox  # Dock, Launchpad and update card screenshots with sample data (/tmp/surge-shots31)
 npx electron-builder --mac dmg zip
 ```
 
@@ -54,7 +57,7 @@ names must stay the same.
 
 ## Design and speed rules
 
-- One design system, Lumen 4.0's: `nova.css` (Lumen's palette, type, liquid glass, gem tiles, section heroes, light and dark) and `nova.js` (icons, module hues, the hero backdrop and its dots, which pause when hidden, off screen or unfocused).
+- One design system: `nova.css` (the layout and components) with `maison.css` linked last on every page (3.1, Lumen 4.5's Maison: paper and ink, one emerald accent #1f6b52, Instrument Serif and Geist from `fonts/`, hairlines, at most one modest shadow, and the flow hover whose labels must stay at least 3:1, checked by `test/flow31.js`). `nova.js` holds the icons and sets where the flow hover starts.
 - No emoji anywhere in the app.
 - Only `transform` and `opacity` animate, every animation plays once, no `backdrop-filter` (Settings uses native vibrancy).
 - Transparent always-on-top windows are hidden when not in use and sized to their content.

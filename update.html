@@ -1,133 +1,143 @@
 <!DOCTYPE html><html><head><meta charset="utf-8">
 <link rel="stylesheet" href="nova.css">
 <style>
-  /* Surge's update card in Lumen 4.0's poster layout (Lumen ui/update.html): a saturated slab of the accent on the left
-     holds the app gem in its progress ring and the new version number, huge; the glass side holds the words, the
-     version tube that fills with the download, what is new, and the buttons. One entrance, transform and opacity only. */
+  /* Surge 3.1 update card, Maison: a paper (or ink) card with one hairline and one modest shadow. On the left the Surge
+     mark sits in a ring that fills with the download; on the right a serif headline, the version line, a three-step
+     track (Download, Verify, Restart) that shows exactly where the update is, what is new, and the buttons. The restart
+     is a little sequence of its own (closing, swapping in, opening again), so it never looks frozen.
+     Only transform and opacity animate; the only loop is the spinner of the step that is working. */
   html,body{height:auto;overflow:hidden}
   body{padding:10px 14px 28px}
-  .card{display:grid;grid-template-columns:184px minmax(0,1fr);min-height:290px;padding:0;border-radius:30px;animation:nv-pop .62s var(--jelly) both}
-  .slab{position:relative;overflow:hidden;isolation:isolate;display:flex;flex-direction:column;padding:18px 18px 16px;color:#fff;border-radius:30px 0 0 30px;
-    background:radial-gradient(90% 60% at 20% 0%,rgba(255,255,255,.35),transparent 60%),radial-gradient(120% 70% at 100% 100%,color-mix(in srgb,var(--accent3) 90%,transparent),transparent 70%),linear-gradient(165deg,var(--accent),var(--accent2) 55%,var(--accent3));
-    box-shadow:inset -1px 0 0 rgba(255,255,255,.25),inset 0 1px 0 rgba(255,255,255,.5)}
-  .slab::before{content:"";position:absolute;inset:0;z-index:-1;background:repeating-linear-gradient(115deg,transparent 0 46px,rgba(255,255,255,.07) 46px 48px)}
-  .slab .rings{position:absolute;left:-60px;bottom:-60px;width:220px;height:220px;border-radius:50%;z-index:-1;border:1px solid rgba(255,255,255,.22);box-shadow:0 0 0 26px rgba(255,255,255,.05),0 0 0 27px rgba(255,255,255,.14),0 0 0 60px rgba(255,255,255,.035)}
-  .slab .vert{position:absolute;right:10px;top:22px;writing-mode:vertical-rl;font:800 9.5px/1 var(--display);letter-spacing:.32em;text-transform:uppercase;color:rgba(255,255,255,.6)}
-  .gemw{position:relative;width:78px;height:78px}
-  .gemw .tile{position:absolute;inset:8px;--ts:62px;--ic:var(--accent);border-radius:19px;box-shadow:inset 0 2px 0 rgba(255,255,255,.85),inset 0 0 0 1px rgba(255,255,255,.4),0 0 0 5px rgba(255,255,255,.16),0 14px 28px rgba(20,0,60,.35)}
-  .gemw .ring{--p:0;position:absolute;inset:0;border-radius:24px;background:conic-gradient(from -90deg,#fff calc(var(--p)*1%),rgba(255,255,255,.18) 0);
-    -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;padding:3px}
-  .gemw .chk{position:absolute;right:-4px;bottom:-4px;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:#fff;color:var(--accent3);box-shadow:0 4px 10px rgba(20,0,60,.3);opacity:0;transform:scale(.4);transition:transform .62s var(--jelly),opacity .2s}
-  .gemw .chk svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
-  .ready .gemw .chk,.updated .gemw .chk,.installing .gemw .chk{opacity:1;transform:none}
-  .slab .name{margin-top:auto;font:800 11px/1 var(--display);letter-spacing:.3em;text-transform:uppercase;color:rgba(255,255,255,.8)}
-  .slab .bigv{font:900 64px/.9 var(--display);letter-spacing:-.06em;font-variant-numeric:tabular-nums;margin:6px 0 8px;text-shadow:0 6px 24px rgba(20,0,60,.35);animation:bigIn .9s var(--spring) .1s both}
-  @keyframes bigIn{from{opacity:0;transform:translateY(16px) scale(.9)}}
-  .slab .dots{display:flex;gap:4px;margin-bottom:12px}
-  .slab .dots i{width:16px;height:4px;border-radius:3px;background:rgba(255,255,255,.4)}
-  .slab .dots i:nth-child(2){background:#fff}.slab .dots i:nth-child(3){background:color-mix(in srgb,var(--accent3) 60%,#fff)}.slab .dots i:nth-child(4){background:color-mix(in srgb,var(--accent) 50%,#fff)}
-  .slab .lnk{color:rgba(255,255,255,.85);padding:4px 0;text-decoration:underline;text-underline-offset:3px}
-  .slab .lnk:hover{background:none;color:#fff}
-  .slab .ver{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;margin-top:6px;padding:5px 10px;border-radius:999px;font:750 11px/1 var(--display);background:rgba(255,255,255,.18);box-shadow:inset 0 0 0 1px rgba(255,255,255,.3)}
-  .slab .ver svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
-  .side{position:relative;overflow:hidden;isolation:isolate;display:flex;flex-direction:column;gap:8px;padding:18px 18px 16px 20px}
-  .side .pool{position:absolute;left:-40px;top:-60px;width:260px;height:200px;border-radius:50%;z-index:-1;background:radial-gradient(closest-side,color-mix(in srgb,var(--accent) 22%,transparent),transparent)}
-  .side .wm{position:absolute;right:-40px;bottom:-50px;width:190px;height:190px;z-index:-1;color:color-mix(in srgb,var(--accent2) 22%,transparent);transform:rotate(-12deg);animation:wmIn 1.2s var(--spring) .1s both}
-  .side .wm svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1;stroke-linecap:round;stroke-linejoin:round}
-  @keyframes wmIn{from{opacity:0;transform:translate(30px,10px) rotate(-30deg) scale(.8)}}
-  .top{display:flex;align-items:center;gap:8px}
-  .eye{display:flex;align-items:center;gap:8px;flex:1;font:800 10.5px/1 var(--display);letter-spacing:.22em;text-transform:uppercase;color:var(--ink)}
-  .eye i{width:7px;height:7px;border-radius:50%;background:var(--accent3);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent3) 20%,transparent),0 0 10px var(--accent3)}
-  .error .eye i{background:var(--amber);box-shadow:0 0 10px var(--amber)}
-  .x{width:30px;height:30px;border-radius:10px;-webkit-app-region:no-drag}
+  .card{position:relative;display:grid;grid-template-columns:112px minmax(0,1fr);gap:0;padding:0;border-radius:22px;animation:cardIn .5s cubic-bezier(.2,.8,.2,1) both}
+  @keyframes cardIn{from{opacity:0;transform:translateY(10px) scale(.985)}}
+  .rail{display:flex;flex-direction:column;align-items:center;gap:10px;padding:22px 0 18px;border-right:1px solid var(--m-line);-webkit-app-region:drag}
+  .mark{position:relative;width:68px;height:68px}
+  .mark svg.ring{position:absolute;inset:0;width:68px;height:68px;transform:rotate(-90deg)}
+  .mark .ring circle{fill:none;stroke-width:3}
+  .mark .ring .bg{stroke:var(--m-line)} .mark .ring .fg{stroke:var(--m-acc);stroke-linecap:round;stroke-dasharray:201;stroke-dashoffset:calc(201 - 201 * var(--p,0) / 100);transition:stroke-dashoffset .7s cubic-bezier(.2,.8,.2,1)}
+  .mark .app{position:absolute;inset:9px;border-radius:15px;display:grid;place-items:center;background:var(--m-solid);color:var(--m-on-solid)}
+  .mark .app svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+  .mark .chk{position:absolute;right:-3px;bottom:-3px;width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:var(--m-acc);color:#fff;box-shadow:0 0 0 3px var(--m-card);opacity:0;transform:scale(.4);transition:transform .5s var(--jelly),opacity .2s}
+  .mark .chk svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+  .ready .mark .chk,.updated .mark .chk,.installing .mark .chk{opacity:1;transform:none}
+  .rail .vv{font:400 34px/1 var(--m-serif);letter-spacing:-.01em;font-variant-numeric:tabular-nums;color:var(--m-fg)}
+  .rail .vl{font:600 9.5px/1 var(--m-font);letter-spacing:.16em;text-transform:uppercase;color:var(--m-fg3)}
+  .rail .ver{margin-top:auto;display:inline-flex;align-items:center;gap:5px;font:550 10.5px/1 var(--m-font);color:var(--m-fg3)}
+  .rail .ver svg{width:12px;height:12px;fill:none;stroke:var(--m-acc-ink);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+  .side{display:flex;flex-direction:column;gap:10px;padding:18px 18px 16px 20px;min-width:0}
+  .top{display:flex;align-items:center;gap:8px;-webkit-app-region:drag}
+  .eye{flex:1;display:flex;align-items:center;gap:8px;font:600 10.5px/1 var(--m-font);letter-spacing:.14em;text-transform:uppercase;color:var(--m-fg3)}
+  .eye i{width:6px;height:6px;border-radius:50%;background:var(--m-acc)}
+  .error .eye i{background:var(--amber)}
+  .btn.x{width:28px;height:28px;padding:0!important;border-radius:8px!important;-webkit-app-region:no-drag;box-shadow:none!important;background:transparent!important}
   .x svg{width:12px;height:12px}
-  h1{margin:0;font:900 27px/1.02 var(--display);letter-spacing:-.045em;color:var(--fg)}
-  h1 em{font-style:normal;background:linear-gradient(120deg,var(--accent),var(--accent3));-webkit-background-clip:text;background-clip:text;color:transparent}
-  #sub{margin:-2px 0 0;font:500 12.5px/1.4 var(--font);color:var(--fg2)}
-  /* the version tube: a glass pipe between the two numbers that fills with light */
-  .tube{display:flex;align-items:center;gap:10px;padding:7px 7px 7px 13px;border-radius:999px;background:var(--field);box-shadow:inset 0 0 0 1px var(--fieldrim)}
-  .tube .a{font:800 12px/1 var(--display);color:var(--fg2);font-variant-numeric:tabular-nums}
-  .tube .t{position:relative;flex:1;height:8px;border-radius:9px;background:var(--press);overflow:hidden}
-  .tube .t i{position:absolute;inset:0;border-radius:inherit;transform-origin:0 50%;transform:scaleX(var(--f,0));transition:transform .7s var(--out);background:linear-gradient(180deg,rgba(255,255,255,.5),transparent 60%),linear-gradient(90deg,var(--accent),var(--accent2),var(--accent3));box-shadow:0 0 12px color-mix(in srgb,var(--accent) 60%,transparent)}
-  .tube .b{padding:6px 11px;border-radius:999px;font:850 12.5px/1 var(--display);color:#fff;font-variant-numeric:tabular-nums;background:linear-gradient(120deg,var(--accent),var(--accent3));box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 6px 14px -6px var(--accent)}
-  .tube svg{width:14px;height:14px;fill:none;stroke:var(--fg3);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
-  .meta{display:flex;justify-content:space-between;gap:10px;font:500 11.5px/1 var(--font);color:var(--fg3);font-variant-numeric:tabular-nums;min-height:12px}
-  .meta b{color:var(--fg);font-weight:700}
-  .notes{display:none;padding:10px 12px;border-radius:18px}
+  h1{margin:0;font:400 30px/1.05 var(--m-serif);letter-spacing:-.01em;color:var(--m-fg)}
+  h1 em{font-style:italic}
+  #sub{margin:-4px 0 0;font:450 12.5px/1.45 var(--m-font);color:var(--m-fg2)}
+  /* the version line: from, a thin bar, to */
+  .line{display:flex;align-items:center;gap:10px;font:550 12px/1 var(--m-font);font-variant-numeric:tabular-nums;color:var(--m-fg2)}
+  .line .t{position:relative;flex:1;height:4px;border-radius:4px;background:var(--m-bg3);overflow:hidden}
+  .line .t i{position:absolute;inset:0;border-radius:inherit;background:var(--m-acc);transform-origin:0 50%;transform:scaleX(var(--f,0));transition:transform .7s cubic-bezier(.2,.8,.2,1)}
+  .line b{color:var(--m-fg);font-weight:650}
+  .meta{display:flex;justify-content:space-between;gap:10px;font:450 11.5px/1 var(--m-font);color:var(--m-fg3);font-variant-numeric:tabular-nums;min-height:12px;margin-top:-3px}
+  .meta b{color:var(--m-fg);font-weight:600}
+  /* the three-step track */
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .st{display:flex;align-items:center;gap:7px;padding:8px 9px;border-radius:10px;font:550 11.5px/1 var(--m-font);color:var(--m-fg3);background:var(--m-bg);box-shadow:inset 0 0 0 1px var(--m-line);transition:color .3s}
+  .st .d{position:relative;width:14px;height:14px;flex:none;border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--m-line2);display:grid;place-items:center}
+  .st .d svg{width:9px;height:9px;fill:none;stroke:#fff;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round;opacity:0;transform:scale(.4);transition:transform .45s var(--jelly),opacity .2s}
+  .st.done{color:var(--m-fg)} .st.done .d{background:var(--m-acc);box-shadow:none} .st.done .d svg{opacity:1;transform:none}
+  .st.now{color:var(--m-fg);box-shadow:inset 0 0 0 1px var(--m-acc)}
+  .st.now .d{box-shadow:inset 0 0 0 1.5px var(--m-line2)}
+  .st.now .d::after{content:"";position:absolute;inset:-1.5px;border-radius:50%;border:1.5px solid transparent;border-top-color:var(--m-acc-ink);animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .notes{display:none;padding:10px 12px;border-radius:12px;background:var(--m-bg);box-shadow:inset 0 0 0 1px var(--m-line)}
   .notes.show{display:block}
-  .nh{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;font:800 10px/1 var(--display);letter-spacing:.18em;text-transform:uppercase;color:var(--fg3)}
-  .nh span{letter-spacing:0;text-transform:none;padding:4px 8px;border-radius:999px;font:750 10.5px/1 var(--display);color:var(--ink);background:color-mix(in srgb,var(--accent3) 14%,transparent)}
-  ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px}
-  li{display:flex;align-items:center;gap:9px;font:500 12px/1.35 var(--font);color:var(--fg)}
-  li b{flex:none;width:19px;height:19px;border-radius:6px;display:grid;place-items:center;font:850 10.5px/1 var(--display);color:#fff;background:linear-gradient(135deg,var(--ic3),var(--ic))}
-  .msg{display:none;font:500 12.5px/1.45 var(--font);color:var(--fg2)}
+  .nh{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;font:600 10px/1 var(--m-font);letter-spacing:.14em;text-transform:uppercase;color:var(--m-fg3)}
+  .nh span{letter-spacing:0;text-transform:none;font:550 10.5px/1 var(--m-font);color:var(--m-acc-ink)}
+  ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+  li{display:flex;align-items:baseline;gap:9px;font:450 12px/1.4 var(--m-font);color:var(--m-fg);opacity:0;transform:translateY(4px);animation:liIn .4s cubic-bezier(.2,.8,.2,1) forwards;animation-delay:calc(.12s + var(--i)*60ms)}
+  @keyframes liIn{to{opacity:1;transform:none}}
+  li.more span{color:var(--m-fg3)}
+  li b{flex:none;min-width:16px;font:400 15px/1 var(--m-serif);color:var(--m-acc-ink);font-variant-numeric:tabular-nums}
+  .msg{display:none;font:450 12.5px/1.45 var(--m-font);color:var(--m-fg2)}
   .msg.show{display:block}
-  .row{display:flex;align-items:center;gap:8px;margin-top:auto;padding-top:4px}
+  .row{display:flex;align-items:center;gap:8px;margin-top:2px}
   .row .grow{flex:1}
-  /* 3.0.3: Update now answers the instant you press it: the button gives under your finger on a spring, says Starting
-     with a spinner, and a ring of light spreads from it, before Surge has even looked at GitHub */
-  #go.going{pointer-events:none;animation:go303 .55s var(--jelly) both}
-  #go.going::before{content:"";width:13px;height:13px;border-radius:50%;border:2px solid rgba(255,255,255,.45);border-top-color:#fff;animation:spin303 .7s linear infinite}
-  #go .ring303{position:absolute;inset:0;border-radius:inherit;pointer-events:none;box-shadow:0 0 0 2px rgba(255,255,255,.8),0 0 18px color-mix(in srgb,var(--accent) 70%,transparent);animation:ring303 .7s cubic-bezier(.16,1,.3,1) forwards}
-  #go{position:relative}
-  @keyframes go303{0%{transform:scale(1)}30%{transform:scale(.92,.88)}65%{transform:scale(1.04,1.06)}100%{transform:scale(1)}}
-  @keyframes spin303{to{transform:rotate(360deg)}}
-  @keyframes ring303{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(1.35,1.9)}}
-  @media (prefers-reduced-motion:reduce){#go.going,#go.going::before,#go .ring303{animation:none}}
+  .row .lnk{padding:8px 4px}
+  .keys{font:450 10.5px/1 var(--m-font);color:var(--m-fg3);display:flex;gap:5px;align-items:center}
+  .keys kbd{min-width:16px;height:17px;font-size:10px}
+  /* Update now answers the instant you press it: it gives under your finger and says Starting with a spinner */
+  #go{min-width:118px}
+  #go.going{pointer-events:none;animation:go303 .5s var(--jelly) both}
+  #go .sp{width:12px;height:12px;border-radius:50%;border:2px solid color-mix(in srgb,currentColor 35%,transparent);border-top-color:currentColor;animation:spin .7s linear infinite}
+  @keyframes go303{0%{transform:scale(1)}30%{transform:scale(.94,.9)}65%{transform:scale(1.03,1.04)}100%{transform:scale(1)}}
+  @media (prefers-reduced-motion:reduce){.card,li,#go.going{animation:none!important;opacity:1;transform:none}}
 </style>
 <script src="nova.js"></script>
+<link rel="stylesheet" href="maison.css">
 </head><body>
 <div class="card surface" id="card">
-  <div class="slab drag"><i class="rings"></i><span class="vert">Software update</span>
-    <div class="gemw"><i class="ring" id="ring"></i><div class="tile" id="tile"></div><i class="chk" id="chk"></i></div>
-    <span class="name">Surge</span><div class="bigv" id="bigv">3.0</div><div class="dots"><i></i><i></i><i></i><i></i></div>
-    <button class="lnk" id="skip">Skip this version</button><span class="ver" id="verified"></span></div>
-  <div class="side"><i class="pool"></i><i class="wm" id="wm"></i>
-    <div class="top drag"><span class="eye"><i></i><b id="eye">Software update</b></span><button class="btn icon x" id="x" title="Close"></button></div>
+  <div class="rail">
+    <div class="mark"><svg class="ring" viewBox="0 0 68 68"><circle class="bg" cx="34" cy="34" r="32"/><circle class="fg" id="ring" cx="34" cy="34" r="32"/></svg><div class="app" id="tile"></div><i class="chk" id="chk"></i></div>
+    <span class="vl">Surge</span><div class="vv" id="bigv">3.1</div>
+    <span class="ver" id="verified"></span>
+  </div>
+  <div class="side">
+    <div class="top"><span class="eye"><i></i><b id="eye">Software update</b></span><button class="btn icon x" id="x" title="Close (Esc)"></button></div>
     <h1 id="title">Update Surge</h1><p id="sub"></p>
-    <div class="tube" id="tube"><span class="a" id="from"></span><div class="t"><i id="fill"></i></div><span id="arrow"></span><span class="b" id="to"></span></div>
+    <div class="line" id="tube"><span id="from"></span><div class="t"><i id="fill"></i></div><b id="to"></b></div>
     <div class="meta" id="metaRow"><span id="m1"></span><span id="m2"></span></div>
-    <div class="notes glass flat" id="notes"><div class="nh" id="nh">What is new</div><ol id="news"></ol></div>
+    <div class="steps" id="steps"><div class="st" data-s="0"><i class="d"></i>Download</div><div class="st" data-s="1"><i class="d"></i>Verify</div><div class="st" data-s="2"><i class="d"></i><span id="s3">Restart</span></div></div>
+    <div class="notes" id="notes"><div class="nh" id="nh">What is new</div><ol id="news"></ol></div>
     <div class="msg" id="msg"></div>
-    <div class="row"><button class="lnk" id="later">Later</button><div class="grow"></div><button class="btn pri lg" id="go">Update now</button></div>
+    <div class="row"><button class="btn" id="later">Later</button><button class="lnk fl" id="skip">Skip this version</button><div class="grow"></div><span class="keys" id="keys"><kbd>Return</kbd></span><button class="btn pri lg" id="go">Update now</button></div>
   </div>
 </div>
 <script>
 const $=s=>document.querySelector(s), api=window.surge, N=window.Nova;
 const fmt=b=>(b/1048576).toFixed(1)+' MB', secs=s=>s>=60?Math.round(s/60)+' min':Math.max(1,s)+' s';
-$('#x').innerHTML=N.ic('x'); $('#tile').innerHTML=N.ic('bolt'); $('#chk').innerHTML=N.ic('check'); $('#arrow').innerHTML=N.ic('play'); $('#verified').innerHTML=N.ic('shield')+'Verified';
-let U={}, last='';
+$('#x').innerHTML=N.ic('x'); $('#tile').innerHTML=N.ic('bolt'); $('#chk').innerHTML=N.ic('check'); $('#verified').innerHTML=N.ic('shield')+'Verified';
+document.querySelectorAll('.st .d').forEach(d=>d.innerHTML=N.ic('check'));
+let U={}, restartT=[];
 function paint(u){ U=u||{}; const st=U.status||'idle', L=String(U.latest||'').replace(/^v/,''), C=U.current||'', c=$('#card');
   c.className='card surface '+st;
   const V=(st==='updated'||st==='uptodate'||!L)?C:L; $('#bigv').textContent=V.split('.').slice(0,2).join('.');
-  const T={ available:['New version',`Surge <em>${N.esc(L)}</em> is here`,'It downloads in the background. You choose when to restart.'], checking:['Software update','Checking GitHub','One moment'],
-    downloading:['Downloading',`Getting Surge <em>${N.esc(L)}</em>`,'Keep working, it is all in the background.'], unpacking:['Almost there',`Checking Surge <em>${N.esc(L)}</em>`,'Making sure the download is complete.'],
-    ready:['Ready to install',`Surge <em>${N.esc(L)}</em> is ready`,'Restart now. It takes about 3 seconds and your settings stay as they are.'], installing:['Restarting','See you in a moment','Swapping in the new version.'],
+  const T={ available:['New version',`Surge <em>${N.esc(L)}</em> is here`,'It downloads in the background. You choose when to restart.'], checking:['Software update','Checking for updates','One moment.'],
+    downloading:['Downloading',`Getting Surge <em>${N.esc(L)}</em>`,'Keep working, it all happens in the background.'], unpacking:['Almost there',`Checking Surge <em>${N.esc(L)}</em>`,'Making sure the download is complete and signed.'],
+    ready:['Ready to install',`Surge <em>${N.esc(L)}</em> is ready`,'Restart now. It takes about 3 seconds and your settings stay exactly as they are.'], installing:['Restarting','See you in a moment','Closing Surge.'],
     error:['Update paused','Not this time',''], uptodate:['All good','Surge is up to date',''], updated:["You're on the new version",`Welcome to Surge <em>${N.esc(C)}</em>`,'Here is what changed.'] }[st]||['Software update','Update Surge',''];
   $('#eye').textContent=T[0]; $('#title').innerHTML=T[1]; $('#sub').textContent=T[2]; $('#sub').style.display=T[2]?'':'none';
-  $('#wm').innerHTML=N.ic(st==='ready'||st==='installing'?'rocket':st==='updated'?'spark':'refresh');
-  const tube=['available','downloading','unpacking','ready','installing'].includes(st)&&L&&L!==C; $('#tube').style.display=tube?'':'none'; $('#from').textContent=C; $('#to').textContent=L;
+  const flow=['available','downloading','unpacking','ready','installing'].includes(st)&&L&&L!==C;
+  $('#tube').style.display=flow?'':'none'; $('#steps').style.display=flow&&st!=='available'?'':'none'; $('#from').textContent=C; $('#to').textContent=L;
   const p=st==='downloading'?(U.progress||0):['unpacking','ready','installing'].includes(st)?100:0; $('#fill').style.setProperty('--f',p/100); $('#ring').style.setProperty('--p',p);
-  $('#m1').innerHTML=st==='downloading'&&U.size?`<b>${fmt(U.bytes||0)}</b> of ${fmt(U.size)}, ${p}%`:'';
+  // the track: which step is done, which one is working now
+  const at={downloading:0,unpacking:1,ready:2,installing:2}[st]; document.querySelectorAll('.st').forEach(s=>{ const i=+s.dataset.s; s.classList.toggle('done',at!=null&&(i<at||(st==='installing'&&i<2))); s.classList.toggle('now',at!=null&&i===at&&st!=='ready'); });
+  $('#s3').textContent=st==='installing'?'Restarting':'Restart';
+  restartT.forEach(clearTimeout); restartT=[];
+  if(st==='installing'){ const say=(t,ms)=>restartT.push(setTimeout(()=>{ if(U.status==='installing') $('#sub').textContent=t; },ms)); say(`Swapping in ${L}.`,900); say('Opening Surge again.',2000); }
+  $('#m1').innerHTML=st==='downloading'&&U.size?`<b>${fmt(U.bytes||0)}</b> of ${fmt(U.size)}, ${p}%`:st==='downloading'?`${p}%`:'';
   $('#m2').innerHTML=st==='downloading'&&U.speed?`${fmt(U.speed)}/s${U.eta?', about <b>'+secs(U.eta)+'</b> left':''}`:''; $('#metaRow').style.display=st==='downloading'?'':'none';
   const msg=st==='error'?(U.error||'Surge will try again on its own.'):st==='uptodate'?(U.noBuild?'Updates for Intel Macs come from the website.':'You have the newest Surge. It checks again on its own.'):''; $('#msg').textContent=msg; $('#msg').classList.toggle('show',!!msg);
   const news=(st==='available'||st==='ready'||st==='updated')&&U.whatsNew?.length; $('#notes').classList.toggle('show',!!news);
-  if(news){ $('#nh').innerHTML=`What is new in ${N.esc(st==='updated'?C:L)} <span>${U.whatsNew.length} change${U.whatsNew.length===1?'':'s'}</span>`; $('#news').innerHTML=U.whatsNew.map((t,i)=>`<li class="${['h-blue','h-violet','h-pink'][i%3]}"><b>${i+1}</b>${N.esc(t)}</li>`).join(''); }
+  if(news){ $('#nh').innerHTML=`What is new in ${N.esc(st==='updated'?C:L)} <span>${U.whatsNew.length} change${U.whatsNew.length===1?'':'s'}</span>`; const top=U.whatsNew.slice(0,4), more=U.whatsNew.length-top.length; $('#news').innerHTML=top.map((t,i)=>`<li style="--i:${i}"><b>${i+1}</b><span>${N.esc(t)}</span></li>`).join('')+(more>0?`<li class="more" style="--i:4"><b></b><span>and ${more} more in the What's new film</span></li>`:''); }
+  $('#verified').style.visibility=['ready','installing','updated','unpacking'].includes(st)?'visible':'hidden';
   const b=$('#go'); b.disabled=false;
   if(st==='ready') b.textContent='Restart now'; else if(st==='downloading') b.textContent='Cancel'; else if(st==='error') b.textContent='Try again';
-  else if(st==='checking'||st==='installing'||st==='unpacking'){ b.textContent=st==='installing'?'Restarting':st==='unpacking'?'Verifying':'Checking'; b.disabled=true; } else if(st==='updated'||st==='uptodate') b.textContent='Nice'; else b.textContent='Update now';
+  else if(st==='checking'||st==='installing'||st==='unpacking'){ b.innerHTML=`<i class="sp"></i>${st==='installing'?'Restarting':st==='unpacking'?'Verifying':'Checking'}`; b.disabled=true; } else if(st==='updated'||st==='uptodate') b.textContent='Done'; else b.textContent='Update now';
   b.classList.toggle('pri',!(st==='downloading'||st==='unpacking'));
-  $('#skip').style.visibility=(st==='available'||st==='ready')?'visible':'hidden'; $('#later').style.visibility=['updated','uptodate','installing'].includes(st)?'hidden':'visible';
+  $('#keys').style.display=b.disabled||st==='downloading'?'none':'';
+  $('#skip').style.display=(st==='available'||st==='ready')?'':'none'; $('#later').style.display=['updated','uptodate','installing','checking'].includes(st)?'none':'';
   requestAnimationFrame(()=>api?.updHeight?.(Math.ceil($('#card').offsetHeight+40))); }
-// 3.0.3: never a dead button: the press shows at once (Starting, a spinner, a ring of light); the next state from Surge repaints
-// it, and if nothing answers within 10 s the button comes back as it was
+// never a dead button: the press shows at once; the next state from Surge repaints it, and if nothing answers within 10 s
+// the button comes back as it was
 let goT=0;
-function pressed(){ const b=$('#go'); b.classList.add('going'); b.textContent='Starting'; const r=document.createElement('i'); r.className='ring303'; b.appendChild(r); setTimeout(()=>r.remove(),750);
-  clearTimeout(goT); goT=setTimeout(()=>{ b.classList.remove('going'); paint(U); },10000); }
+function pressed(){ const b=$('#go'); b.classList.add('going'); b.innerHTML='<i class="sp"></i>Starting'; clearTimeout(goT); goT=setTimeout(()=>{ b.classList.remove('going'); paint(U); },10000); }
 const _paint=paint; paint=function(u){ if(u&&u.status!==U.status){ clearTimeout(goT); $('#go').classList.remove('going'); } _paint(u); };
 $('#go').onclick=()=>{ const st=U.status; if(!['ready','downloading','unpacking','checking','installing','updated','uptodate'].includes(st)) pressed(); if(st==='ready') api?.action('updater','install'); else if(st==='downloading') api?.action('updater','cancel'); else if(st==='unpacking'||st==='checking'||st==='installing') return; else if(st==='error') api?.action('updater','check'); else if(st==='updated'||st==='uptodate') api?.action('updater','close'); else api?.action('updater','download'); };
 $('#later').onclick=()=>api?.action('updater','later'); $('#skip').onclick=()=>api?.action('updater','skip');
 $('#x').onclick=()=>api?.action('updater',U.status==='updated'||U.status==='uptodate'?'close':'later');
-addEventListener('keydown',e=>{ if(e.key==='Escape') $('#x').click(); });
+// keyboard: Return does the main thing, Escape closes
+addEventListener('keydown',e=>{ if(e.key==='Escape') $('#x').click(); else if(e.key==='Enter'&&!$('#go').disabled&&U.status!=='downloading') $('#go').click(); });
 (async()=>{ paint(await api?.action('updater','state')||{}); api?.on('updater:state',paint); })();
 </script></body></html>

@@ -132,7 +132,7 @@ jobs:
           npx --yes @electron/asar list "$APP/Contents/Resources/app.asar" | grep -q "launchpad.html" && echo "✓ launchpad bundled"
           [ -x "$APP/Contents/MacOS/surge-dock" ] && echo "✓ surge-dock helper bundled" || { echo "✗ surge-dock helper missing"; exit 1; }
           [ -f "$APP/Contents/Resources/native/surge-dockwin.node" ] && echo "✓ dock add-on bundled" || { echo "✗ dock add-on missing"; exit 1; }
-          for f in dock-native.js clip.html hookworker.js traychip.js traywork.js haptics.js nova.css nova.js novaui.js nova-preload.js menu.html dialog.html whatsnew.js whatsnew.html assets/sounds/plug.wav modules/18-snap.js; do npx --yes @electron/asar list "$APP/Contents/Resources/app.asar" | grep -q "$f" && echo "✓ $f bundled" || { echo "✗ $f missing from the app"; exit 1; }; done
+          for f in maison.css fonts/geist.woff2 fonts/instrument-serif.woff2 dock-native.js clip.html hookworker.js traychip.js traywork.js haptics.js nova.css nova.js novaui.js nova-preload.js menu.html dialog.html whatsnew.js whatsnew.html assets/sounds/plug.wav modules/18-snap.js; do npx --yes @electron/asar list "$APP/Contents/Resources/app.asar" | grep -q "$f" && echo "✓ $f bundled" || { echo "✗ $f missing from the app"; exit 1; }; done
           # 5. sizes sane
           for f in dist/Surge-mac-arm64.dmg dist/Surge-mac-arm64.zip; do s=$(stat -f%z "$f"); [ "$s" -gt 60000000 ] && echo "✓ $f $s bytes" || { echo "✗ $f too small ($s)"; exit 1; }; done
         env: { CSC_IDENTITY_AUTO_DISCOVERY: "false" }

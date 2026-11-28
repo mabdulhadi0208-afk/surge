@@ -250,15 +250,20 @@ function readBattery(cb) {
 let settingsWin = null, notesWin = null;
 function openSettings(pane) {
   if (settingsWin && !settingsWin.isDestroyed()) { settingsWin.show(); settingsWin.focus(); if (pane) settingsWin.webContents.send('nav', pane); return; }
+  // 3.1: Settings opens where you left it, at the size you left it (if that spot is still on a screen)
+  const sb = settings.settingsBounds, onScreen = sb && screen.getAllDisplays().some(d => { const a = d.workArea; return sb.x + 80 > a.x && sb.y + 40 > a.y && sb.x + 80 < a.x + a.width && sb.y + 40 < a.y + a.height; });
   settingsWin = new BrowserWindow({
-    width: 1040, height: 700, minWidth: 880, minHeight: 560, show: false, frame: false, transparent: true, hasShadow: true,
+    width: onScreen ? Math.max(880, sb.width | 0) : 1040, height: onScreen ? Math.max(560, sb.height | 0) : 700, ...(onScreen ? { x: sb.x | 0, y: sb.y | 0 } : {}), minWidth: 880, minHeight: 560, show: false, frame: false, transparent: true, hasShadow: true,
     ...(IS_MAC ? { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 16, y: 16 }, vibrancy: 'under-window', visualEffectState: 'active' } : {}), backgroundColor: '#00000000',
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true },
   });
   settingsWin.loadFile(path.join(__dirname, 'settings.html'));
   settingsWin.webContents.on('console-message', (_e, lvl, msg) => lvl >= 2 && log('settings', msg));
   settingsWin.once('ready-to-show', () => { settingsWin.show(); if (pane) settingsWin.webContents.send('nav', pane); });
-  settingsWin.on('closed', () => { settingsWin = null; if (process.platform === 'darwin' && !(notesWin && !notesWin.isDestroyed())) app.dock?.hide(); });
+  let boundsT = 0; const keepBounds = () => { clearTimeout(boundsT); boundsT = setTimeout(() => { if (!settingsWin || settingsWin.isDestroyed() || settingsWin.isMinimized() || settingsWin.isFullScreen()) return; settings.settingsBounds = settingsWin.getBounds(); saveSettings(); }, 400); };
+  settingsWin.on('resize', keepBounds); settingsWin.on('move', keepBounds);
+  settingsWin.on('close', () => { try { if (!settingsWin.isMinimized() && !settingsWin.isFullScreen()) { settings.settingsBounds = settingsWin.getBounds(); saveSettings(); } } catch {} });
+  settingsWin.on('closed', () => { clearTimeout(boundsT); settingsWin = null; if (process.platform === 'darwin' && !(notesWin && !notesWin.isDestroyed())) app.dock?.hide(); });
   if (process.platform === 'darwin') app.dock?.show();
 }
 function toggleNotes() {
@@ -611,6 +616,27 @@ function applyPatch(patch) {
 ipcMain.handle('settings:get', () => settings);
 ipcMain.handle('settings:set', (_e, patch) => { applyPatch(patch); try { if (IS_MAC && patch && patch.modules && mod('mouse')?.haptic !== false) require('./haptics.js').tap(0, 60); } catch {} return settings; });
 ipcMain.handle('settings:reset', () => { settings = { launchAtLogin: settings.launchAtLogin, masterVolume: 1, muted: false, welcomed: true, whatsNewSeen: settings.whatsNewSeen, modules: {} }; for (const id in MODULES) settings.modules[id] = defaultsFor(MODULES[id]); saveSettings(); reconcile(); ctx.broadcast('settings:update', settings); updateTray(); return settings; });
+// 3.1: export and import every Surge setting as a small JSON file (Settings, About). Window spots and one-time flags stay on this Mac.
+const LOCAL_ONLY = ['settingsBounds', 'whatsNewSeen', 'welcomed', 'soundFix', 'chipFix', 'separateAppsShown'];
+function exportable() { const o = JSON.parse(JSON.stringify(settings)); for (const k of LOCAL_ONLY) delete o[k]; if (o.modules?.dock) { delete o.modules.dock.macDockBackup; delete o.modules.dock.macDockConfirmed; } return { surge: app.getVersion(), exported: new Date().toISOString(), settings: o }; }
+function importable(text) { let j; try { j = JSON.parse(text); } catch { return { error: 'That file is not a Surge settings file.' }; }
+  const o = j && typeof j === 'object' && j.settings && typeof j.settings === 'object' ? j.settings : j;
+  if (!o || typeof o !== 'object' || !o.modules || typeof o.modules !== 'object') return { error: 'That file is not a Surge settings file.' };
+  const patch = { modules: {} }; for (const k of ['masterVolume', 'muted', 'uiSounds', 'launchAtLogin']) if (k in o) patch[k] = o[k];
+  for (const id in o.modules) if (MODULES[id] && o.modules[id] && typeof o.modules[id] === 'object') { const m = { ...o.modules[id] }; if (id === 'dock') { delete m.macDockBackup; delete m.macDockConfirmed; } patch.modules[id] = m; }
+  return { patch, count: Object.keys(patch.modules).length }; }
+ipcMain.handle('settings:export', async () => {
+  const text = JSON.stringify(exportable(), null, 2);
+  let file = process.env.SURGE_TEST_EXPORT;
+  if (!file) { const r = await dialog.showSaveDialog(settingsWin && !settingsWin.isDestroyed() ? settingsWin : undefined, { title: 'Export Surge settings', defaultPath: path.join(app.getPath('documents'), 'Surge settings.json'), filters: [{ name: 'Surge settings', extensions: ['json'] }] }); if (r.canceled || !r.filePath) return { canceled: true }; file = r.filePath; }
+  try { fs.writeFileSync(file, text); log('settings exported'); return { ok: true, file: path.basename(file) }; } catch (e) { return { error: 'Could not save the file: ' + e.message }; } });
+ipcMain.handle('settings:import', async () => {
+  let file = process.env.SURGE_TEST_IMPORT;
+  if (!file) { const r = await dialog.showOpenDialog(settingsWin && !settingsWin.isDestroyed() ? settingsWin : undefined, { title: 'Import Surge settings', properties: ['openFile'], filters: [{ name: 'Surge settings', extensions: ['json'] }] }); if (r.canceled || !r.filePaths?.[0]) return { canceled: true }; file = r.filePaths[0]; }
+  let text = ''; try { text = fs.readFileSync(file, 'utf8'); } catch (e) { return { error: 'Could not read the file.' }; }
+  const before = JSON.stringify(exportable().settings); const r = importable(text); if (r.error) return r;
+  applyPatch(r.patch); log('settings imported', r.count); return { ok: true, count: r.count, before }; });
+ipcMain.handle('settings:restore', (_e, before) => { const r = importable(String(before || '')); if (r.error) return r; applyPatch(r.patch); return { ok: true }; });
 ipcMain.handle('modules:list', () => Object.values(MODULES).map(m => ({ id: m.id, name: m.name, icon: m.icon, group: m.group, desc: m.desc, needsHook: !!m.needsHook, schema: m.schema || [] })));
 ipcMain.handle('battery:get', () => battery);
 ipcMain.handle('hook:state', () => hookState);

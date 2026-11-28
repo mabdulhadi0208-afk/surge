@@ -23,5 +23,6 @@ contextBridge.exposeInMainWorld('surge', {
   notesLoad: () => ipcRenderer.invoke('notes:load'), notesSave: (t) => ipcRenderer.send('notes:save', t),
   updHeight: (h) => ipcRenderer.send('update:height', h),
   whatsNew: () => ipcRenderer.invoke('whatsnew:data'), whatsNewDone: (how) => ipcRenderer.send('whatsnew:done', how), playWhatsNew: () => ipcRenderer.send('whatsnew:play'),
+  exportSettings: () => ipcRenderer.invoke('settings:export'), importSettings: () => ipcRenderer.invoke('settings:import'), restoreSettings: (b) => ipcRenderer.invoke('settings:restore', b),
   platform: process.platform,
 });

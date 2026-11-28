@@ -28,8 +28,6 @@ module.exports = {
     { k: 'size', t: 'range', label: 'Size', min: .8, max: 1.4, step: .05, fmt: 'x' },
     { k: 'hideMacDock', t: 'toggle', label: 'Replace the macOS Dock', hint: 'Apple\'s Dock disappears completely, no peeking at the screen edge. Your own Dock settings come back exactly as they were the moment you turn this off, disable the module, or quit Surge.' },
     { k: 'magnify', t: 'toggle', label: 'Magnify icons on hover' },
-    { k: 'aura', t: 'toggle', label: 'Colour glow under icons', hint: 'Each app lights the dock with its own colour as you hover it' },
-    { k: 'reflect', t: 'toggle', label: 'Icon reflections' },
     { k: 'labels', t: 'toggle', label: 'Widget labels' },
     { k: 'autohide', t: 'toggle', label: 'Auto-hide', hint: 'Drops away the instant the cursor leaves it; touch the screen edge to bring it back' },
     { k: 'fullscreen', t: 'toggle', label: 'Slide up in fullscreen apps', hint: 'In a fullscreen app Surge Dock hides and slides up when you touch the screen edge, like Apple\'s Dock. Off: it stays out of fullscreen apps.' },

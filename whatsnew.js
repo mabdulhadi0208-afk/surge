@@ -6,10 +6,16 @@
 const path = require('path');
 
 const WHATS_NEW = {
-  version: '3.0.6',
+  version: '3.1.0',
   items: [
-    { icon: 'dock', text: 'Surge Dock is smaller and neater, with room to spare on every screen' },
-    { icon: 'apps', text: 'The Size slider still goes bigger or smaller from the new, compact starting point' },
+    { icon: 'dock', text: 'Surge Dock magnifies smoothly, with no lag' },
+    { icon: 'spark', text: 'A calm new look: warm paper, deep ink, one emerald accent' },
+    { icon: 'apps', text: 'Buttons and menus fill from where your pointer enters' },
+    { icon: 'refresh', text: 'A clearer update card with Download, Verify and Restart steps' },
+    { icon: 'keyboard', text: 'Every shortcut on one sheet: press ? in Settings' },
+    { icon: 'grid', text: 'Export and import your settings, and undo a reset' },
+    { icon: 'dock', text: 'Undo removing an app from Surge Dock' },
+    { icon: 'settings', text: 'Settings reopens where you left it, at the same size' },
   ],
 };
 

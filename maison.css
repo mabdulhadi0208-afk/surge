@@ -1,0 +1,292 @@
+/* =====================================================================================================================
+   Surge 3.1: Maison. The family look of Lumen 4.5 and Drop 1.6, linked LAST on every Surge page, over nova.css.
+   Warm paper in light, deep ink in dark, hairlines instead of glass, Geist for the interface and Instrument Serif for the
+   big words, one restrained accent (deep emerald). No rainbow, no gradients, no glow, no blur, at most one modest shadow.
+   Motion: the flow hover (a circle grows from where the pointer came in, and the label flips colour with it), the
+   existing jelly press springs, and short transform and opacity transitions. Nothing loops except loading indicators.
+   No emoji anywhere.
+   ===================================================================================================================== */
+@font-face{font-family:"Geist";src:url("fonts/geist.woff2") format("woff2");font-weight:100 900;font-display:swap;unicode-range:U+0020-007E,U+00A0-00FF,U+0131,U+0152-0153,U+02C6,U+02DA,U+02DC,U+2013-2014,U+2018-201E,U+2020-2022,U+2026,U+2030,U+2032-2033,U+2039-203A,U+2044,U+20AC,U+2122,U+2212}
+@font-face{font-family:"Geist";src:url("fonts/geist-ext.woff2") format("woff2");font-weight:100 900;font-display:swap;unicode-range:U+0100-024F,U+20A0-20AB,U+20AD-20CF}
+@font-face{font-family:"Instrument Serif";src:url("fonts/instrument-serif.woff2") format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Instrument Serif";src:url("fonts/instrument-serif-italic.woff2") format("woff2");font-weight:400;font-style:italic;font-display:swap}
+
+/* ------------------------------------------------------------- tokens: paper and ink */
+:root{
+  --m-bg:#f6f3ed;--m-bg2:#eeeae1;--m-bg3:#e4ded2;--m-card:#fcfbf8;
+  --m-fg:#15130f;--m-fg2:#5d574c;--m-fg3:#857e71;
+  --m-line:rgba(21,19,15,.1);--m-line2:rgba(21,19,15,.2);--m-tint:rgba(21,19,15,.055);
+  --m-solid:#15130f;--m-on-solid:#f6f3ed;
+  --m-acc:#1f6b52;--m-acc-ink:#1f6b52;--m-on-acc:#ffffff;--m-acc-tint:rgba(31,107,82,.1);
+  --m-danger:#a8323f;
+  --m-float:0 18px 44px -22px rgba(21,19,15,.42);
+  --m-ease:cubic-bezier(.2,.8,.2,1);--flow-t:.42s;
+  --m-font:"Geist",-apple-system,BlinkMacSystemFont,"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;
+  --m-serif:"Instrument Serif","Iowan Old Style","Palatino Linotype",Georgia,serif;
+  /* nova.css tokens, pointed at paper so every older rule that reads them draws flat and calm */
+  --accent:#1f6b52;--accent2:#1f6b52;--accent3:#1f6b52;--nova:#1f6b52;--ink:var(--m-acc-ink);
+  --pink:#1f6b52;--violet:#1f6b52;--blue:#1f6b52;--cyan:#1f6b52;--mint:#1f6b52;--green:#1f6b52;--indigo:#1f6b52;--lime:#1f6b52;--orange:#9a6a1f;--amber:#9a6a1f;--red:#a8323f;
+  --font:var(--m-font);--body:var(--m-font);--display:var(--m-font);--head:var(--m-font);
+  --page:var(--m-bg);--fg:var(--m-fg);--fg2:var(--m-fg2);--fg3:var(--m-fg3);--tx:var(--m-fg);--tx2:var(--m-fg2);--mut:var(--m-fg3);
+  --line:var(--m-line);--hover:var(--m-tint);--press:rgba(21,19,15,.09);--field:var(--m-tint);--fieldrim:var(--m-line);
+  --surface:var(--m-card);--surface-sh:0 0 0 1px var(--m-line),var(--m-float);
+  --lq-fill:var(--m-card);--lq-sheen:none;--lq-refract:none;--lq-ring:var(--m-line);--lq-sh:none;
+  --ic:var(--m-acc);--hc:var(--m-acc);--hc2:var(--m-acc);--ic3:var(--m-acc);
+}
+@media (prefers-color-scheme:dark){:root{
+  --m-bg:#0d0c0a;--m-bg2:#161512;--m-bg3:#211f1b;--m-card:#151411;
+  --m-fg:#f2eee5;--m-fg2:#aba495;--m-fg3:#857e71;
+  --m-line:rgba(242,238,229,.1);--m-line2:rgba(242,238,229,.2);--m-tint:rgba(242,238,229,.07);
+  --m-solid:#f2eee5;--m-on-solid:#0d0c0a;
+  --m-acc-ink:#6fbf9c;--m-acc-tint:rgba(111,191,156,.12);
+  --m-float:0 18px 44px -20px rgba(0,0,0,.85);
+  --press:rgba(242,238,229,.1);
+}}
+html,body{font-family:var(--m-font);color:var(--m-fg);-webkit-font-smoothing:antialiased}
+button,input,textarea,select{font-family:var(--m-font)}
+::selection{background:var(--m-acc-tint)}
+
+/* ------------------------------------------------------------- no glass, no glow, nothing looping */
+*,*::before,*::after{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;text-shadow:none!important;animation-iteration-count:1!important}
+.spin,.spinner,[class*="spin"],.sp,.st.now .d::after{animation-iteration-count:infinite!important}
+.grad,.hero h1,.hero .h1,.hero .big,h1 em,.brand span{background:none!important;-webkit-background-clip:border-box!important;background-clip:border-box!important;color:inherit!important;-webkit-text-fill-color:currentColor!important}
+.hero-orb,.hero-art,.hero-dots,.hero-glint,.hd-cons,.wm,.pool,.aura,.rings,.slab .dots,.gl::before,.gl::after{display:none!important}
+
+/* ------------------------------------------------------------- surfaces: solid paper or ink, one hairline, one modest shadow */
+.surface{background:var(--m-card)!important;box-shadow:0 0 0 1px var(--m-line),var(--m-float)!important;border-radius:22px}
+.glass,.glass.flat{background:var(--m-card)!important;border:0!important;box-shadow:inset 0 0 0 1px var(--m-line)!important}
+.surface .glass,.surface .glass.flat{background:var(--m-bg)!important}
+
+/* the old gem tiles become quiet marks: ink on paper, emerald when something is on */
+.tile{color:var(--m-fg)!important;background:var(--m-tint)!important;box-shadow:inset 0 0 0 1px var(--m-line)!important}
+.tile.dim{color:var(--m-fg2)!important}
+.tile svg{stroke-width:1.8}
+
+/* the section hero: a calm paper card with a serif title */
+.hero{color:var(--m-fg)!important;background:var(--m-bg2)!important;box-shadow:inset 0 0 0 1px var(--m-line)!important;contain:paint}
+.hero::before{display:none!important}
+.hero>.tile{box-shadow:inset 0 0 0 1px var(--m-line)!important;background:var(--m-card)!important;animation:none!important}
+.hero h1,.hero .h1{font-family:var(--m-serif)!important;font-weight:400!important;letter-spacing:-.01em!important;color:var(--m-fg)!important}
+.hero p,.hero small,.hero .mhook{color:var(--m-fg2)!important}
+.hero .big{font-family:var(--m-serif)!important;font-weight:400!important;color:var(--m-fg)!important;letter-spacing:-.02em!important}
+.hero .btn:not(.pri){color:var(--m-fg)!important;background:var(--m-card)!important;box-shadow:inset 0 0 0 1px var(--m-line)!important}
+.eyebrow{color:var(--m-fg3)!important;font-family:var(--m-font)!important;font-weight:600!important;letter-spacing:.16em!important}
+.eyebrow::after{background:var(--m-line2)!important}
+.eyebrow b{color:var(--m-fg)!important;background:var(--m-card)!important;box-shadow:inset 0 0 0 1px var(--m-line)!important}
+.title{font-family:var(--m-serif)!important;font-weight:400!important;letter-spacing:-.01em!important}
+.sech{font-family:var(--m-serif)!important;font-weight:400!important;letter-spacing:-.01em!important}
+.sech::before{width:16px!important;height:1px!important;background:var(--m-fg3)!important;box-shadow:none!important}
+.badge{color:var(--m-fg2)!important;background:var(--m-tint)!important;box-shadow:inset 0 0 0 1px var(--m-line)!important;font-family:var(--m-font)!important;font-weight:600!important}
+.badge i{background:var(--m-acc)!important;box-shadow:none!important}
+
+/* ------------------------------------------------------------- controls */
+.btn{font-family:var(--m-font)!important;font-weight:600!important;letter-spacing:0!important;color:var(--m-fg);background:var(--m-card)!important;box-shadow:inset 0 0 0 1px var(--m-line2)!important}
+.btn.pri,.btn.pri.hue{color:var(--m-on-solid)!important;background:var(--m-solid)!important;box-shadow:none!important}
+.btn:hover{transform:none}
+.lnk{font-family:var(--m-font)!important;color:var(--m-fg2)!important}
+.lnk:hover{color:var(--m-fg)!important;background:none!important;text-decoration:underline;text-underline-offset:3px}
+.tg{background:var(--m-bg3)!important;box-shadow:inset 0 0 0 1px var(--m-line)!important}
+.tg::before{background:var(--m-acc)!important;box-shadow:none!important}
+.tg::after{box-shadow:0 1px 2px rgba(0,0,0,.25)!important}
+.seg{background:var(--m-tint)!important;box-shadow:inset 0 0 0 1px var(--m-line)!important}
+.seg button{font-family:var(--m-font)!important;font-weight:600!important;color:var(--m-fg2)}
+.seg button.on{color:var(--m-on-solid)!important;background:var(--m-solid)!important;box-shadow:none!important}
+.chip{font-family:var(--m-font)!important;font-weight:600!important;color:var(--m-fg2);background:var(--m-card)!important;box-shadow:inset 0 0 0 1px var(--m-line2)!important}
+.chip i{background:var(--m-fg3)!important}
+.chip.on{color:var(--m-on-solid)!important;background:var(--m-solid)!important;box-shadow:none!important}
+.chip.on i{background:var(--m-on-solid)!important}
+input[type=range]{background:linear-gradient(90deg,var(--m-acc) var(--p,50%),var(--m-bg3) var(--p,50%))!important;height:6px!important}
+input[type=range]::-webkit-slider-thumb{background:var(--m-card)!important;box-shadow:0 0 0 1px var(--m-line2),0 1px 3px rgba(0,0,0,.3)!important;width:18px!important;height:18px!important}
+.field,input[type=text],input[type=search],#q{font-family:var(--m-font)!important;background:var(--m-card)!important;box-shadow:inset 0 0 0 1px var(--m-line2)!important}
+.field:focus,#q:focus{box-shadow:inset 0 0 0 1px var(--m-acc),0 0 0 3px var(--m-acc-tint)!important}
+kbd{font-family:var(--m-font)!important;color:var(--m-fg2)!important;background:var(--m-card)!important;box-shadow:inset 0 0 0 1px var(--m-line2)!important}
+.toast{font-family:var(--m-font)!important;font-weight:600!important;color:var(--m-on-solid)!important;background:var(--m-solid)!important;box-shadow:var(--m-float)!important}
+::-webkit-scrollbar-thumb{background:var(--m-line2)!important}
+
+/* ------------------------------------------------------------- the flow hover
+   nova.js sets --fx and --fy where the pointer comes in; the circle grows from there. It sits under the label in the
+   element's own stacking context, so text, icons, key caps and strokes sit above it and flip colour with it. */
+.flow,.btn,.chip,.seg button:not(.on),.lnk.fl,.mi:not(.st),.m,.q,.it.fl,nav button,.pr,.sp .tab,.wc button,.x{
+  --flow:var(--m-solid);--flow-fg:var(--m-on-solid);
+  position:relative;isolation:isolate;overflow:hidden;
+  transition:color 0s linear .1s,transform .5s var(--jelly,var(--m-ease))}
+.flow::before,.btn::before,.chip::before,.seg button:not(.on)::before,.lnk.fl::before,.mi:not(.st)::before,.m::before,.q::before,.it.fl::before,nav button:not(.on)::before,.pr::before,.sp .tab::before,.wc button::before,.x::before{
+  content:""!important;display:block!important;position:absolute!important;z-index:-1!important;left:var(--fx,50%)!important;top:var(--fy,100%)!important;right:auto!important;bottom:auto!important;
+  width:260%!important;height:auto!important;aspect-ratio:1!important;min-width:90px!important;border-radius:50%!important;pointer-events:none!important;opacity:1!important;box-shadow:none!important;
+  background:var(--flow)!important;transform:translate(-50%,-50%) scale(0)!important;transition:transform var(--flow-t) var(--m-ease)!important;animation:none!important;border:0!important;margin:0!important;inset:auto!important}
+.flow:hover::before,.btn:hover::before,.chip:hover::before,.seg button:not(.on):hover::before,.lnk.fl:hover::before,.mi:not(.st):hover::before,.mi.sel::before,.m:hover::before,.q:hover::before,.it.fl:hover::before,.it.fl.sel::before,
+nav button:not(.on):hover::before,.pr:hover::before,.sp .tab:hover::before,.wc button:hover::before,.x:hover::before{transform:translate(-50%,-50%) scale(1)!important}
+.flow:hover,.btn:hover,.chip:hover,.seg button:not(.on):hover,.lnk.fl:hover,.mi:not(.st):hover,.mi.sel,.m:hover,.q:hover,.it.fl:hover,.it.fl.sel,nav button:not(.on):hover,.pr:hover,.sp .tab:hover,.wc button:hover,.x:hover{color:var(--flow-fg)!important;background-color:transparent}
+.flow:hover *,.btn:hover *,.chip:hover *,.seg button:not(.on):hover *,.mi:not(.st):hover *,.mi.sel *,.m:hover *,.q:hover *,.it.fl:hover *,.it.fl.sel *,nav button:not(.on):hover *,.pr:hover *,.sp .tab:hover *,.wc button:hover *,.x:hover *{color:inherit!important;stroke:currentColor}
+.flow:hover kbd,.btn:hover kbd,.mi:not(.st):hover kbd,.mi.sel kbd,.it.fl:hover kbd,.it.fl.sel kbd{color:var(--flow-fg)!important;background:transparent!important;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--flow-fg) 45%,transparent)!important}
+/* which colour flows into what: primaries flow from ink to emerald, everything else from paper to ink */
+.btn.pri{--flow:var(--m-acc);--flow-fg:var(--m-on-acc)}
+.mi.dg,.x.dg,.flow.dg{--flow:var(--m-danger);--flow-fg:#fff}
+.wc button.x{--flow:var(--m-danger);--flow-fg:#fff}
+@media (prefers-reduced-motion:reduce){.flow::before,.btn::before,.chip::before,.mi::before,.m::before,.q::before,.it.fl::before,nav button::before,.pr::before,.sp .tab::before,.x::before{transition:none!important}}
+
+/* ------------------------------------------------------------- one accent: every old section hue becomes calm */
+[class*="h-"],.h-blue,.h-violet,.h-pink,.h-orange,.h-green,.h-mint,.h-amber,.h-cyan,.h-indigo,.h-lime,.h-red,.h-accent{--ic:var(--m-acc)!important;--hc:var(--m-acc)!important;--hc2:var(--m-acc)!important;--ic3:var(--m-acc)!important;--c:var(--m-acc);--kc:var(--m-fg3)}
+
+/* ------------------------------------------------------------- Settings */
+.win{background:var(--m-bg)!important}
+aside{--fg:var(--m-fg)!important;--fg2:var(--m-fg2)!important;--fg3:var(--m-fg3)!important;--field:var(--m-card)!important;--fieldrim:var(--m-line)!important;--press:var(--m-bg3)!important;--hover:var(--m-tint)!important;
+  color-scheme:light dark!important;color:var(--m-fg)!important;background:var(--m-bg2)!important;box-shadow:inset -1px 0 0 var(--m-line)!important;border-radius:0!important}
+.brand{font:400 30px/1 var(--m-serif)!important;letter-spacing:-.01em!important}
+.brand span{color:var(--m-fg)!important}
+.brand .dot{background:var(--m-solid)!important;color:var(--m-on-solid)!important;box-shadow:none!important}
+.nsearch{background:var(--m-card)!important;box-shadow:inset 0 0 0 1px var(--m-line)!important}
+.nsearch:focus-within{box-shadow:inset 0 0 0 1px var(--m-acc),0 0 0 3px var(--m-acc-tint)!important}
+aside .grp{color:var(--m-fg3)!important;font-family:var(--m-font)!important;font-weight:600!important;letter-spacing:.14em!important}
+aside .grp::after{background:var(--m-line)!important}
+nav button{font-family:var(--m-font)!important;font-weight:500!important;color:var(--m-fg2)!important}
+nav button .ic{color:var(--m-fg2)!important;background:var(--m-card)!important;box-shadow:inset 0 0 0 1px var(--m-line)!important}
+nav button:hover{background:transparent!important}
+nav button.on{color:var(--m-on-solid)!important;font-weight:600!important;background:var(--m-solid)!important;box-shadow:none!important}
+nav button.on::before{display:none!important}
+nav button.on .ic{color:var(--m-on-solid)!important;background:transparent!important;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--m-on-solid) 30%,transparent)!important}
+nav button:not(.on):hover .ic{color:inherit!important;background:transparent!important;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--m-on-solid) 30%,transparent)!important}
+nav button .led{background:var(--m-line2)!important;box-shadow:none!important}
+nav button.live .led{background:var(--m-acc-ink)!important;box-shadow:none!important}
+nav button.on .led,nav button:hover .led{background:var(--m-on-solid)!important}
+aside .vol{background:var(--m-card)!important;box-shadow:inset 0 0 0 1px var(--m-line)!important}
+aside .vol .vt{font-family:var(--m-font)!important;font-weight:600!important;color:var(--m-fg2)!important}
+aside #mute{background:var(--m-tint)!important} aside #mute svg{stroke:currentColor!important} aside #mute{color:var(--m-fg)!important}
+aside .vol input{background:linear-gradient(90deg,var(--m-acc) var(--p,50%),var(--m-bg3) var(--p,50%))!important}
+.status{font-family:var(--m-font)!important;color:var(--m-fg3)!important}
+.status b{color:var(--m-fg)!important;background:var(--m-card)!important;box-shadow:inset 0 0 0 1px var(--m-line)!important;font-weight:600!important}
+.status .led{background:var(--m-acc)!important;box-shadow:none!important}
+main>header h1{font-family:var(--m-font)!important;font-weight:600!important;letter-spacing:.14em!important;color:var(--m-fg3)!important}
+.pane .hero{border-radius:24px!important;min-height:0!important;padding:30px 32px!important}
+.pane .hero>.tile{--ts:76px!important;border-radius:22px!important}
+.pane .hero h1{font-size:52px!important;line-height:1!important}
+.hero>.tg{transform:scale(1.2)!important;background:var(--m-bg3)!important}
+.gl{color:var(--m-fg)!important;background:var(--m-card)!important;box-shadow:inset 0 0 0 1px var(--m-line)!important;border-radius:20px!important;min-height:132px!important}
+.gl .tile{--ts:38px!important}
+.gl b{font:400 38px/1 var(--m-serif)!important;letter-spacing:-.01em!important;color:var(--m-fg)!important}
+.gl span{color:var(--m-fg2)!important;font-weight:500!important}
+.gl b span{color:inherit!important}
+.card{border-radius:20px!important}
+.card h3{font:400 24px/1.15 var(--m-serif)!important;letter-spacing:-.01em!important}
+.card h3::before{width:14px!important;height:1px!important;border-radius:0!important;background:var(--m-fg3)!important;box-shadow:none!important}
+.row{border-color:var(--m-line)!important}
+.row .l{font-family:var(--m-font)!important;font-weight:550!important}
+.sl output{font-family:var(--m-font)!important;font-weight:600!important}
+.theme{background:var(--m-card)!important;border:0!important;box-shadow:inset 0 0 0 1px var(--m-line)!important;border-radius:16px!important}
+.theme i{height:30px!important;width:30px!important;border-radius:50%!important;background:var(--c1)!important;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12),18px 0 0 -4px var(--c2)!important;margin-bottom:8px!important}
+.theme b{font:400 19px/1 var(--m-serif)!important;letter-spacing:0!important}
+.theme:hover{transform:none!important;box-shadow:inset 0 0 0 1px var(--m-fg2)!important}
+.theme.on{box-shadow:inset 0 0 0 1.5px var(--m-acc),0 0 0 3px var(--m-acc-tint)!important}
+.mod{border-radius:18px!important}
+.mod h4{font-family:var(--m-font)!important;font-weight:600!important;letter-spacing:-.01em!important}
+.mod:hover{transform:none!important;box-shadow:inset 0 0 0 1px var(--m-fg3)!important}
+.mod .ic,.mod:not(.on) .ic{color:var(--m-fg2)!important;background:var(--m-tint)!important;box-shadow:inset 0 0 0 1px var(--m-line)!important}
+.mod.on .ic{color:#fff!important;background:var(--m-acc)!important;box-shadow:none!important}
+.sp .tab{font-family:var(--m-font)!important;font-weight:600!important;background:var(--m-card)!important;box-shadow:inset 0 0 0 1px var(--m-line2)!important}
+.sp .tab.on{color:var(--m-on-solid)!important;background:var(--m-solid)!important;box-shadow:none!important}
+.sp .tab i,.pr i{background:var(--m-fg3)!important}
+.sp .cat{font-family:var(--m-font)!important;font-weight:600!important}
+.pr{background:var(--m-card)!important;box-shadow:inset 0 0 0 1px var(--m-line)!important}
+.pr.on{color:var(--m-fg)!important;background:var(--m-acc-tint)!important;box-shadow:inset 0 0 0 1.5px var(--m-acc)!important}
+.pr.on i{background:var(--m-acc)!important}
+.pr .fav.on{color:var(--m-acc-ink)!important}
+.sw b{background:var(--c)!important;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15)!important}
+.sw b.on{box-shadow:0 0 0 2px var(--m-bg),0 0 0 3.5px var(--m-fg)!important}
+.sw .custom{background:var(--m-card)!important;box-shadow:inset 0 0 0 1px var(--m-line2)!important}
+.note{background:var(--m-card)!important;box-shadow:inset 0 0 0 1px var(--m-line2)!important}
+.preview{border-radius:16px!important}
+.step{border-radius:18px!important}
+
+/* ------------------------------------------------------------- the menu-bar popover */
+.panel{border-radius:22px!important}
+.mhead{background:var(--m-bg)!important;box-shadow:inset 0 0 0 1px var(--m-line)!important;border-radius:16px!important}
+.mhead .tile{background:var(--m-solid)!important;color:var(--m-on-solid)!important;box-shadow:none!important}
+.eye{color:var(--m-acc-ink)!important;font-family:var(--m-font)!important;font-weight:600!important;letter-spacing:.14em!important}
+#pct{font:400 40px/1 var(--m-serif)!important;letter-spacing:-.01em!important}
+.hb .btn{background:var(--m-card)!important;box-shadow:inset 0 0 0 1px var(--m-line)!important}
+.lvl{background:var(--m-bg3)!important}
+.lvl i{background:var(--m-acc)!important}
+.q{color:var(--m-fg)!important;background:var(--m-card)!important;box-shadow:inset 0 0 0 1px var(--m-line)!important;border-radius:14px!important;font-family:var(--m-font)!important;font-weight:550!important}
+.q:hover{transform:none!important}
+.q.live{color:#fff!important;background:var(--m-acc)!important;box-shadow:none!important;--flow:var(--m-solid)}
+.panel .grp{background:var(--m-bg)!important;box-shadow:inset 0 0 0 1px var(--m-line)!important;border-radius:16px!important}
+.gh{color:var(--m-fg3)!important;font-family:var(--m-font)!important;font-weight:600!important;letter-spacing:.14em!important}
+.gh::before{background:var(--m-acc)!important;box-shadow:none!important}
+.m{border-radius:9px!important;font-family:var(--m-font)!important}
+.m:hover{background:transparent!important}
+.m .tile{color:var(--m-fg3)!important;background:transparent!important;box-shadow:inset 0 0 0 1px var(--m-line)!important}
+.m.on .tile{color:#fff!important;background:var(--m-acc)!important;box-shadow:none!important}
+.m:hover .tile{color:inherit!important;background:transparent!important;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--m-on-solid) 35%,transparent)!important}
+.m.need::after{background:var(--amber)!important;box-shadow:0 0 0 2px var(--m-bg)!important}
+#upd .ring{background:conic-gradient(from -90deg,var(--m-acc) calc(var(--p)*1%),var(--m-bg3) 0)!important}
+#upd .bar i{background:var(--m-acc)!important}
+.panel .vol output{font-family:var(--m-font)!important;font-weight:600!important;color:var(--m-fg)!important;background:var(--m-card)!important}
+.panel .vol{background:var(--m-bg)!important;box-shadow:inset 0 0 0 1px var(--m-line)!important}
+.panel #mute:not(:hover){color:var(--m-fg)!important;background:var(--m-card)!important}
+.panel .row b{font-family:var(--m-font)!important;font-weight:600!important}
+
+/* ------------------------------------------------------------- the right-click menu and dialogs */
+#mn{border-radius:16px!important}
+.hd{background:var(--m-bg)!important;box-shadow:inset 0 0 0 1px var(--m-line)!important;border-radius:12px!important}
+.hd .tile{background:var(--m-solid)!important;color:var(--m-on-solid)!important;box-shadow:none!important}
+.hd b{font:400 22px/1 var(--m-serif)!important;letter-spacing:0!important}
+.mi{border-radius:9px!important;font-family:var(--m-font)!important}
+.mi:hover,.mi.sel{background:transparent!important}
+.mi .ic{color:var(--m-fg2)!important;background:transparent!important;box-shadow:inset 0 0 0 1px var(--m-line)!important}
+.mi:hover .ic,.mi.sel .ic{color:inherit!important;background:transparent!important;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--m-on-solid) 35%,transparent)!important}
+.mi.dg{color:var(--m-danger)}
+.mi.dg:hover,.mi.dg.sel{color:#fff!important}
+.mi.dg:hover .ic,.mi.dg.sel .ic{background:transparent!important;color:#fff!important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.4)!important}
+.sw.on{background:var(--m-acc)!important}
+.sub{border-left-color:var(--m-line2)!important}
+.cnt{font-family:var(--m-font)!important;color:var(--m-fg2)!important;background:var(--m-tint)!important}
+.mi:hover .cnt,.mi.sel .cnt{color:inherit!important;background:transparent!important;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--m-on-solid) 35%,transparent)}
+.mi:hover .chev,.mi.sel .chev{stroke:currentColor!important}
+.card h1,body>.card h1{font:400 28px/1.1 var(--m-serif)!important;letter-spacing:-.01em!important;color:var(--m-fg)!important}
+.card>.tile{background:var(--m-solid)!important;color:var(--m-on-solid)!important;box-shadow:none!important;animation:none!important}
+.detail{font-family:var(--m-font)!important}
+
+/* ------------------------------------------------------------- clipboard, launchpad, notes */
+.box,.pad{border-radius:20px!important}
+.box .hero,.pad .hero,header.hero{padding:12px 16px!important;border-radius:14px!important}
+.box .hero h1,.pad .hero h1,header.hero h1{font-size:28px!important}
+.selbar{background:var(--m-solid)!important;box-shadow:none!important;border-radius:10px!important}
+.it.sel .t,.it.sel .m,.it.sel .n{color:var(--m-on-solid)!important}
+.it.sel .t b{background:transparent!important;text-decoration:underline;text-underline-offset:2px}
+.it.sel .kd:not(.sw){background:transparent!important;color:var(--m-on-solid)!important;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--m-on-solid) 35%,transparent)!important}
+.it.sel .x{color:var(--m-on-solid)!important}
+.kd.sw{background:var(--kc)!important;box-shadow:inset 0 0 0 1px var(--m-line2)!important}
+.kd:not(.sw){background:var(--m-tint)!important;color:var(--m-fg2)!important;box-shadow:inset 0 0 0 1px var(--m-line)!important}
+.it .t b,.a .n b{background:var(--m-acc-tint)!important;color:var(--m-acc-ink)!important}
+.x:hover{background:transparent!important}
+.a{border-radius:14px!important}
+.a:hover,.a.sel{background:var(--m-tint)!important;box-shadow:inset 0 0 0 1px var(--m-line2)!important;transform:none!important}
+.a .ic img{filter:drop-shadow(0 4px 6px rgba(0,0,0,.18))!important}
+.a .ic:not(:has(img)){background:var(--m-bg3)!important;color:var(--m-fg2)!important;box-shadow:none!important}
+.empty{font-family:var(--m-font)!important;font-weight:500!important;color:var(--m-fg2)!important}
+.foot a{color:var(--m-acc-ink)!important}
+.sv.ok{color:var(--m-acc-ink)!important}
+
+/* ------------------------------------------------------------- 3.1 action toast (with Undo) and the shortcut sheet */
+.utoast{position:fixed;left:50%;bottom:22px;z-index:60;display:flex;align-items:center;gap:14px;padding:8px 8px 8px 16px;border-radius:12px;font:500 13px/1.2 var(--m-font);color:var(--m-on-solid);background:var(--m-solid);box-shadow:var(--m-float);
+  opacity:0;pointer-events:none;transform:translate(-50%,12px);transition:opacity .2s,transform .45s var(--m-ease)}
+.utoast.show{opacity:1;pointer-events:auto;transform:translate(-50%,0)}
+.utoast .btn{height:30px!important;padding:0 12px!important;color:var(--m-on-solid)!important;background:transparent!important;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--m-on-solid) 35%,transparent)!important;--flow:var(--m-acc);--flow-fg:#fff}
+.sheet{position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:rgba(13,12,10,.32);opacity:0;pointer-events:none;transition:opacity .2s}
+.sheet.show{opacity:1;pointer-events:auto}
+.sheetc{width:min(640px,calc(100% - 60px));max-height:calc(100% - 80px);overflow:auto;padding:22px 26px 18px;border-radius:20px!important;transform:translateY(10px) scale(.98);transition:transform .45s var(--m-ease)}
+.sheet.show .sheetc{transform:none}
+.sh-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.sh-h h2{margin:0;font:400 32px/1 var(--m-serif);letter-spacing:-.01em}
+.sh-h .btn.x{width:30px;height:30px;padding:0!important;border-radius:8px!important}
+.sh-h .btn.x svg{width:12px;height:12px}
+.sh-g{display:grid;grid-template-columns:1fr 1fr;gap:4px 28px}
+.sh-g h4{margin:14px 0 6px;font:600 10.5px/1 var(--m-font);letter-spacing:.14em;text-transform:uppercase;color:var(--m-fg3)}
+.sk{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0;border-top:1px solid var(--m-line);font:450 12.5px/1.3 var(--m-font);color:var(--m-fg)}
+.sk .kk{display:flex;gap:3px;flex:none}
+.sk kbd{height:20px;padding:0 6px;font-size:10.5px}
+.sh-f{margin:14px 0 0;font:450 11.5px/1 var(--m-font);color:var(--m-fg3)}
+@media (prefers-reduced-motion:reduce){.utoast,.sheet,.sheetc{transition:none!important}}
+.gl{justify-content:flex-start!important}
+.panel .m{gap:7px!important;padding:0 4px!important;font-size:11.5px!important}
+.panel .m .tile{--ts:24px!important}

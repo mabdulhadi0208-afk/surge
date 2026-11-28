@@ -189,7 +189,7 @@
   .pr .fav::before{content:"";width:13px;height:13px;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m12 3.2 2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 17l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z'/%3E%3C/svg%3E") center/contain no-repeat}
 </style>
 <script src="nova.js"></script>
-</head>
+<link rel="stylesheet" href="maison.css"></head>
 <body>
 <div class="win">
   <div class="aura"></div>
@@ -204,6 +204,8 @@
     <header class="drag"><h1 id="title">Modules</h1><div class="grow"></div><button class="btn pri h-pink" id="qGlow"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>Preview glow</button><div class="wc"><button id="wMin" title="Minimise"><svg viewBox="0 0 12 12"><path d="M2 6h8"/></svg></button><button class="x" id="wClose" title="Close"><svg viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8"/></svg></button></div></header>
     <div class="panes" id="panes"></div>
     <div class="toast h-pink" id="toast">Saved</div>
+    <div class="utoast" id="utoast" role="status"><span id="utMsg"></span><button class="btn" id="utBtn">Undo</button></div>
+    <div class="sheet" id="sheet" role="dialog" aria-label="Keyboard shortcuts"><div class="sheetc surface"><div class="sh-h"><h2>Keyboard shortcuts</h2><button class="btn icon x" id="sheetX" title="Close (Esc)"></button></div><div class="sh-g" id="sheetG"></div><p class="sh-f">Press <kbd>?</kbd> in Settings to see this again.</p></div></div>
   </main>
 </div>
 <script src="engine.js"></script>
@@ -215,6 +217,21 @@ const ic = n => Nova.ic(n), H = id => Nova.hue(id), esc = Nova.esc;
 const WM = n => `<div class="wm" data-g="${n}"></div>`;   // Nova.upgrade turns it into Lumen's hero backdrop
 let S = {}, MODS = [], hook = 'unavailable', cur = 'all', mini = null, pkind = 'plug';
 const fmt = (f, v) => f==='pct' ? Math.round(v*100)+'%' : f==='px' ? v+'px' : f==='s' ? (+v).toFixed(1)+'s' : f==='x' ? (+v).toFixed(2)+'×' : v;
+// an action toast: a message and, for things that can be undone, an Undo button; it leaves on its own after 6 s
+function utoast(m, undo, ms = 6000){ const t=$('#utoast'); $('#utMsg').textContent=m; const b=$('#utBtn'); b.style.display=undo?'':'none'; b.onclick=()=>{ t.classList.remove('show'); undo&&undo(); }; t.classList.remove('show'); void t.offsetWidth; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),ms); }
+// the shortcut sheet
+const MOD=/Mac/.test(navigator.platform)?'Command':'Ctrl';
+const KEYS=[['Anywhere',[[[MOD,'Shift','G'],'Preview the glow'],[[MOD,'Shift','N'],'Quick notes'],[[MOD,'Shift','S'],'Cursor spotlight'],[[MOD,'Shift','K'],'Keyboard sounds on or off'],[[MOD,'Shift','M'],'Mute all sounds'],[[MOD,'Shift','C'],'Caffeine on or off'],[[MOD,'Shift','D'],'Show or hide Surge Dock'],[[MOD,'Shift','L'],'Launchpad'],[[MOD,'Shift','V'],'Clipboard history']]],
+  ['Window snap',[[['Control','Option','Left'],'Left half'],[['Control','Option','Right'],'Right half'],[['Control','Option','Up'],'Full screen'],[['Control','Option','Down'],'Centre'],[['Control','Option','1 to 4'],'Quarters']]],
+  ['In Settings',[[['?'],'This sheet'],[[MOD,'F'],'Search settings'],[['Esc'],'Close a sheet or clear the search']]],
+  ['In Surge Dock',[[['Drag'],'Reorder or pin an app'],[['Right-click'],'Keep in Dock, Show in Finder, Quit'],[['Scroll'],'Change the volume on the volume widget']]]];
+function sheet(on){ const sh=$('#sheet'); if(on&&!sh._b){ sh._b=1; $('#sheetX').innerHTML=ic('x'); $('#sheetX').onclick=()=>sheet(false); sh.onclick=e=>{ if(e.target===sh) sheet(false); };
+    $('#sheetG').innerHTML=KEYS.map(([g,rows])=>`<section><h4>${esc(g)}</h4>${rows.map(([k,t])=>`<div class="sk"><span>${esc(t)}</span><span class="kk">${k.map(x=>`<kbd>${esc(x)}</kbd>`).join('')}</span></div>`).join('')}</section>`).join(''); }
+  sh.classList.toggle('show',!!on); }
+addEventListener('keydown',e=>{ const typing=/INPUT|TEXTAREA/.test(document.activeElement?.tagName||'')&&document.activeElement.type!=='range';
+  if(e.key==='Escape'&&$('#sheet').classList.contains('show')){ e.preventDefault(); sheet(false); return; }
+  if(((e.key==='?'||(e.key==='/'&&e.shiftKey))&&!typing)||(e.key==='/'&&(e.metaKey||e.ctrlKey))){ e.preventDefault(); sheet(!$('#sheet').classList.contains('show')); return; }
+  if(e.key.toLowerCase()==='f'&&(e.metaKey||e.ctrlKey)){ const q=document.querySelector('.nsearch input'); if(q){ e.preventDefault(); q.focus(); q.select(); } } });
 function toast(m,ms=1000){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),ms); }
 let saveT, pending = { modules: {} };
 function set(id, patch){ S.modules[id] = { ...S.modules[id], ...patch }; pending.modules[id] = { ...(pending.modules[id]||{}), ...patch }; paint();
@@ -250,7 +267,9 @@ function build(){
       <div class="row"><div class="l">Interface sounds<small>Soft glassy taps when you open the menu and flip switches. Off by default.</small></div><div class="tg" id="uiSnd"></div></div>
       <div class="row"><div class="l">What's new<small>Play the short film of what changed in this version again</small></div><button class="btn pri" id="whatsNew">What's new</button></div>
       <div class="row"><div class="l">Updates<small>Surge updates itself from its GitHub releases</small></div><div class="links"><button class="btn" data-go="updater">Open Updates</button><button class="btn" id="relNotes">Release notes</button></div></div>
-      <div class="row"><div class="l">Start over<small>Puts every module and option back the way it came</small></div><button class="btn" id="reset">Reset all settings</button></div>
+      <div class="row"><div class="l">Keyboard shortcuts<small>Every Surge shortcut on one sheet. Press ? anywhere in Settings.</small></div><button class="btn" id="keysBtn">Show shortcuts</button></div>
+      <div class="row"><div class="l">Back up your settings<small>Save every module and option to a file, or bring them over from another Mac</small></div><div class="links"><button class="btn" id="expBtn">Export</button><button class="btn" id="impBtn">Import</button></div></div>
+      <div class="row"><div class="l">Start over<small>Puts every module and option back the way it came. You can undo it.</small></div><button class="btn" id="reset">Reset all settings</button></div>
     </div></section>`;
   $('#panes').innerHTML = panes; Nova.upgrade($('#pane-all')); $('#pane-all')._up=1;
   /* the other pages' heroes are drawn one at a time while Settings is idle (or on their first visit, whichever comes first), never
@@ -266,7 +285,11 @@ function build(){
   $('#master').onchange = () => audition('keyboard', S.modules.keys?.preset);
   $('#mute').onclick = () => { S.muted = !S.muted; api?.setSettings({ muted: S.muted }); paint(); };
   $('#qGlow').onclick = () => api?.preview('preview');
-  $('#reset').onclick = async () => { S = await api?.resetSettings() || S; paint(); toast('Reset'); };
+  // 3.1: Reset, Import and Export, each with plain feedback, and the destructive ones can be undone
+  $('#reset').onclick = async () => { const before = JSON.stringify({ settings: S }); S = await api?.resetSettings() || S; paint(); utoast('Every setting is back to how it came', async () => { await api?.restoreSettings?.(before); utoast('Your settings are back'); }); };
+  $('#expBtn').onclick = async () => { const r = await api?.exportSettings?.(); if (r?.ok) utoast('Saved ' + r.file); else if (r?.error) utoast(r.error); };
+  $('#impBtn').onclick = async () => { const r = await api?.importSettings?.(); if (r?.ok) utoast(`Imported ${r.count} module${r.count === 1 ? '' : 's'}`, async () => { await api?.restoreSettings?.(r.before); utoast('Import undone'); }); else if (r?.error) utoast(r.error); };
+  $('#keysBtn').onclick = () => sheet(true);
   $('#wMin').onclick = () => api?.minimize(); $('#wClose').onclick = () => api?.close();
   document.querySelectorAll('[data-go]').forEach(b => b.onclick = () => go(b.dataset.go));
   const stAx = $('#stAx'); if (stAx) stAx.onclick = () => api?.openAccessibility();

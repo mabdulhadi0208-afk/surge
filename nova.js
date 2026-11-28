@@ -94,9 +94,13 @@
   let stillT = 0, lastPoke = 0; const poke = () => { const n = Date.now(); if (n - lastPoke < 2000) return; lastPoke = n; R.classList.remove('lm-still'); clearTimeout(stillT); stillT = setTimeout(() => R.classList.add('lm-still'), 20000); };
   for (const ev of ['pointermove', 'pointerdown', 'wheel', 'keydown', 'focus']) addEventListener(ev, poke, { passive: true, capture: true }); poke();
   // turn every <div class="hero"> holding a <div class="wm" data-g="glyph"> into a full Lumen hero, and play its entrance
-  function hero(el, glyph, seed, opts = {}) { if (!el) return; el.querySelectorAll(':scope > .hero-orb, :scope > .hero-dots, :scope > .hero-glint, :scope > .hero-art, :scope > .wm').forEach(n => n.remove());
-    el.insertAdjacentHTML('afterbegin', heroBack(glyph, seed, opts.dots !== false && !el.classList.contains('mini'))); dotsIO?.observe(el); replay(el); }
+  // 3.1 Maison: the hero is a calm paper card, so it gets no backdrop (no orbs, dots, glints or giant glyph) and nothing loops
+  function hero(el) { if (!el) return; el.querySelectorAll(':scope > .hero-orb, :scope > .hero-dots, :scope > .hero-glint, :scope > .hero-art, :scope > .wm').forEach(n => n.remove()); replay(el); }
   function replay(el) { if (!el) return; el.classList.remove('enter'); void el.offsetWidth; el.classList.add('enter'); }
   function upgrade(root = document) { root.querySelectorAll('.hero').forEach(el => { const wm = el.querySelector(':scope > .wm'); const g = el.dataset.glyph || wm?.dataset.g; if (g && !el.querySelector(':scope > .hero-art')) hero(el, g, el.dataset.seed || g); }); }
+  // 3.1 the flow hover (maison.css): the circle grows from the point where the pointer came in, so set --fx/--fy on entry
+  const FLOW = '.flow,.btn,.chip,.seg button,.lnk.fl,.mi,.m,.q,.it.fl,nav button,.pr,.sp .tab,.wc button,.x,.w.wb,.w.fl,#ctx .it,.media .c button,#dtoast button';
+  document.addEventListener('pointerover', e => { const el = e.target.closest?.(FLOW); if (!el || (e.relatedTarget && el.contains(e.relatedTarget))) return;
+    const r = el.getBoundingClientRect(); if (!r.width) return; el.style.setProperty('--fx', ((e.clientX - r.left) / r.width * 100).toFixed(1) + '%'); el.style.setProperty('--fy', ((e.clientY - r.top) / r.height * 100).toFixed(1) + '%'); }, { passive: true });
   window.Nova = { ICONS, HUE, SHORT, ic, esc, stage, hero, heroBack, upgrade, replay, hue: id => 'h-' + (HUE[id] || 'blue'), short: n => SHORT[n] || n };
 })();
